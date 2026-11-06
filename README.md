@@ -12,7 +12,7 @@ This system is **completely independent of Taskflow**:
 
 Nothing is shared, so changes in one can never affect the other.
 
-> Going live? Follow **[docs/SETUP.md](docs/SETUP.md)**.
+> Going live? Follow **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**: Supabase, Zoho Mail, Zoho sign-in, Vercel and your domain, step by step.
 
 ---
 
