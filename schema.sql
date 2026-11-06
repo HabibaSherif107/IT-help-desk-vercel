@@ -164,3 +164,12 @@ insert into departments (id, name, icon, sort) values
   ('sales', '{"en":"Sales","ar":"المبيعات"}',              '📈', 3),
   ('ops',   '{"en":"Operations","ar":"العمليات"}',         '🏭', 4)
 on conflict (id) do nothing;
+
+-- 12. Upgrades — safe to re-run on a database created by an earlier version of this file
+--     Per-category choice: email the support mailbox for new tickets in this category?
+alter table categories add column if not exists notify_support boolean not null default true;
+--     Escalation: a technician hands a ticket to the IT manager, with a reason.
+alter table tickets add column if not exists escalated_at      timestamptz;
+alter table tickets add column if not exists escalated_by      uuid references users(id);
+alter table tickets add column if not exists escalated_from    uuid references users(id);
+alter table tickets add column if not exists escalation_reason text;

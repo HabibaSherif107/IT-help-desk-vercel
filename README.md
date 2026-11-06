@@ -22,7 +22,7 @@ Nothing is shared, so changes in one can never affect the other.
 | Role | Sees | Can do |
 |---|---|---|
 | 👤 **Employee** | Help Center, My Requests, Knowledge Base | Search quick fixes, raise tickets, chat with IT, confirm and rate a fix, reopen if still broken |
-| 🛠️ **IT Agent** | Ticket Queue, My Requests, Knowledge Base | Take tickets, reply, write private notes, change status/priority, resolve |
+| 🛠️ **IT Agent** | Ticket Queue, My Requests, Knowledge Base | Take tickets, reply, write private notes, change status/priority, resolve, **escalate to the IT manager** |
 | 👑 **IT Manager** | Everything an agent sees, plus Dashboard, Approvals, Auto-assignment | Approve or reject requests, declare a major incident |
 | 🛡️ **Admin** | Admin Console, plus everything above | Manage people, departments, categories, questions, priorities, statuses, replies, articles and settings |
 | *Any manager* | Approvals (when someone they manage asks for something) | Approve or reject that person's requests |
@@ -34,15 +34,18 @@ Admins can rename, reorder, hide, add or remove categories and change their ques
 ### How a ticket moves
 1. The employee searches first. Matching how-to articles appear and may solve it right away.
 2. The employee picks a category and answers its short questions, plus *"Who is affected?"* and *"How urgent is it?"*. These set the priority (P1–P4).
-3. The ticket goes automatically to the person who owns that category.
+3. The ticket goes automatically to the person who owns that category. That can be a technician (e.g. Hardware → Karim) or the IT manager (e.g. Email & Accounts → the manager). Only that person is emailed.
 4. Software and joiner/leaver requests first wait for the **employee's manager** to approve.
 5. IT replies (or writes private notes), then marks the ticket resolved with a note on the fix.
 6. The employee confirms and rates it, or reopens it.
 
+**Escalation:** if a technician can't finish a ticket, they press **⬆ Escalate to manager** and write why. The ticket moves to the IT manager, who gets an email with the reason. The reason stays private to IT, and the employee isn't notified. The manager can solve it or hand it back. Admins choose who receives escalations (**Admin Console → General**).
+
 ### Emails
 | When | Who gets an email |
 |---|---|
-| **Any new ticket** | **The IT support mailbox (`support@company.com`), always.** Also the employee (confirmation) and the assigned IT person, or the approver. |
+| **Any new ticket** | The employee (confirmation) and the category's owner, or the approver. **Also the IT support mailbox (`support@company.com`)**, unless the admin turned that off for the category (**Categories & forms → "Email the support mailbox…"**). |
+| Escalated | The IT manager receiving escalations, with the reason |
 | IT replies | The employee |
 | The employee replies | The assigned IT person (or support if nobody is assigned) |
 | Assigned / approved / rejected / resolved / reopened | The people involved |
@@ -77,7 +80,7 @@ Files starting with `_` are helpers, not endpoints. The app uses **4 serverless 
 
 ### API actions
 - **Read:** `bootstrap`, `list-tickets`, `kb-view`
-- **Tickets:** `create-ticket`, `reply`, `update-ticket` (assignee / status / priority / major), `resolve`, `confirm`, `reopen`, `approve`, `reject`
+- **Tickets:** `create-ticket`, `reply`, `update-ticket` (assignee / status / priority / major), `escalate`, `resolve`, `confirm`, `reopen`, `approve`, `reject`
 - **Admin:** `admin-save-user`, `admin-save-dept`, `admin-delete-dept`, `admin-save-settings`, `admin-save-category`, `admin-toggle-category`, `admin-reorder-categories`, `admin-delete-category`, `admin-save-canned`, `admin-delete-canned`, `admin-save-kb`, `admin-delete-kb`
 
 ### Rules enforced on the server

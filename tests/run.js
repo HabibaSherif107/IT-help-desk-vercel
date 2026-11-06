@@ -235,6 +235,42 @@ async function tests() {
   ok(supportTicketMails().length === (await call("karim@dar.test", "list-tickets")).body.length, "support received one email for every ticket");
   const log = (await pool.query("select count(*)::int n from email_log where kind='created_support' and recipient=$1", [SUPPORT])).rows[0].n;
   ok(log === supportTicketMails().length, "every support email is recorded in email_log");
+
+  console.log("Routing by category (technician vs. IT manager)");
+  await signIn("sara@dar.test");
+  P = await people();
+  let cfg = (await call("hany@dar.test", "bootstrap")).body;
+  const acc = cfg.cats.find(c => c.id === "account"), hw2 = cfg.cats.find(c => c.id === "hardware");
+  await call("hany@dar.test", "admin-save-category", { category: { ...acc, owner: P["omar@dar.test"].id } });
+  r = await call("hany@dar.test", "admin-save-category", { category: { ...hw2, notifySupport: false } });
+  ok(r.body.cats.find(c => c.id === "hardware").notifySupport === false, "admin turns off the support copy for Hardware");
+  let n0 = mails.length;
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "account", title: "Locked out", description: "Too many attempts", fields: { system: 0 } } });
+  ok(r.body.ticket.assignee === P["omar@dar.test"].id, "Email & Accounts ticket goes to the IT manager");
+  ok(mails.slice(n0).some(m => m.to === "omar@dar.test" && /assigned/.test(m.subject)) && !mails.slice(n0).some(m => m.to === "karim@dar.test"), "…manager is emailed, technician is not");
+  n0 = mails.length;
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "hardware", title: "Mouse broken", description: "Left click dead", fields: { device: 3, reason: 2 } } });
+  const t5 = r.body.ticket;
+  const newMails = mails.slice(n0);
+  ok(t5.assignee === P["karim@dar.test"].id && newMails.some(m => m.to === "karim@dar.test"), "Hardware ticket goes to the technician");
+  ok(!newMails.some(m => m.to === SUPPORT) && !newMails.some(m => m.to === "omar@dar.test"), "…and neither the support mailbox nor the manager is emailed");
+
+  console.log("Escalation (technician → IT manager)");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { escalateTo: P["karim@dar.test"].id } });
+  ok(r.body.escalateTo === null && r.body.escalateTarget === P["omar@dar.test"].id, "only a manager/admin can receive escalations; default is the first IT manager");
+  ok((await call("sara@dar.test", "escalate", { id: t5.id, reason: "please" })).status === 403, "employee can't escalate");
+  ok((await call("karim@dar.test", "escalate", { id: t5.id, reason: " " })).status === 400, "escalating needs a reason");
+  n0 = mails.length;
+  r = await call("karim@dar.test", "escalate", { id: t5.id, reason: "Needs a purchase approval" });
+  ok(r.status === 200 && r.body.ticket.assignee === P["omar@dar.test"].id && r.body.ticket.escalated.reason === "Needs a purchase approval" && r.body.ticket.escalated.from === P["karim@dar.test"].id, "escalated ticket moves to the IT manager with reason and who it came from");
+  const esc = mails.slice(n0);
+  ok(esc.some(m => m.to === "omar@dar.test" && /escalated to you/.test(m.subject) && m.text.includes("Needs a purchase approval")), "IT manager is emailed with the reason");
+  ok(!esc.some(m => m.to === "sara@dar.test"), "employee is not emailed about the escalation");
+  ok(!(await call("sara@dar.test", "list-tickets")).body.find(x => x.id === t5.id).thread.some(m => m.text.includes("purchase approval")), "escalation reason stays internal");
+  ok((await call("karim@dar.test", "escalate", { id: t5.id, reason: "again" })).status === 400, "can't escalate a ticket already with the manager");
+  r = await call("omar@dar.test", "update-ticket", { id: t5.id, assignee: P["karim@dar.test"].id });
+  ok(r.body.ticket.assignee === P["karim@dar.test"].id && mails.some(m => m.to === "karim@dar.test" && m.subject.includes(t5.id) && /assigned/.test(m.subject)), "manager can hand it back; technician is emailed");
+  ok((await call("omar@dar.test", "escalate", { id: t5.id, reason: "x" })).status === 400, "the escalation contact can't escalate to themselves");
 }
 
 (async () => {

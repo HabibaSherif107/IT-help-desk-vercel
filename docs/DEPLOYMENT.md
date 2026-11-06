@@ -51,6 +51,8 @@ Every new ticket is emailed here (`IT_SUPPORT_EMAIL`).
 
 A group means every IT person receives the emails, and nobody's personal inbox is the only copy.
 
+> **Avoiding duplicate emails:** each ticket is already emailed to the person who owns its category. If the IT manager shouldn't see every ticket, either leave the manager out of this group, or turn off the support copy for those categories (**Admin Console → Categories & forms → "Email the support mailbox for new tickets in this category"**).
+
 ### 2b. Sending mailbox: sends the emails
 1. In **mailadmin.zoho.com** → **Users** → **Add user**: `it-helpdesk@your-company.com` (this uses one mail licence).
 2. Check that **IMAP/POP/SMTP access** is allowed for this user (**Users → it-helpdesk → Mail access**, or **Mail Policy → Access control**).
@@ -143,8 +145,8 @@ Signed in as admin:
    - Add the IT team, or ask them to sign in once so they appear.
    - Set the **IT Manager** and **IT Agents**.
    - For each employee, set **Department** and **Manager**; the manager approves their requests.
-3. **Admin Console → Categories & forms:** set **Auto-assign to** for each category.
-4. **Admin Console → General:** choose who approves requests and the fallback approver; review the switches.
+3. **Admin Console → Categories & forms:** for each category, set **Auto-assign to** (a technician, or the IT manager for tickets you want to handle yourself). Turn **"Email the support mailbox…"** off where the support group shouldn't get a copy.
+4. **Admin Console → General:** choose who approves requests, the fallback approver, and **who receives escalations** (normally the IT manager).
 5. **Admin Console → Knowledge base / Canned replies:** add your own articles and replies.
 
 ---

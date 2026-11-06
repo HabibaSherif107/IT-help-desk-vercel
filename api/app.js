@@ -73,6 +73,7 @@ function cleanSetting(key, v, members) {
     case "autoAssign": case "kbSuggest": case "csat": case "supportCcUpdates": return !!v;
     case "approvalMode": return v === "fixed" ? "fixed" : "direct_manager";
     case "approverId": return v && members.some(m => m.id === v && m.active !== false) ? v : null;
+    case "escalateTo": return v && members.some(m => m.id === v && m.active !== false && isLead(itRoleOf(m))) ? v : null;
     case "greeting": case "heroSub": return bi(v, 300);
     case "prio": {
       const o = {}; for (const p of IT.PRIOS) { const x = (v || {})[p] || {}; o[p] = { n: bi(x.n, 40), c: isColor(x.c) ? x.c : IT.DEFAULT_SETTINGS.prio[p].c }; } return o;
@@ -109,7 +110,7 @@ function cleanCategory(c, members) {
   return {
     id, icon: str(c.icon || "❔", 8), name, description: bi(c.d, 200),
     type: c.type === "request" ? "request" : "incident", owner_id: owner,
-    needs_approval: !!c.approval, fields, active: c.active !== false,
+    needs_approval: !!c.approval, notify_support: c.notifySupport !== false, fields, active: c.active !== false,
   };
 }
 
@@ -191,7 +192,8 @@ module.exports = async function handler(req, res) {
       const created = await getTicketRow(id);
       const ctx = await emailCtx(created);
       await Promise.all([
-        IT.notify("created_support", created, ctx, IT.SUPPORT_EMAIL(), {}, "created_support"),
+        // Support mailbox: every new ticket, unless the admin turned this off for the category.
+        cat.notify_support !== false ? IT.notify("created_support", created, ctx, IT.SUPPORT_EMAIL(), {}, "created_support") : null,
         IT.notify("created_requester", created, ctx, me.email),
         needsApproval
           ? IT.notify("approval_request", created, ctx, ctx.approver && ctx.approver.email)
@@ -201,7 +203,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Actions on one ticket ─────────────────────────────────
-    const TICKET_ACTIONS = ["reply", "update-ticket", "resolve", "confirm", "reopen", "approve", "reject"];
+    const TICKET_ACTIONS = ["reply", "update-ticket", "resolve", "confirm", "reopen", "approve", "reject", "escalate"];
     if (TICKET_ACTIONS.includes(action)) {
       const t = await getTicketRow(body.id);
       if (!t) return fail(res, 404, "Ticket not found.");
@@ -262,6 +264,25 @@ module.exports = async function handler(req, res) {
           const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
           await IT.notify("assigned", fresh, ctx, ctx.assignee && ctx.assignee.email);
         }
+        return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
+      }
+
+      // A technician hands the ticket to the IT manager: reassign + private note + email.
+      if (action === "escalate") {
+        if (!isIT(role)) return fail(res, 403, "Only IT can escalate tickets.");
+        if (!IT.OPEN_STATES.includes(t.status) || t.status === "Pending Approval") return fail(res, 400, "This ticket can't be escalated right now.");
+        const reason = str(body.reason, 1000).trim();
+        if (!reason) return fail(res, 400, "Say why you're escalating.");
+        const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
+        const target = IT.pickEscalationTarget(settings, members);
+        if (!target) return fail(res, 400, "Nobody is set up to receive escalations. Ask the admin to choose someone in Admin Console → General.");
+        if (target === viewer.id) return fail(res, 400, "You receive escalations yourself. Assign the ticket instead.");
+        if (t.assignee_id === target) return fail(res, 400, "This ticket is already with " + (members.find(m => m.id === target) || {}).name + ".");
+        await addMessage(t.id, viewer.id, "⬆ " + reason, true);
+        await patchTicket(t.id, { assignee_id: target, escalated_at: nowIso(), escalated_by: viewer.id, escalated_from: t.assignee_id || null, escalation_reason: reason, status: t.status === "New" ? "Assigned" : t.status });
+        await addEvent(t.id, viewer.id, "escalated", "Escalated to " + (members.find(m => m.id === target) || {}).name + ": " + reason);
+        const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
+        await IT.notify("escalated", fresh, ctx, [ctx.assignee && ctx.assignee.email, ctx.supportCc], { text: reason, by: me.name }, "escalated");
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
       }
 

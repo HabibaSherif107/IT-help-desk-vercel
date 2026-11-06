@@ -140,7 +140,16 @@ const S = {
   g_approval:["Who approves requests","من يوافق على الطلبات"], g_mode_dm:["The employee's manager (set in Users & roles)","مدير الموظف (يُحدد في المستخدمون والأدوار)"], g_mode_fixed:["Always the person below","دائمًا الشخص المحدد أدناه"],
   g_approver:["Fallback / fixed approver","المعتمد الاحتياطي / الثابت"], g_kb:["Suggest articles while employees type","اقتراح مقالات أثناء كتابة الموظف"], g_csat:["Ask employees to rate resolved tickets","طلب تقييم التذاكر المحلولة"],
   general_texts:["Text shown on the Help Center","النصوص الظاهرة في مركز المساعدة"], g_greeting:["Greeting (use {name} for the first name)","التحية (استخدم {name} للاسم الأول)"], g_hero_sub:["Line under the greeting","السطر أسفل التحية"],
-  none_opt:["— None —","— لا أحد —"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
+  none_opt:["— None —","— لا أحد —"],
+  escalate:["⬆ Escalate to manager","⬆ تصعيد إلى المدير"], escalate_title:["Escalate {id} to {name}","تصعيد {id} إلى {name}"],
+  escalate_reason:["Why are you escalating? (seen by IT only)","لماذا التصعيد؟ (يراه فريق التقنية فقط)"], escalate_ph:["e.g. Needs a purchase decision, or beyond my access","مثال: يحتاج قرار شراء، أو خارج صلاحياتي"],
+  escalate_hint:["The ticket moves to {name}, who gets an email with your reason. The employee isn't notified.","تنتقل التذكرة إلى {name} ويصله بريد بالسبب. لا يتم إشعار الموظف."],
+  escalate_btn:["Escalate","تصعيد"], toast_escalated:["Escalated to {name}","تم التصعيد إلى {name}"], escalated:["⬆ Escalated","⬆ مُصعّدة"],
+  escalated_by:["Escalated by {by} {x}: {reason}","صعّدها {by} {x}: {reason}"], q_escalated:["Escalated","المُصعّدة"], k_escalated:["Escalated (open)","مُصعّدة (مفتوحة)"],
+  g_escalate:["Escalations go to","يُرسل التصعيد إلى"], g_escalate_d:["When a technician presses Escalate, the ticket is reassigned to this person, who gets an email.","عند ضغط الفني على «تصعيد» تُسند التذكرة لهذا الشخص ويصله بريد إلكتروني."],
+  first_mgr:["— First IT manager —","— أول مدير تقنية —"], cat_support:["Email the support mailbox for new tickets in this category","إرسال نسخة لصندوق الدعم عند فتح تذكرة في هذه الفئة"],
+  h_support:["Support mailbox","صندوق الدعم"], esc_to_line:["Escalations go to {name}","يُرسل التصعيد إلى {name}"], esc_none:["Nobody is set to receive escalations yet.","لم يُحدد بعد من يستقبل التصعيد."],
+  email_to:["Emailed to","يُرسل البريد إلى"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
 };
 const t = (k,v) => { let s=(S[k]||[k,k])[AR()?1:0]; if(v) for(const x in v) s=s.split("{"+x+"}").join(v[x]); return s; };
 
@@ -268,7 +277,7 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
       incident&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("who_affected")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.impacts.map((x,i)=>e(Opt,{key:i,sel:f.impact===i+1,onClick:()=>set("impact",i+1)},L(x))))),
       e("div",{style:{marginBottom:14}},e("div",{style:LS},t("how_urgent")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.urgencies.map((x,i)=>e(Opt,{key:i,sel:f.urgency===i+1,onClick:()=>set("urgency",i+1)},L(x))))),
       e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-link"},t("file_link")),e("input",{id:"nt-link",value:f.link,onChange:ev=>set("link",ev.target.value),placeholder:t("file_link_ph"),dir:"ltr",style:IS})),
-      e("div",{style:{background:"#151211",border:"1px solid #231F1E",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:"0.82rem",color:"#C9C6C4"}},e("span",null,t("calc_prio")),e(PrioB,{p}),e("span",{style:{color:"#8A8583"}},"· "+route+" · "+t("support_note"))),
+      e("div",{style:{background:"#151211",border:"1px solid #231F1E",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:"0.82rem",color:"#C9C6C4"}},e("span",null,t("calc_prio")),e(PrioB,{p}),e("span",{style:{color:"#8A8583"}},"· "+route+(c.notifySupport!==false?" · "+t("support_note"):""))),
       e(ErrBox,{text:err}),
       e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{id:"nt-submit",disabled:busy,onClick:submit,style:BP},busy?t("submitting"):t("submit")))));
 }
@@ -290,12 +299,12 @@ function Queue({me,role,tickets,onOpen,selId}){
   const [tab,setTab]=useState(role==="agent"?"mine":"all");
   const [q,setQ]=useState(""), [fc,setFc]=useState(""), [fp,setFp]=useState("");
   const sets={mine:tickets.filter(x=>x.assignee===me&&isOpen(x)),unassigned:tickets.filter(x=>!x.assignee&&isOpen(x)),all:tickets.filter(isOpen),
-    urgent:tickets.filter(x=>isOpen(x)&&(x.priority==="P1"||x.priority==="P2")),waiting:tickets.filter(x=>x.status==="Waiting on User"||x.status==="Pending Approval"),done:tickets.filter(x=>!isOpen(x))};
+    urgent:tickets.filter(x=>isOpen(x)&&(x.priority==="P1"||x.priority==="P2")),escalated:tickets.filter(x=>isOpen(x)&&x.escalated),waiting:tickets.filter(x=>x.status==="Waiting on User"||x.status==="Pending Approval"),done:tickets.filter(x=>!isOpen(x))};
   const rank={P1:0,P2:1,P3:2,P4:3};
   const rows=sets[tab].filter(x=>(!fc||x.cat===fc)&&(!fp||x.priority===fp)&&(!q||(x.id+" "+x.title+" "+pname(x.req)).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>tab==="done"?b.created-a.created:(rank[a.priority]-rank[b.priority]||a.created-b.created));
   const cols="86px minmax(0,1fr) 150px 130px 150px 90px 40px";
   return e("div",null,
-    e(Tabs,{val:tab,set:setTab,tabs:[["mine",t("q_mine"),sets.mine.length],["unassigned",t("q_unassigned"),sets.unassigned.length],["all",t("q_all"),sets.all.length],["urgent",t("q_urgent"),sets.urgent.length],["waiting",t("q_waiting"),sets.waiting.length],["done",t("q_done")]]}),
+    e(Tabs,{val:tab,set:setTab,tabs:[["mine",t("q_mine"),sets.mine.length],["unassigned",t("q_unassigned"),sets.unassigned.length],["all",t("q_all"),sets.all.length],["urgent",t("q_urgent"),sets.urgent.length],["escalated",t("q_escalated"),sets.escalated.length],["waiting",t("q_waiting"),sets.waiting.length],["done",t("q_done")]]}),
     e("div",{style:{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}},
       e("input",{id:"q-search","aria-label":t("q_search"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("q_search"),style:{...IS,flex:"1 1 220px",maxWidth:340}}),
       e("select",{"aria-label":t("all_cats"),value:fc,onChange:ev=>setFc(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_cats")),CFG.cats.map(c=>e("option",{key:c.id,value:c.id},c.icon+" "+L(c.n)))),
@@ -304,7 +313,7 @@ function Queue({me,role,tickets,onOpen,selId}){
       e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:12,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_id"),t("h_subject"),t("h_req"),t("h_prio"),t("status"),t("h_opened"),""].map((h,i)=>e("span",{key:i},h))),
       rows.map((x,i)=>e("button",{key:x.id,className:"hov",onClick:()=>onOpen(x),style:{display:"grid",width:"100%",textAlign:"start",color:"inherit",border:"none",gridTemplateColumns:cols,gap:12,padding:"12px 14px",alignItems:"center",background:selId===x.id?"#3A1512":i%2?"#181514":"#1A1717",borderInlineStart:"3px solid "+(selId===x.id?"#E11A22":x.priority==="P1"&&isOpen(x)?"#EF4444":"transparent")}},
         e("span",{style:{fontFamily:"monospace",fontSize:"0.75rem",color:"#8A8583"}},x.id),
-        e("div",{style:{minWidth:0}},e("div",{style:{fontSize:"0.9rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(x.major?"🚨 ":"")+x.title),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},cat(x.cat).icon+" "+L(cat(x.cat).n))),
+        e("div",{style:{minWidth:0}},e("div",{style:{fontSize:"0.9rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(x.major?"🚨 ":"")+(x.escalated&&isOpen(x)?"⬆ ":"")+x.title),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},cat(x.cat).icon+" "+L(cat(x.cat).n))),
         e("div",{style:{fontSize:"0.8rem"}},pname(x.req),e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},deptName(x.dept))),
         e(PrioB,{p:x.priority}),e(StatB,{s:x.status}),e("span",{style:{fontSize:"0.78rem",color:"#8A8583"}},ago(x.created)),e(Av,{id:x.assignee,size:26}))),
       rows.length===0&&e("div",{style:{padding:34,textAlign:"center",color:"#6B6563"}},tab==="unassigned"?t("nothing_unassigned")+" 👏":t("no_match")))));
@@ -316,6 +325,8 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
   const [reply,setReply]=useState(""), [internal,setInternal]=useState(false), [busy,setBusy]=useState(false);
   const [resolveOpen,setResolveOpen]=useState(false), [resNote,setResNote]=useState(""), [rating,setRating]=useState(0);
   const [rej,setRej]=useState(false), [reason,setReason]=useState("");
+  const [escOpen,setEscOpen]=useState(false), [escReason,setEscReason]=useState("");
+  const escTo=CFG.escalateTarget, canEscalate=agent&&isOpen(tk)&&tk.status!=="Pending Approval"&&escTo&&escTo!==me&&tk.assignee!==escTo;
   useEffect(()=>{setReply("");setInternal(false);setRating(0);},[tk.id]);
   const c=cat(tk.cat), rq=person(tk.req)||{name:"—",dept:tk.dept};
   const run=async(action,data,okMsg)=>{ setBusy(true); try{ const r=await api(action,{id:tk.id,...data}); onChanged(r.ticket); if(okMsg) toast(okMsg); return true; }catch(x){ toast(x.message,"error"); return false; } finally{ setBusy(false); } };
@@ -327,7 +338,7 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
     e("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"#00000066",zIndex:900}}),
     e("div",{className:"drawer",role:"dialog","aria-label":tk.id,style:{position:"fixed",top:0,bottom:0,insetInlineEnd:0,width:600,background:"#12100F",borderInlineStart:"1px solid #332C2B",zIndex:1000,display:"flex",flexDirection:"column",paddingBottom:"env(safe-area-inset-bottom, 0px)"}},
       e("div",{style:{padding:"18px 22px",borderBottom:"1px solid #332C2B"}},
-        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},e("div",{style:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}},e("span",{style:{fontFamily:"monospace",color:"#8A8583",fontSize:"0.8rem"}},tk.id),e(TypeB,{type:c.type}),tk.major&&e(Pill,{c:"#EF4444"},"🚨 "+t("major"))),e("button",{onClick:onClose,"aria-label":t("close"),style:{background:"none",border:"none",color:"#8A8583",fontSize:"1.3rem"}},"✕")),
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},e("div",{style:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}},e("span",{style:{fontFamily:"monospace",color:"#8A8583",fontSize:"0.8rem"}},tk.id),e(TypeB,{type:c.type}),tk.major&&e(Pill,{c:"#EF4444"},"🚨 "+t("major")),tk.escalated&&isOpen(tk)&&agent&&e(Pill,{c:"#F59E0B"},t("escalated"))),e("button",{onClick:onClose,"aria-label":t("close"),style:{background:"none",border:"none",color:"#8A8583",fontSize:"1.3rem"}},"✕")),
         e("div",{style:{fontSize:"1.2rem",fontWeight:700,marginBottom:10,overflowWrap:"anywhere"}},tk.title),
         e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},e(PrioB,{p:tk.priority}),e(StatB,{s:tk.status}),e(Pill,{c:"#C9C6C4"},c.icon+" "+L(c.n)))),
       e("div",{style:{flex:1,overflowY:"auto",padding:"18px 22px"}},
@@ -345,7 +356,9 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
         agent&&isOpen(tk)&&e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
           !tk.assignee&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{assignee:me},t("toast_took")),style:{...BP,padding:"8px 14px"}},t("take_it")),
           tk.status!=="Pending Approval"&&e("button",{disabled:busy,onClick:()=>setResolveOpen(true),style:{...BP,background:"#059669",padding:"8px 14px"}},t("resolve")),
+          canEscalate&&e("button",{id:"escalate-btn",disabled:busy,onClick:()=>setEscOpen(true),style:{...BS,padding:"8px 14px",color:"#FCD34D",borderColor:"#A16207"}},t("escalate")),
           isLeadRole(role)&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{major:!tk.major},tk.major?t("toast_saved_t"):t("toast_major")),style:{...BS,padding:"8px 14px",color:"#FCA5A5"}},tk.major?t("clear_major"):t("declare_major"))),
+        agent&&tk.escalated&&e("div",{style:{background:"#42200633",border:"1px solid #A1620766",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:"0.85rem",color:"#FCD34D"}},"⬆ "+t("escalated_by",{by:pname(tk.escalated.by),x:ago(tk.escalated.at),reason:tk.escalated.reason||""})),
         e(Section,{title:t("details"),style:{marginBottom:14,padding:14}},
           e("div",{style:{fontSize:"0.88rem",lineHeight:1.6,color:"#D6D3D1",marginBottom:10,whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},tk.desc),
           row(t("requester"),e("span",{style:{display:"inline-flex",gap:6,alignItems:"center"}},e(Av,{id:tk.req,size:20}),rq.name+" · "+deptName(tk.dept))),
@@ -364,6 +377,8 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
         e("div",{style:{display:"flex",gap:8}},e("textarea",{id:"composer","aria-label":t("send"),rows:2,maxLength:5000,value:reply,onChange:ev=>setReply(ev.target.value),placeholder:agent?(internal?t("ph_internal"):t("ph_reply",{name:rq.name.split(" ")[0]})):t("ph_req"),style:{...IS,resize:"none",flex:1,borderColor:internal?"#A16207":"#332C2B"}}),e("button",{id:"send-btn",disabled:busy||!reply.trim(),onClick:send,style:{...BP,alignSelf:"stretch",background:internal?"#A16207":"#E11A22"}},t("send"))))),
     resolveOpen&&e(Modal,{title:t("resolve_title",{id:tk.id}),onClose:()=>setResolveOpen(false),w:480},e("label",{style:LS,htmlFor:"fix-note"},t("fix_q")+" *"),e("textarea",{id:"fix-note",rows:4,value:resNote,onChange:ev=>setResNote(ev.target.value),placeholder:t("fix_ph"),style:{...IS,marginBottom:12}}),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},t("fix_hint")),
       e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setResolveOpen(false),style:BS},t("cancel")),e("button",{disabled:busy||!resNote.trim(),onClick:async()=>{ if(await run("resolve",{note:resNote.trim()},t("toast_resolved"))){setResolveOpen(false);setResNote("");} },style:{...BP,background:"#059669"}},t("mark_resolved")))),
+    escOpen&&e(Modal,{title:t("escalate_title",{id:tk.id,name:pname(escTo)}),onClose:()=>setEscOpen(false),w:480},e("label",{style:LS,htmlFor:"esc-reason"},t("escalate_reason")+" *"),e("textarea",{id:"esc-reason",rows:3,value:escReason,onChange:ev=>setEscReason(ev.target.value),placeholder:t("escalate_ph"),style:{...IS,marginBottom:12}}),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},t("escalate_hint",{name:pname(escTo)})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setEscOpen(false),style:BS},t("cancel")),e("button",{id:"esc-confirm",disabled:busy||!escReason.trim(),onClick:async()=>{ if(await run("escalate",{reason:escReason.trim()},t("toast_escalated",{name:pname(escTo)}))){setEscOpen(false);setEscReason("");} },style:{...BP,background:"#A16207"}},t("escalate_btn")))),
     rej&&e(Modal,{title:t("reject_title",{id:tk.id}),onClose:()=>setRej(false),w:440},e("label",{style:LS,htmlFor:"rej-reason"},t("reason_lbl")),e("textarea",{id:"rej-reason",rows:3,value:reason,onChange:ev=>setReason(ev.target.value),style:{...IS,marginBottom:14}}),
       e("div",{style:{display:"flex",justifyContent:"flex-end",gap:10}},e("button",{onClick:()=>setRej(false),style:BS},t("cancel")),e("button",{disabled:busy,onClick:async()=>{ if(await run("reject",{reason},t("toast_rejected"))){setRej(false);setReason("");} },style:BP},t("reject")))));
 }
@@ -426,7 +441,7 @@ function Dashboard({tickets}){
       kpi(t("k_csat"),csat?csat.toFixed(1)+" / 5":"—",t("k_ratings",{n:rated.length})),
       kpi(t("k_pending"),tickets.filter(x=>x.status==="Pending Approval").length),
       kpi(t("k_waiting"),tickets.filter(x=>x.status==="Waiting on User").length),
-      kpi(t("k_total"),tickets.length)),
+      kpi(t("k_escalated"),open.filter(x=>x.escalated).length)),
     e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},e(Section,{title:t("by_cat")},e(HBars,{data:byCat})),e(Section,{title:t("by_dept")},e(HBars,{data:byDept}))),
     e(Section,{title:t("workload")},e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:520}},
       e("div",{style:{display:"grid",gridTemplateColumns:"1.6fr 90px 90px 90px",gap:12,padding:"8px 4px",...HEAD}},[t("h_member"),t("h_open"),t("h_resolved"),t("h_csat")].map(h=>e("span",{key:h},h))),
@@ -441,12 +456,13 @@ function Matrix({value,setValue}){ const m=value||CFG.matrix; return e("div",{st
 function Rules(){ const td={padding:"10px 8px",borderBottom:"1px solid #231F1E"};
   return e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
     e("p",{style:{color:"#8A8583",fontSize:"0.88rem",maxWidth:"70ch"}},t("rules_intro")),
+    e("div",{style:{...card,padding:"12px 16px",display:"flex",gap:10,alignItems:"center"}},e("span",null,"⬆"),e("b",null,CFG.escalateTarget?t("esc_to_line",{name:pname(CFG.escalateTarget)}):t("esc_none"))),
     e("div",{style:{...card,padding:"12px 16px",display:"flex",gap:10,alignItems:"center",borderColor:CFG.autoAssign?"#34D39966":"#F59E0B66"}},e("span",null,CFG.autoAssign?"✅":"⏸"),e("b",null,CFG.autoAssign?t("auto_on"):t("auto_off"))),
     e(Section,{title:t("nav_rules")},e("div",{style:{overflowX:"auto"}},e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:"0.86rem",minWidth:520}},
-      e("thead",null,e("tr",null,[t("h_cat"),t("h_type"),t("h_owner2"),t("h_approval")].map(h=>e("th",{key:h,style:{textAlign:"start",padding:8,...HEAD,borderBottom:"1px solid #332C2B"}},h)))),
+      e("thead",null,e("tr",null,[t("h_cat"),t("h_type"),t("h_owner2"),t("h_approval"),t("h_support")].map(h=>e("th",{key:h,style:{textAlign:"start",padding:8,...HEAD,borderBottom:"1px solid #332C2B"}},h)))),
       e("tbody",null,CFG.cats.filter(c=>c.active).map(c=>e("tr",{key:c.id},e("td",{style:td},c.icon+" "+L(c.n)),e("td",{style:td},e(TypeB,{type:c.type})),
         e("td",{style:td},c.owner&&person(c.owner)?e("span",{style:{display:"inline-flex",gap:6,alignItems:"center"}},e(Av,{id:c.owner,size:22}),pname(c.owner)):e("span",{style:{color:"#8A8583"}},t("triage"))),
-        e("td",{style:td},c.approval?"✓":"—"))))))),
+        e("td",{style:td},c.approval?"✓":"—"),e("td",{style:td},c.notifySupport!==false?"✓":"—"))))))),
     e(Section,{title:t("prio_matrix")},e(Matrix,{})));
 }
 
@@ -465,6 +481,7 @@ function CatEditor({c0,onSave,onClose,busy,err}){
       e("div",null,e("label",{style:LS,htmlFor:"ce-type"},t("type")),e("select",{id:"ce-type",value:c.type,onChange:ev=>set("type",ev.target.value),style:IS},e("option",{value:"incident"},t("incident")),e("option",{value:"request"},t("request")))),
       e("div",null,e("label",{style:LS,htmlFor:"ce-owner"},t("owner")),e("select",{id:"ce-owner",value:c.owner||"",onChange:ev=>set("owner",ev.target.value||null),style:IS},e("option",{value:""},t("nobody_triage")),CFG.people.filter(p=>isITRole(p.role)&&p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
       e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",paddingBottom:10}},e(Switch,{on:c.approval,set:v=>set("approval",v),label:t("needs_appr_lbl")}),t("needs_appr_lbl"))),
+    e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",marginBottom:14}},e(Switch,{on:c.notifySupport!==false,set:v=>set("notifySupport",v),label:t("cat_support")}),t("cat_support")),
     e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"8px 0 10px"}},t("form_fields")),
     c.fields.map((f,i)=>e("div",{key:f.k,style:{...card,background:"#151211",padding:14,marginBottom:10}},
       e("div",{style:{display:"flex",gap:10,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}},e("div",{style:{flex:"1 1 160px"}},e("label",{style:LS},t("field_kind")),e("select",{value:f.kind,onChange:ev=>setField(i,{kind:ev.target.value,opts:ev.target.value==="select"?(f.opts&&f.opts.length?f.opts:[{en:"",ar:""}]):f.opts}),style:IS},e("option",{value:"text"},t("kind_text")),e("option",{value:"select"},t("kind_select")),e("option",{value:"date"},t("kind_date")))),
@@ -514,7 +531,7 @@ function Admin({setCfg,toast,onKB}){
   const [tab,setTab]=useState("cats");
   const [ed,setEd]=useState(null), [del,setDel]=useState(null), [busy,setBusy]=useState(false), [err,setErr]=useState("");
   const [draft,setDraft]=useState(()=>clone({prio:CFG.prio,impacts:CFG.impacts,urgencies:CFG.urgencies,matrix:CFG.matrix,statuses:CFG.statuses,
-    autoAssign:CFG.autoAssign,approvalMode:CFG.approvalMode,approverId:CFG.approver,kbSuggest:CFG.kbSuggest,csat:CFG.csat,supportCcUpdates:CFG.supportCcUpdates,greeting:CFG.greeting,heroSub:CFG.heroSub}));
+    autoAssign:CFG.autoAssign,approvalMode:CFG.approvalMode,approverId:CFG.approver,escalateTo:CFG.escalateTo,kbSuggest:CFG.kbSuggest,csat:CFG.csat,supportCcUpdates:CFG.supportCcUpdates,greeting:CFG.greeting,heroSub:CFG.heroSub}));
   const dset=(k,v)=>setDraft(d=>({...d,[k]:v}));
   const call=async(action,data,closeEd)=>{ setBusy(true); setErr(""); try{ const cfg=await api(action,data); setCfg(cfg); if(closeEd) setEd(null); toast(t("saved")); return true; }catch(x){ setErr(x.message); toast(x.message,"error"); return false; } finally{ setBusy(false); } };
   const saveKeys=keys=>call("admin-save-settings",{values:Object.fromEntries(keys.map(k=>[k,draft[k]]))});
@@ -526,10 +543,10 @@ function Admin({setCfg,toast,onKB}){
   if(tab==="cats"){
     const ids=CFG.cats.map(c=>c.id), last=ids.length-1;
     const move=(i,d)=>{ const j=i+d; if(j<0||j>last) return; const n=ids.slice(); [n[i],n[j]]=[n[j],n[i]]; call("admin-reorder-categories",{ids:n}); };
-    body=e(Section,{title:t("a_cats"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"cat",item:{id:"",icon:"🆕",active:true,type:"incident",owner:null,approval:false,n:{en:"",ar:""},d:{en:"",ar:""},fields:[]}});},style:BP},t("add_cat"))},
-      e(AdminTable,{cols:["",t("name"),t("type"),t("owner"),t("h_approval"),t("form_fields"),t("shown"),""],rows:CFG.cats.map((c,i)=>[
+    body=e(Section,{title:t("a_cats"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"cat",item:{id:"",icon:"🆕",active:true,type:"incident",owner:null,approval:false,notifySupport:true,n:{en:"",ar:""},d:{en:"",ar:""},fields:[]}});},style:BP},t("add_cat"))},
+      e(AdminTable,{cols:["",t("name"),t("type"),t("owner"),t("h_approval"),t("h_support"),t("form_fields"),t("shown"),""],rows:CFG.cats.map((c,i)=>[
         e("div",{style:{display:"flex",flexDirection:"column",gap:2}},e("button",{onClick:()=>move(i,-1),"aria-label":"↑",disabled:busy||i===0,style:{...BSm,padding:"0 6px"}},"▲"),e("button",{onClick:()=>move(i,1),"aria-label":"↓",disabled:busy||i===last,style:{...BSm,padding:"0 6px"}},"▼")),
-        e("div",{style:{display:"flex",gap:8,alignItems:"center"}},e("span",{style:{fontSize:"1.3rem"}},c.icon),both(c.n)),e(TypeB,{type:c.type}),c.owner&&person(c.owner)?pname(c.owner):e("span",{style:{color:"#8A8583"}},t("triage")),c.approval?"✓":"—",c.fields.length===1?t("fields_1"):t("fields_n",{n:c.fields.length}),
+        e("div",{style:{display:"flex",gap:8,alignItems:"center"}},e("span",{style:{fontSize:"1.3rem"}},c.icon),both(c.n)),e(TypeB,{type:c.type}),c.owner&&person(c.owner)?pname(c.owner):e("span",{style:{color:"#8A8583"}},t("triage")),c.approval?"✓":"—",c.notifySupport!==false?"✓":"—",c.fields.length===1?t("fields_1"):t("fields_n",{n:c.fields.length}),
         e(Switch,{on:c.active,label:t("shown"),disabled:busy,set:v=>call("admin-toggle-category",{id:c.id,active:v})}),
         editBtns(()=>setEd({kind:"cat",item:c}),()=>askDel(t("confirm_delete",{x:L(c.n)}),"admin-delete-category",{id:c.id}))])}));
   } else if(tab==="users"){
@@ -570,9 +587,11 @@ function Admin({setCfg,toast,onKB}){
         e("div",{style:rowS},e(Switch,{on:draft.autoAssign,label:t("g_auto"),set:v=>dset("autoAssign",v)}),e("div",{style:{flex:1,minWidth:200}},e("div",{style:{fontWeight:600}},t("g_auto")),e("div",{style:{fontSize:"0.8rem",color:"#8A8583"}},t("g_auto_d")))),
         e("div",{style:rowS},e("div",{style:{flex:"1 1 260px"}},e("label",{style:LS,htmlFor:"g-mode"},t("g_approval")),e("select",{id:"g-mode",value:draft.approvalMode,onChange:ev=>dset("approvalMode",ev.target.value),style:IS},e("option",{value:"direct_manager"},t("g_mode_dm")),e("option",{value:"fixed"},t("g_mode_fixed")))),
           e("div",{style:{flex:"1 1 220px"}},e("label",{style:LS,htmlFor:"g-appr"},t("g_approver")),e("select",{id:"g-appr",value:draft.approverId||"",onChange:ev=>dset("approverId",ev.target.value||null),style:IS},e("option",{value:""},t("none_opt")),CFG.people.filter(p=>p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name))))),
+        e("div",{style:rowS},e("div",{style:{flex:"1 1 260px"}},e("label",{style:LS,htmlFor:"g-esc"},t("g_escalate")),e("select",{id:"g-esc",value:draft.escalateTo||"",onChange:ev=>dset("escalateTo",ev.target.value||null),style:IS},e("option",{value:""},t("first_mgr")),CFG.people.filter(p=>p.active!==false&&isLeadRole(p.role)).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
+          e("div",{style:{flex:"1 1 260px",fontSize:"0.8rem",color:"#8A8583"}},t("g_escalate_d"))),
         e("div",{style:rowS},e(Switch,{on:draft.kbSuggest,label:t("g_kb"),set:v=>dset("kbSuggest",v)}),e("div",{style:{fontWeight:600}},t("g_kb"))),
         e("div",{style:rowS},e(Switch,{on:draft.csat,label:t("g_csat"),set:v=>dset("csat",v)}),e("div",{style:{fontWeight:600}},t("g_csat"))),
-        e(SaveBar,{keys:["supportCcUpdates","autoAssign","approvalMode","approverId","kbSuggest","csat"]})),
+        e(SaveBar,{keys:["supportCcUpdates","autoAssign","approvalMode","approverId","escalateTo","kbSuggest","csat"]})),
       e(Section,{title:t("general_texts")},e(Bi,{label:t("g_greeting"),val:draft.greeting,set:v=>dset("greeting",v)}),e(Bi,{label:t("g_hero_sub"),val:draft.heroSub,set:v=>dset("heroSub",v)}),e(SaveBar,{keys:["greeting","heroSub"]})));
   }
   const kbFields=[{k:"t",label:t("title_lbl"),kind:"bi"},{k:"cat",label:t("category"),kind:"select",opts:CFG.cats.map(c=>[c.id,c.icon+" "+L(c.n)])},{k:"body",label:t("steps"),kind:"bilines"}];

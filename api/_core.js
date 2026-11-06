@@ -20,6 +20,7 @@ const DEFAULT_SETTINGS = {
   autoAssign: true,
   approvalMode: "direct_manager",       // "direct_manager" (the user's manager, fallback approverId) | "fixed"
   approverId: null,
+  escalateTo: null,                     // who receives escalations (null → first active IT manager)
   kbSuggest: true,
   csat: true,
   supportCcUpdates: false,              // also copy the support mailbox on resolve / reopen / approval decisions
@@ -87,6 +88,18 @@ function itRoleOf(user) {
 const isIT = r => r === "agent" || r === "manager" || r === "admin";
 const isLead = r => r === "manager" || r === "admin";
 
+// Who receives an escalation: the chosen person if they're an active IT manager/admin,
+// otherwise the first active IT manager, otherwise the first active admin.
+function pickEscalationTarget(settings, users) {
+  const lead = u => u && u.active !== false && (itRoleOf(u) === "manager" || itRoleOf(u) === "admin");
+  const chosen = users.find(u => u.id === settings.escalateTo);
+  if (lead(chosen)) return chosen.id;
+  const mgr = users.find(u => u.active !== false && itRoleOf(u) === "manager");
+  if (mgr) return mgr.id;
+  const adm = users.find(u => u.active !== false && itRoleOf(u) === "admin");
+  return adm ? adm.id : null;
+}
+
 // ── Small validators ──────────────────────────────────────────
 const str = (v, max) => String(v == null ? "" : v).slice(0, max);
 const bi = (v, max = 300) => ({ en: str(v && v.en, max).trim(), ar: str(v && v.ar, max).trim() });
@@ -149,6 +162,7 @@ async function loadConfig(viewer) {
     supportEmail: isLead(role) ? SUPPORT_EMAIL() : undefined,
     autoAssign: settings.autoAssign, approvalMode: settings.approvalMode, approver: settings.approverId,
     kbSuggest: settings.kbSuggest, csat: settings.csat, supportCcUpdates: settings.supportCcUpdates,
+    escalateTo: settings.escalateTo, escalateTarget: pickEscalationTarget(settings, users),
     greeting: settings.greeting, heroSub: settings.heroSub,
     prio: settings.prio, impacts: settings.impacts, urgencies: settings.urgencies, matrix: settings.matrix, statuses: settings.statuses,
     depts,
@@ -156,7 +170,7 @@ async function loadConfig(viewer) {
       id: u.id, name: u.name, dept: u.dept_id, role: itRoleOf(u), active: u.active !== false,
       ...(role === "admin" ? { email: u.email, manager: u.manager_id } : {}),
     })),
-    cats: (catRows || []).map(c => ({ id: c.id, icon: c.icon, active: c.active !== false, type: c.type, owner: c.owner_id, approval: !!c.needs_approval, n: c.name, d: c.description || B("", ""), fields: c.fields || [] })),
+    cats: (catRows || []).map(c => ({ id: c.id, icon: c.icon, active: c.active !== false, type: c.type, owner: c.owner_id, approval: !!c.needs_approval, notifySupport: c.notify_support !== false, n: c.name, d: c.description || B("", ""), fields: c.fields || [] })),
     canned: isIT(role) ? (cannedRows || []).map(c => ({ id: c.id, l: c.title, t: c.body })) : [],
     kb: (kbRows || []).map(k => ({ id: k.id, cat: k.category_id, views: k.views || 0, t: k.title, body: k.steps || { en: [], ar: [] } })),
   };
@@ -171,6 +185,7 @@ function shapeTicket(t, messages, includeInternal) {
     created: ms(t.created_at), updated: ms(t.updated_at), resolved: ms(t.resolved_at), csat: t.csat,
     fields: t.fields || {}, link: t.attachment_url, major: !!t.is_major,
     approval: t.approval_state ? { by: t.approver_id, state: t.approval_state, reason: t.approval_reason } : null,
+    escalated: t.escalated_at ? { at: ms(t.escalated_at), by: t.escalated_by, from: t.escalated_from, reason: t.escalation_reason } : null,
     thread: (messages || []).filter(m => includeInternal || !m.internal)
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
       .map(m => ({ by: m.author_id, ts: ms(m.created_at), text: m.body, internal: !!m.internal })),
@@ -211,6 +226,7 @@ function buildEmail(kind, t, ctx, extra = {}) {
     reply_to_requester: ["رد جديد من فريق التقنية", "New reply from IT", `${note}\n\n${sAr}`, `${note}\n\n${sEn}`],
     reply_to_it: ["رد جديد من الموظف", "New reply from the employee", `${note}\n\n${sAr}`, `${note}\n\n${sEn}`],
     resolved: ["تم حل تذكرتك", "Your ticket was resolved", `حدد فريق التقنية هذه التذكرة كمحلولة. افتح مكتب الدعم لتأكيد الحل وتقييمه، أو لإعادة فتحها.\nالحل: ${note}\n\n${sAr}`, `IT marked this ticket as resolved. Open the Help Desk to confirm and rate the fix, or reopen it.\nFix: ${note}\n\n${sEn}`],
+    escalated: ["تم تصعيد تذكرة إليك", "Ticket escalated to you", `صعّد ${extra.by || "فريق التقنية"} هذه التذكرة إليك.\nالسبب: ${note}\n\n${sAr}\n\nالتفاصيل:\n${t.description}`, `${extra.by || "IT"} escalated this ticket to you.\nReason: ${note}\n\n${sEn}\n\nDetails:\n${t.description}`],
     reopened: ["أُعيد فتح التذكرة", "Ticket reopened", `أعاد الموظف فتح التذكرة لأن المشكلة ما زالت قائمة.\n\n${sAr}`, `The employee reopened the ticket because the issue is still happening.\n\n${sEn}`],
   }[kind];
   const [hAr, hEn, bAr, bEn] = T;
@@ -235,6 +251,6 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 
 module.exports = {
   supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS,
-  itRoleOf, isIT, isLead, str, bi, isColor, check, SetupRequired,
+  itRoleOf, isIT, isLead, pickEscalationTarget, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };
