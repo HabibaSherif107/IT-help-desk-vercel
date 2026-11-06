@@ -1,0 +1,16 @@
+{
+  "name": "it-helpdesk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IT Help Desk for Dar El Salam — standalone ticketing for IT incidents and requests",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "nodemailer": "^6.9.8"
+  },
+  "devDependencies": {
+    "pg": "^8.11.0"
+  }
+}

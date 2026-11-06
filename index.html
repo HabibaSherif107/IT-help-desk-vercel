@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5"/>
+<title>IT Help Desk · Dar El Salam</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<style>
+:root{ color-scheme:dark; --bg:#12100F; --panel:#1A1717; --line:#332C2B; --red:#E11A22; --text:#EDEBEA; --muted:#8A8583; }
+*{margin:0;padding:0;box-sizing:border-box;}
+html{font-size:15.5px;}
+body{background:var(--bg);font-family:Inter,system-ui,-apple-system,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;}
+html[dir="rtl"] body{font-family:"Segoe UI",Tahoma,Inter,system-ui,sans-serif;}
+input,select,textarea,button{font-family:inherit;font-size:0.95rem;}
+button{cursor:pointer;} button:disabled{cursor:default;opacity:.55;}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid #F16A6F;outline-offset:1px;}
+::-webkit-scrollbar{width:8px;height:8px;} ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+.hov:hover{background:#231F1E !important;}
+.tile{transition:border-color .15s ease,transform .15s ease;} .tile:hover{border-color:#E11A22 !important;transform:translateY(-2px);}
+@media (prefers-reduced-motion:reduce){.tile,.tile:hover{transition:none;transform:none;}}
+@media (max-width:860px){
+  .sidebar{position:fixed !important;left:0;top:0;bottom:0;z-index:800;transform:translateX(-100%);transition:transform .25s ease;}
+  html[dir="rtl"] .sidebar{left:auto;right:0;transform:translateX(100%);}
+  .sidebar.open{transform:translateX(0) !important;}
+  .overlay{position:fixed;inset:0;background:#00000088;z-index:700;}
+  .hamb{display:flex !important;} .drawer{width:100vw !important;}
+  .g2,.g3,.g4{grid-template-columns:1fr !important;} .main-pad{padding:18px 16px !important;}
+}
+@media (min-width:861px){.hamb{display:none !important;}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const e = React.createElement;
+const {useState,useEffect,useRef,useCallback} = React;
+
+/* ═════════ Language (remembered in this browser) ═════════ */
+let LANG = (()=>{ try{ return localStorage.getItem("ithd_lang")||"en"; }catch(_){ return "en"; } })();
+const applyDir = () => { document.documentElement.dir = LANG==="ar"?"rtl":"ltr"; document.documentElement.lang = LANG; };
+applyDir();
+const AR = () => LANG==="ar";
+const L = o => o==null ? "" : typeof o==="string" ? o : (o[LANG] || o.en || o.ar || "");
+
+const S = {
+  app_sub:["Dar El Salam United","شركة دار السلام المتحدة"], new_ticket_btn:["+ New IT ticket","+ تذكرة تقنية جديدة"],
+  nav_home:["Help Center","مركز المساعدة"], nav_mine:["My Requests","طلباتي"], nav_kb:["Knowledge Base","قاعدة المعرفة"], nav_queue:["Ticket Queue","قائمة التذاكر"],
+  nav_dash:["Dashboard","لوحة المتابعة"], nav_approvals:["Approvals","الموافقات"], nav_rules:["Auto-assignment","التوزيع التلقائي"], nav_admin:["Admin Console","لوحة الإدارة"],
+  title_home:["IT Help Center","مركز مساعدة تقنية المعلومات"], title_dash:["IT Dashboard","لوحة متابعة تقنية المعلومات"],
+  lang_btn:["العربية","English"], sign_out:["Sign out","تسجيل الخروج"],
+  role_requester:["Employee","موظف"], role_agent:["IT Agent","فني تقنية معلومات"], role_manager:["IT Manager","مدير تقنية المعلومات"], role_admin:["Admin","مسؤول النظام"],
+  loading:["Loading the help desk…","جارٍ تحميل مكتب الدعم…"], login_title:["Sign in to the IT Help Desk","سجّل الدخول إلى مكتب الدعم"],
+  login_sub:["Use your Zoho work account to raise and follow IT tickets.","استخدم حساب Zoho الخاص بالعمل لفتح تذاكر الدعم الفني ومتابعتها."],
+  err_denied:["Sign-in was cancelled.","تم إلغاء تسجيل الدخول."], err_expired:["The sign-in link expired. Please try again.","انتهت صلاحية رابط الدخول. حاول مرة أخرى."],
+  err_not_registered:["Your email isn't registered for the IT Help Desk. Ask IT to add you.","بريدك غير مسجل في مكتب الدعم. اطلب من فريق التقنية إضافتك."],
+  err_disabled:["Your account is turned off. Contact IT.","حسابك موقوف. تواصل مع فريق التقنية."], err_server:["Something went wrong while signing in. Please try again.","حدث خطأ أثناء تسجيل الدخول. حاول مرة أخرى."],
+  signed_out:["You've signed out.","تم تسجيل الخروج."],
+  login_btn:["Sign in with Zoho","تسجيل الدخول عبر Zoho"],
+  setup_title:["The IT Help Desk isn't set up yet","مكتب الدعم غير مُعدّ بعد"], setup_sub:["An administrator needs to run schema.sql in the Supabase SQL Editor once.","يحتاج مسؤول النظام إلى تشغيل الملف schema.sql مرة واحدة في Supabase."],
+  load_err:["Couldn't load the help desk.","تعذّر تحميل مكتب الدعم."], retry:["Try again","حاول مرة أخرى"],
+  known_issue:["Known issue:","مشكلة معروفة:"], known_issue_tail:["IT is working on it. No need to raise a new ticket.","فريق التقنية يعمل على حلها، لا داعي لفتح تذكرة جديدة."], follow:["Follow","متابعة"],
+  search_ph:["Search, e.g. VPN, password, printer","ابحث، مثلًا: VPN، كلمة المرور، الطابعة"], views:["{n} views","{n} مشاهدة"],
+  not_found_raise:["Didn't find it? Raise a ticket","لم تجد الحل؟ افتح تذكرة"], need_help:["What do you need help with?","بماذا تحتاج المساعدة؟"],
+  incident:["Incident","عطل"], request:["Request","طلب"], needs_approval:["needs manager approval","يتطلب موافقة المدير"],
+  my_active:["My active requests ({n})","طلباتي النشطة ({n})"], view_all:["View all →","عرض الكل ←"], opened:["opened {x}","فُتحت {x}"], with_x:["with {name}","مع {name}"],
+  resolved_confirm_hint:["IT marked this resolved. Please confirm or reopen.","حدد فريق التقنية هذه التذكرة كمحلولة. يُرجى التأكيد أو إعادة الفتح."],
+  no_active:["No active requests","لا توجد طلبات نشطة"], popular:["Popular quick fixes","حلول سريعة شائعة"], just_now:["just now","الآن"], hrs:["h","ساعة"], days:["days","يوم"],
+  raise_title:["Raise an IT ticket","فتح تذكرة تقنية"], requires_approval:["Requires manager approval","يتطلب موافقة المدير"], change_cat:["Change category","تغيير الفئة"],
+  f_title:["Short title","عنوان مختصر"], f_title_ph:["e.g. Outlook won't open","مثال: البريد لا يفتح"], kb_suggest:["These articles might solve it right away:","قد تحل هذه المقالات مشكلتك فورًا:"],
+  f_desc:["What's happening?","ما المشكلة؟"], f_desc_ph:["What did you try? Any error message? When did it start?","ماذا جربت؟ هل ظهرت رسالة خطأ؟ متى بدأت المشكلة؟"],
+  select:["Select…","اختر…"], who_affected:["Who is affected?","من المتأثر؟"], how_urgent:["How urgent is it?","ما مدى الاستعجال؟"],
+  file_link:["Screenshot or file link (optional)","رابط لقطة شاشة أو ملف (اختياري)"], file_link_ph:["Google Drive or OneDrive link","رابط Google Drive أو OneDrive"],
+  calc_prio:["Priority from your answers:","الأولوية حسب إجاباتك:"], route_to:["Goes to {name}","ستُحال إلى {name}"], route_triage:["IT will review and assign it","سيراجعها فريق التقنية ويعيّنها"],
+  route_approval:["Your manager approves first","يوافق مديرك أولًا"], support_note:["A copy goes to the IT support mailbox.","تصل نسخة إلى صندوق بريد الدعم الفني."],
+  err_title:["Please give your request a short title.","يُرجى كتابة عنوان مختصر للطلب."], err_desc:["Please describe the problem.","يُرجى وصف المشكلة."], err_field:["Please fill in: {f}","يُرجى تعبئة: {f}"],
+  cancel:["Cancel","إلغاء"], submit:["Submit ticket","إرسال التذكرة"], submitting:["Submitting…","جارٍ الإرسال…"], saving:["Saving…","جارٍ الحفظ…"],
+  toast_created:["{id} submitted. IT support has been emailed.","تم إرسال {id} وإبلاغ الدعم الفني بالبريد."],
+  tab_active:["Active","النشطة"], tab_closed:["Closed","المغلقة"], handled_by:["handled by {name}","يتابعها {name}"], waiting_pickup:["waiting to be picked up","بانتظار الاستلام"], nothing:["Nothing here.","لا يوجد شيء هنا."],
+  st_sub:["Submitted","أُرسلت"], st_asg:["Assigned","أُسندت"], st_prog:["In Progress","قيد التنفيذ"], st_res:["Resolved","حُلّت"], st_closed:["Closed","أُغلقت"],
+  q_mine:["My tickets","تذاكري"], q_unassigned:["Unassigned","غير مُسندة"], q_all:["All open","كل المفتوحة"], q_urgent:["Urgent (P1–P2)","عاجلة (P1–P2)"], q_waiting:["Waiting","بالانتظار"], q_done:["Resolved / Closed","المحلولة / المغلقة"],
+  q_search:["Search ID, title, requester…","ابحث بالرقم أو العنوان أو اسم الموظف…"], all_cats:["All categories","كل الفئات"], all_prios:["All priorities","كل الأولويات"],
+  h_id:["ID","الرقم"], h_subject:["Subject","الموضوع"], h_req:["Requester","مقدم الطلب"], h_prio:["Priority","الأولوية"], h_opened:["Opened","فُتحت"], status:["Status","الحالة"],
+  nothing_unassigned:["Nothing unassigned. Nice work.","لا توجد تذاكر غير مُسندة. عمل رائع."], no_match:["No tickets match.","لا توجد تذاكر مطابقة."], major:["Major incident","عطل رئيسي"],
+  waiting_approval:["Waiting for approval from {name}. IT starts after approval.","بانتظار موافقة {name}. يبدأ فريق التقنية العمل بعد الموافقة."],
+  waiting_approval_any:["Waiting for approval. IT starts after approval.","بانتظار الموافقة. يبدأ فريق التقنية العمل بعد الموافقة."],
+  approved_by:["Approved by {name}","تمت الموافقة من {name}"], rejected_by:["Rejected by {name}","رُفض من {name}"],
+  resolved_q:["IT marked this as resolved. Is it fixed?","حدد فريق التقنية هذه التذكرة كمحلولة. هل تم الإصلاح؟"], rate:["Rate the support:","قيّم الدعم:"],
+  yes_close:["✓ Yes, close it","✓ نعم، أغلقها"], still_broken:["✕ Still broken, reopen","✕ المشكلة قائمة، أعد الفتح"],
+  toast_closed:["Thanks! Ticket closed.","شكرًا! تم إغلاق التذكرة."], toast_reopened:["Reopened. IT has been notified.","أُعيد الفتح وتم إبلاغ فريق التقنية."],
+  assignee:["Assignee","المسؤول"], unassigned:["Unassigned","غير مُسندة"], take_it:["✋ Take it","✋ استلام"], resolve:["✓ Resolve","✓ حل"],
+  declare_major:["🚨 Declare major incident","🚨 إعلان عطل رئيسي"], clear_major:["Clear major incident","إلغاء العطل الرئيسي"],
+  toast_major:["Major incident declared. Banner shown to all staff.","تم إعلان عطل رئيسي وظهر التنبيه لجميع الموظفين."],
+  toast_took:["You took this ticket","استلمت هذه التذكرة"], toast_saved_t:["Ticket updated","تم تحديث التذكرة"],
+  details:["Details","التفاصيل"], requester:["Requester","مقدم الطلب"], opened_on:["Opened","تاريخ الفتح"], attachment:["Attachment","مرفق"], open_link:["📎 Open link","📎 فتح الرابط"], satisfaction:["Satisfaction","الرضا"],
+  conversation:["Conversation","المحادثة"], opened_ticket:["{name} opened the ticket","فتح {name} التذكرة"], internal_note_lbl:["🔒 Internal note","🔒 ملاحظة داخلية"],
+  reply_user:["Reply to employee","رد على الموظف"], canned:["⚡ Canned reply…","⚡ رد جاهز…"], insert_article:["📘 Insert article…","📘 إدراج مقالة…"],
+  article_ref:["This guide should help: “{t}” ({id})","قد يساعدك هذا الدليل: «{t}» ({id})"],
+  ph_internal:["Note visible to IT only…","ملاحظة يراها فريق التقنية فقط…"], ph_reply:["Reply to {name}…","اكتب ردًا إلى {name}…"], ph_req:["Add a message for IT…","أضف رسالة لفريق التقنية…"],
+  send:["Send","إرسال"], toast_note:["Internal note added","تمت إضافة ملاحظة داخلية"], toast_reply:["Reply sent. They'll get an email.","تم إرسال الرد وسيصلهم بريد إلكتروني."],
+  resolve_title:["Resolve {id}","حل {id}"], fix_q:["What was the fix? (sent to the employee)","ما الحل الذي تم؟ (يُرسل إلى الموظف)"], fix_ph:["e.g. Replaced display cable and tested.","مثال: تم استبدال كابل الشاشة واختباره."],
+  fix_hint:["The employee will be asked to confirm and rate the fix.","سيُطلب من الموظف تأكيد الحل وتقييمه."], mark_resolved:["Mark resolved","تحديد كمحلولة"], toast_resolved:["Resolved. The employee was emailed.","تم الحل وإبلاغ الموظف بالبريد."],
+  appr_intro:["Requests that need approval wait here before IT starts work. Approvers are also emailed.","الطلبات التي تحتاج موافقة تنتظر هنا قبل أن يبدأ فريق التقنية العمل، ويصل للمعتمد بريد إلكتروني أيضًا."],
+  requested_by:["requested by {name} ({dept})","طلبها {name} ({dept})"], approve:["✓ Approve","✓ موافقة"], reject:["✕ Reject","✕ رفض"],
+  no_approvals:["No approvals waiting","لا توجد موافقات معلقة"], decided:["Decided","تم البت فيها"], approved:["Approved","تمت الموافقة"], rejected:["Rejected","مرفوضة"],
+  reject_title:["Reject {id}","رفض {id}"], reason_lbl:["Reason (shared with the employee)","السبب (يظهر للموظف)"], toast_approved:["Approved. IT can start.","تمت الموافقة ويمكن لفريق التقنية البدء."], toast_rejected:["Rejected. The employee was emailed.","تم الرفض وإبلاغ الموظف."],
+  search_kb:["Search articles…","ابحث في المقالات…"], solved_q:["Did this solve your problem?","هل حلّت هذه المقالة مشكلتك؟"], yes:["👍 Yes","👍 نعم"], no:["👎 No","👎 لا"],
+  fb_yes:["Great! No ticket needed.","رائع! لا حاجة لفتح تذكرة."], fb_no:["Sorry about that. Please raise a ticket and IT will help.","نأسف لذلك. يُرجى فتح تذكرة وسيساعدك فريق التقنية."],
+  k_open:["Open tickets","التذاكر المفتوحة"], k_unassigned_sub:["{n} unassigned","{n} غير مُسندة"], k_urgent:["Urgent open (P1–P2)","عاجلة مفتوحة (P1–P2)"], attention:["Needs attention","تحتاج متابعة"], all_good:["All clear","لا يوجد ما يقلق"],
+  k_resolved7:["Resolved in the last 7 days","حُلّت خلال آخر 7 أيام"], k_avg:["Average time to resolve","متوسط وقت الحل"], k_csat:["Satisfaction","رضا الموظفين"], k_ratings:["{n} ratings","{n} تقييمات"],
+  k_pending:["Pending approval","بانتظار الموافقة"], k_waiting:["Waiting on employee","بانتظار رد الموظف"], k_total:["All tickets","كل التذاكر"],
+  by_cat:["Tickets by category","التذاكر حسب الفئة"], by_dept:["Tickets by department","التذاكر حسب القسم"], workload:["Team workload","عبء العمل على الفريق"],
+  h_member:["Team member","عضو الفريق"], h_open:["Open","مفتوحة"], h_resolved:["Resolved","محلولة"], h_csat:["Rating","التقييم"], tickets_u:["tickets","تذاكر"],
+  rules_intro:["New tickets are assigned automatically to the owner of their category. Admins change owners in the Admin Console.","تُسند التذاكر الجديدة تلقائيًا إلى المسؤول عن فئتها. يغيّر مسؤول النظام المسؤولين من لوحة الإدارة."],
+  auto_on:["Auto-assign by category is ON","التوزيع التلقائي حسب الفئة مُفعّل"], auto_off:["Auto-assign is OFF: every ticket arrives unassigned","التوزيع التلقائي متوقف: تصل كل التذاكر دون إسناد"],
+  h_cat:["Category","الفئة"], h_type:["Type","النوع"], h_owner2:["Auto-assigned to","تُسند تلقائيًا إلى"], h_approval:["Approval","الموافقة"], triage:["Unassigned (IT picks it up)","غير مُسندة (يستلمها الفريق)"],
+  prio_matrix:["How priority is set (who is affected × how urgent)","كيف تُحدد الأولوية (من المتأثر × مدى الاستعجال)"], matrix_corner:["Who is affected ↓  /  How urgent →","من المتأثر ↓  /  مدى الاستعجال ←"],
+  admin_intro:["Everything employees, IT agents and the IT manager see is set here. Every text has an English and an Arabic version.","كل ما يراه الموظفون وفنيو التقنية ومدير التقنية يُضبط من هنا. لكل نص نسخة إنجليزية وعربية."],
+  a_cats:["Categories & forms","الفئات والنماذج"], a_users:["Users & roles","المستخدمون والأدوار"], a_prio:["Priority & questions","الأولوية والأسئلة"], a_status:["Statuses","الحالات"],
+  a_canned:["Canned replies","الردود الجاهزة"], a_kb:["Knowledge base","قاعدة المعرفة"], a_depts:["Departments","الأقسام"], a_general:["General","عام"],
+  edit:["Edit","تعديل"], delete:["Delete","حذف"], save:["Save","حفظ"], save_changes:["Save changes","حفظ التغييرات"], shown:["Shown","ظاهرة"],
+  icon:["Icon","الأيقونة"], name:["Name","الاسم"], description:["Description","الوصف"], type:["Type","النوع"], owner:["Auto-assign to","تُسند تلقائيًا إلى"], nobody_triage:["Nobody (IT picks it up)","لا أحد (يستلمها الفريق)"],
+  needs_appr_lbl:["Needs manager approval before IT starts","يتطلب موافقة المدير قبل بدء العمل"], form_fields:["Extra questions on the form","أسئلة إضافية في النموذج"],
+  field_label:["Question","السؤال"], field_kind:["Answer type","نوع الإجابة"], kind_text:["Text","نص"], kind_select:["Dropdown","قائمة اختيار"], kind_date:["Date","تاريخ"],
+  options:["Options (one per line)","الخيارات (خيار في كل سطر)"], add_field:["+ Add question","+ إضافة سؤال"], add_cat:["+ Add category","+ إضافة فئة"], new_cat:["New category","فئة جديدة"],
+  saved:["Saved","تم الحفظ"], deleted:["Deleted","تم الحذف"], confirm_delete:["Delete “{x}”?","حذف «{x}»؟"], confirm_yes:["Yes, delete","نعم، احذف"],
+  fields_n:["{n} questions","{n} أسئلة"], fields_1:["1 question","سؤال واحد"], remove:["Remove","إزالة"], department:["Department","القسم"],
+  it_role:["Role","الدور"], email:["Email","البريد"], manager:["Manager (approves their requests)","المدير (يوافق على طلباته)"], active:["Active","نشط"], inactive:["Turned off","موقوف"],
+  add_user:["+ Add person","+ إضافة شخص"], new_user:["New person","شخص جديد"], no_dept:["— No department —","— بدون قسم —"],
+  users_note:["People on the company email domain are added automatically the first time they sign in. Set their department, manager and role here. Turning someone off signs them out.","يُضاف أصحاب بريد الشركة تلقائيًا عند أول تسجيل دخول. حدد هنا القسم والمدير والدور. إيقاف الحساب يسجل خروج صاحبه."],
+  add_dept:["+ Add department","+ إضافة قسم"], new_dept:["New department","قسم جديد"], people_n:["{n} people","{n} أشخاص"],
+  prio_levels:["Priority levels","مستويات الأولوية"], color:["Color","اللون"], impact_opts:["Answers to “Who is affected?”","إجابات «من المتأثر؟»"], urgency_opts:["Answers to “How urgent is it?”","إجابات «ما مدى الاستعجال؟»"],
+  matrix_edit:["Priority matrix: pick the result for each combination","مصفوفة الأولوية: اختر النتيجة لكل حالة"], status_note:["Status names and colors. The order of the workflow stays fixed.","أسماء الحالات وألوانها. ترتيب سير العمل ثابت."],
+  title_lbl:["Title","العنوان"], text_lbl:["Text","النص"], add_canned:["+ Add reply","+ إضافة رد"], new_canned:["New reply","رد جديد"],
+  steps:["Steps (one per line)","الخطوات (خطوة في كل سطر)"], category:["Category","الفئة"], add_article:["+ New article","+ مقالة جديدة"], new_article:["New article","مقالة جديدة"],
+  depts_note:["Departments are used on tickets, on the dashboard and to group people. A department in use can't be deleted.","تُستخدم الأقسام في التذاكر ولوحة المتابعة وتجميع الأشخاص. لا يمكن حذف قسم مستخدم."],
+  g_support:["IT support mailbox","صندوق بريد الدعم الفني"], g_support_d:["Every new ticket is emailed here. To change it, update IT_SUPPORT_EMAIL in Vercel.","تُرسل كل تذكرة جديدة إلى هذا العنوان. لتغييره عدّل IT_SUPPORT_EMAIL في Vercel."],
+  g_cc:["Also copy the support mailbox on resolve, reopen and approval decisions","إرسال نسخة لصندوق الدعم أيضًا عند الحل وإعادة الفتح وقرارات الموافقة"],
+  g_auto:["Auto-assign new tickets by category","إسناد التذاكر الجديدة تلقائيًا حسب الفئة"], g_auto_d:["When off, every ticket arrives unassigned and the IT team picks it up from the queue.","عند الإيقاف تصل كل تذكرة دون إسناد ويستلمها الفريق من القائمة."],
+  g_approval:["Who approves requests","من يوافق على الطلبات"], g_mode_dm:["The employee's manager (set in Users & roles)","مدير الموظف (يُحدد في المستخدمون والأدوار)"], g_mode_fixed:["Always the person below","دائمًا الشخص المحدد أدناه"],
+  g_approver:["Fallback / fixed approver","المعتمد الاحتياطي / الثابت"], g_kb:["Suggest articles while employees type","اقتراح مقالات أثناء كتابة الموظف"], g_csat:["Ask employees to rate resolved tickets","طلب تقييم التذاكر المحلولة"],
+  general_texts:["Text shown on the Help Center","النصوص الظاهرة في مركز المساعدة"], g_greeting:["Greeting (use {name} for the first name)","التحية (استخدم {name} للاسم الأول)"], g_hero_sub:["Line under the greeting","السطر أسفل التحية"],
+  none_opt:["— None —","— لا أحد —"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
+};
+const t = (k,v) => { let s=(S[k]||[k,k])[AR()?1:0]; if(v) for(const x in v) s=s.split("{"+x+"}").join(v[x]); return s; };
+
+/* ═════════ API ═════════ */
+class ApiError extends Error { constructor(msg,status){ super(msg); this.status=status; } }
+async function api(action, data){
+  let r;
+  try { r = await fetch("/api/app",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...(data||{})})}); }
+  catch(_){ throw new ApiError(AR()?"تعذّر الاتصال بالخادم.":"Couldn't reach the server. Check your connection.",0); }
+  let j=null; try{ j=await r.json(); }catch(_){}
+  if(!r.ok) throw new ApiError((j&&j.error)||("Error "+r.status), r.status);
+  return j;
+}
+
+/* ═════════ Config & helpers ═════════ */
+let CFG = null;
+const MIN=60000, HR=60*MIN, DAY=24*HR;
+const person = id => (CFG.people||[]).find(p=>p.id===id);
+const pname = id => (person(id)||{name:"—"}).name;
+const cat = id => CFG.cats.find(c=>c.id===id) || {id, icon:"❔", n:{en:id}, d:{en:""}, fields:[], type:"incident"};
+const deptName = id => CFG.depts[id] ? CFG.depts[id].icon+" "+L(CFG.depts[id].n) : (id||"—");
+const prioLabel = p => p+" · "+L((CFG.prio[p]||{}).n);
+const stLabel = s => CFG.statuses[s] ? L(CFG.statuses[s].n) : s;
+const OPEN_STATES = ["New","Pending Approval","Assigned","In Progress","Waiting on User"];
+const isOpen = x => OPEN_STATES.includes(x.status);
+const STEP_KEYS = ["st_sub","st_asg","st_prog","st_res","st_closed"];
+const stepIdx = s => s==="New"||s==="Pending Approval"?0:s==="Assigned"?1:s==="In Progress"||s==="Waiting on User"?2:s==="Resolved"?3:4;
+const fieldVal = (fd,v) => v==null||v==="" ? "" : fd.kind==="select" ? L((fd.opts||[])[v]) : String(v);
+const ROLES = ["requester","agent","manager","admin"];
+const isITRole = r => r==="agent"||r==="manager"||r==="admin";
+const isLeadRole = r => r==="manager"||r==="admin";
+const AVC = ["#E11A22","#B45309","#0E7490","#7C3AED","#047857","#BE185D","#4338CA","#A16207","#0F766E"];
+const avColor = id => AVC[[...String(id)].reduce((a,c)=>a+c.charCodeAt(0),0)%AVC.length];
+const ago = ts => { const d=(ts-Date.now())/1000, a=Math.abs(d); if(a<60) return t("just_now");
+  const r=new Intl.RelativeTimeFormat(AR()?"ar":"en",{numeric:"auto",style:"short"});
+  if(a<3600) return r.format(Math.round(d/60),"minute"); if(a<86400) return r.format(Math.round(d/3600),"hour"); return r.format(Math.round(d/86400),"day"); };
+const dur = ms => { const h=ms/HR; return h<24 ? (Math.round(h*10)/10)+" "+t("hrs") : (Math.round(h/24*10)/10)+" "+t("days"); };
+const fmtDate = ts => new Date(ts).toLocaleString(AR()?"ar-EG-u-nu-latn":"en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+const clone = x => JSON.parse(JSON.stringify(x));
+
+/* ═════════ Styles & small components ═════════ */
+const LS = {display:"block",fontSize:"0.78rem",color:"#8A8583",marginBottom:6,fontWeight:600};
+const IS = {width:"100%",background:"#1A1717",border:"1px solid #332C2B",borderRadius:8,padding:"10px 12px",color:"#EDEBEA"};
+const BP = {background:"#E11A22",color:"#fff",border:"none",borderRadius:8,padding:"10px 18px",fontWeight:700};
+const BS = {background:"#231F1E",color:"#C9C6C4",border:"1px solid #3A3231",borderRadius:8,padding:"10px 16px",fontWeight:600};
+const BSm = {...BS,padding:"6px 11px",fontSize:"0.8rem"};
+const card = {background:"#1A1717",border:"1px solid #332C2B",borderRadius:12};
+const HEAD = {fontSize:"0.66rem",color:"#8A8583",textTransform:"uppercase",letterSpacing:1};
+
+function Av({id,size}){ size=size||28; const p=person(id); if(!p) return e("div",{title:t("unassigned"),style:{width:size,height:size,borderRadius:"50%",border:"1.5px dashed #57504E",flexShrink:0}});
+  return e("div",{title:p.name,style:{width:size,height:size,borderRadius:"50%",background:avColor(id),display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*.38,fontWeight:700,color:"#fff",flexShrink:0}},(p.avatar||p.name.split(" ").map(s=>s[0]).join("")).slice(0,2).toUpperCase()); }
+function Pill({c,children,sq}){ return e("span",{style:{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 9px",borderRadius:sq?5:20,fontSize:"0.72rem",fontWeight:600,background:c+"22",color:c,border:"1px solid "+c+"44",whiteSpace:"nowrap"}},children); }
+function PrioB({p}){ const x=CFG.prio[p]||{c:"#64748B"}; return e(Pill,{c:x.c,sq:true},e("span",{style:{width:6,height:6,borderRadius:"50%",background:x.c}}),prioLabel(p)); }
+function StatB({s}){ return e(Pill,{c:(CFG.statuses[s]||{c:"#64748B"}).c},stLabel(s)); }
+function TypeB({type}){ return e("span",{style:{fontSize:"0.68rem",color:type==="incident"?"#FCA5A5":"#C4B5FD",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}},type==="incident"?"⚡ "+t("incident"):"📋 "+t("request")); }
+function Modal({title,onClose,children,w}){ return e("div",{style:{position:"fixed",inset:0,background:"#000000AA",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:ev=>ev.target===ev.currentTarget&&onClose()},
+  e("div",{role:"dialog","aria-modal":"true",style:{background:"#12100F",border:"1px solid #332C2B",borderRadius:14,width:"min("+(w||560)+"px,100%)",maxHeight:"90vh",overflowY:"auto",padding:24}},
+    e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,marginBottom:18}},e("b",{style:{fontSize:"1.1rem"}},title),e("button",{onClick:onClose,"aria-label":t("close"),style:{background:"none",border:"none",color:"#8A8583",fontSize:"1.2rem"}},"✕")),children)); }
+function Section({title,right,children,style}){ return e("div",{style:{...card,padding:18,...(style||{})}},(title||right)&&e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}},e("div",{style:{fontSize:"0.88rem",fontWeight:700,color:"#C9C6C4"}},title),right),children); }
+function Empty({text}){ return e("div",{style:{border:"1px dashed #332C2B",borderRadius:10,padding:"28px 16px",textAlign:"center",color:"#6B6563",fontSize:"0.9rem"}},text); }
+function Toast({toast}){ if(!toast) return null; const bad=toast.kind==="error"; return e("div",{role:"status",style:{position:"fixed",bottom:"calc(22px + env(safe-area-inset-bottom, 0px))",left:"50%",transform:"translateX(-50%)",background:bad?"#7F1D1D":"#064E3B",border:"1px solid "+(bad?"#EF4444":"#34D399"),color:bad?"#FECACA":"#D1FAE5",padding:"11px 18px",borderRadius:10,zIndex:2000,fontSize:"0.9rem",fontWeight:600,boxShadow:"0 8px 30px #0008",maxWidth:"90vw"}},(bad?"⚠ ":"")+toast.text); }
+function ErrBox({text}){ return text?e("div",{role:"alert",style:{background:"#7F1D1D",border:"1px solid #EF4444",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:"0.85rem",color:"#FCA5A5"}},"⚠ "+text):null; }
+function Tabs({tabs,val,set}){ return e("div",{role:"tablist",style:{display:"flex",gap:4,marginBottom:14,borderBottom:"1px solid #332C2B",overflowX:"auto"}},tabs.map(([k,l,n])=>e("button",{key:k,role:"tab","aria-selected":val===k,onClick:()=>set(k),style:{background:"none",border:"none",borderBottom:"2px solid "+(val===k?"#E11A22":"transparent"),color:val===k?"#EDEBEA":"#8A8583",padding:"9px 14px",fontWeight:600,fontSize:"0.88rem",whiteSpace:"nowrap"}},l,n!=null&&e("span",{style:{marginInlineStart:6,fontSize:"0.7rem",background:val===k?"#E11A22":"#332C2B",color:"#fff",borderRadius:10,padding:"1px 7px"}},n)))); }
+function Stepper({status}){ const idx=stepIdx(status); return e("div",{style:{display:"flex",alignItems:"flex-start",margin:"6px 0 4px"}},STEP_KEYS.map((k,i)=>e("div",{key:k,style:{display:"flex",alignItems:"flex-start",flex:i<STEP_KEYS.length-1?1:"none"}},
+  e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",width:64}},e("div",{style:{width:i===idx?16:12,height:i===idx?16:12,borderRadius:"50%",background:i<=idx?"#E11A22":"#3A3231",boxShadow:i===idx?"0 0 0 4px #E11A2233":"none"}}),e("div",{style:{fontSize:"0.66rem",color:i<=idx?"#EDEBEA":"#6B6563",marginTop:6,textAlign:"center"}},t(k))),
+  i<STEP_KEYS.length-1&&e("div",{style:{flex:1,height:2,marginTop:7,background:i<idx?"#E11A22":"#3A3231"}})))); }
+function Switch({on,set,label,disabled}){ return e("button",{role:"switch","aria-checked":on,"aria-label":label,disabled,onClick:()=>set(!on),style:{width:40,height:22,borderRadius:11,border:"none",background:on?"#059669":"#3A3231",position:"relative",flexShrink:0,padding:0}},e("span",{style:{position:"absolute",top:3,insetInlineStart:on?21:3,width:16,height:16,borderRadius:"50%",background:"#fff"}})); }
+function Bi({label,val,set,rows,ph}){ return e("div",{style:{marginBottom:12}},label&&e("label",{style:LS},label),e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},["en","ar"].map(l=>e("div",{key:l},
+  e("div",{style:{fontSize:"0.64rem",color:"#6B6563",marginBottom:3,fontWeight:700,letterSpacing:.6}},l==="en"?"ENGLISH":"العربية"),
+  e(rows?"textarea":"input",{value:(val||{})[l]||"",dir:l==="ar"?"rtl":"ltr",rows:rows||undefined,placeholder:ph?ph[l]:"",onChange:ev=>set({...(val||{}),[l]:ev.target.value}),style:{...IS,resize:rows?"vertical":undefined}}))))); }
+function Confirm({text,onYes,onClose,busy}){ return e(Modal,{title:text,onClose,w:420},e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{disabled:busy,onClick:onYes,style:BP},t("confirm_yes")))); }
+
+/* ═════════ Employee: Help Center ═════════ */
+function HelpHome({me,tickets,onNew,onOpen,onKB,go}){
+  const [q,setQ]=useState("");
+  const mine=tickets.filter(x=>x.req===me), open=mine.filter(x=>isOpen(x)||x.status==="Resolved");
+  const ql=q.toLowerCase();
+  const hits=q.trim().length>1?CFG.kb.filter(a=>[L(a.t),a.t.en,a.t.ar,...(a.body.en||[]),...(a.body.ar||[])].join(" ").toLowerCase().includes(ql)).slice(0,4):[];
+  const major=tickets.find(x=>x.major&&isOpen(x));
+  const first=(person(me)||{name:""}).name.split(" ")[0];
+  return e("div",{style:{display:"flex",flexDirection:"column",gap:20}},
+    major&&e("div",{style:{background:"#7F1D1D44",border:"1px solid #EF444466",borderRadius:10,padding:"12px 16px",display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}},e("span",{style:{fontSize:"1.3rem"}},"⚠️"),e("div",{style:{flex:1,minWidth:200}},e("b",{style:{color:"#FCA5A5"}},t("known_issue")+" "),major.title+". "+t("known_issue_tail")),e("button",{onClick:()=>onOpen(major),style:BSm},t("follow"))),
+    e("div",{style:{...card,padding:"32px 24px",background:"linear-gradient(135deg,#1A1717,#2A1513)",textAlign:"center"}},
+      e("h1",{style:{fontSize:"1.6rem",fontWeight:800,marginBottom:6,textWrap:"balance"}},L(CFG.greeting).split("{name}").join(first)),
+      e("div",{style:{color:"#8A8583",marginBottom:18}},L(CFG.heroSub)),
+      e("div",{style:{maxWidth:560,margin:"0 auto",position:"relative"}},
+        e("input",{id:"hc-search","aria-label":t("search_ph"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍  "+t("search_ph"),style:{...IS,padding:"14px 16px",fontSize:"1rem",borderRadius:10}}),
+        q.trim().length>1&&e("div",{style:{...card,position:"absolute",top:"110%",insetInline:0,textAlign:"start",zIndex:5,overflow:"hidden"}},hits.map(a=>e("button",{key:a.id,className:"hov",onClick:()=>onKB(a),style:{display:"block",width:"100%",textAlign:"start",background:"none",border:"none",color:"inherit",padding:"11px 14px",borderBottom:"1px solid #231F1E"}},e("div",{style:{fontSize:"0.9rem"}},"📘 "+L(a.t)),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},L(cat(a.cat).n)+" · "+t("views",{n:a.views})))),
+          e("button",{className:"hov",onClick:()=>onNew(null,q),style:{display:"block",width:"100%",textAlign:"start",background:"none",border:"none",padding:"11px 14px",color:"#F16A6F",fontSize:"0.88rem",fontWeight:600}},t("not_found_raise"))))),
+    e("div",null,e("div",{style:{...HEAD,fontSize:"0.78rem",fontWeight:700,marginBottom:10}},t("need_help")),
+      e("div",{className:"g3",style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}},CFG.cats.filter(c=>c.active).map(c=>e("button",{key:c.id,className:"tile",onClick:()=>onNew(c.id),style:{...card,padding:16,display:"flex",gap:12,alignItems:"flex-start",textAlign:"start",color:"inherit"}},e("div",{style:{fontSize:"1.6rem"}},c.icon),e("div",{style:{minWidth:0}},e("div",{style:{fontWeight:700,marginBottom:3}},L(c.n)),e("div",{style:{fontSize:"0.8rem",color:"#8A8583",lineHeight:1.45}},L(c.d)),e("div",{style:{marginTop:6}},e(TypeB,{type:c.type}),c.approval&&e("span",{style:{fontSize:"0.68rem",color:"#8A8583",marginInlineStart:8}},"· "+t("needs_approval")))))))),
+    e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1.4fr 1fr",gap:16}},
+      e(Section,{title:t("my_active",{n:open.length}),right:e("button",{onClick:()=>go("mine"),style:{background:"none",border:"none",color:"#F16A6F",fontSize:"0.8rem",fontWeight:600}},t("view_all"))},
+        open.length?open.map(x=>e("button",{key:x.id,className:"hov",onClick:()=>onOpen(x),style:{display:"block",width:"100%",textAlign:"start",border:"none",color:"inherit",padding:12,borderRadius:8,marginBottom:6,background:"#151211"}},e("div",{style:{display:"flex",justifyContent:"space-between",gap:8,marginBottom:6}},e("span",{style:{fontWeight:600,fontSize:"0.9rem"}},x.title),e(StatB,{s:x.status})),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},x.id+" · "+L(cat(x.cat).n)+" · "+t("opened",{x:ago(x.created)})+(x.assignee?" · "+t("with_x",{name:pname(x.assignee).split(" ")[0]}):"")),x.status==="Resolved"&&e("div",{style:{fontSize:"0.75rem",color:"#34D399",marginTop:6}},"✓ "+t("resolved_confirm_hint")))):e(Empty,{text:t("no_active")})),
+      e(Section,{title:t("popular")},CFG.kb.slice().sort((a,b)=>b.views-a.views).slice(0,5).map(a=>e("button",{key:a.id,className:"hov",onClick:()=>onKB(a),style:{display:"flex",width:"100%",background:"none",border:"none",color:"inherit",textAlign:"start",padding:"9px 10px",borderRadius:8,fontSize:"0.88rem",justifyContent:"space-between",gap:8}},e("span",null,"📘 "+L(a.t)),e("span",{style:{color:"#6B6563",fontSize:"0.72rem",whiteSpace:"nowrap"}},a.views))))));
+}
+
+/* ═════════ New ticket ═════════ */
+function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
+  const [step,setStep]=useState(initialCat?2:1);
+  const [f,setF]=useState({cat:initialCat||"",title:initialText||"",desc:"",impact:1,urgency:2,fields:{},link:""});
+  const [err,setErr]=useState(""), [busy,setBusy]=useState(false);
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const c=cat(f.cat), incident=c.type==="incident";
+  const p=CFG.matrix[(incident?f.impact:1)-1][f.urgency-1];
+  const words=f.title.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(x=>x.length>3);
+  const sugg=CFG.kbSuggest&&f.title.trim().length>2?CFG.kb.filter(a=>a.cat===f.cat||words.some(w=>((a.t.en||"")+" "+(a.t.ar||"")).toLowerCase().includes(w))).slice(0,3):[];
+  const submit=async()=>{ if(!f.title.trim())return setErr(t("err_title")); if(!f.desc.trim())return setErr(t("err_desc"));
+    for(const fd of c.fields){ const v=f.fields[fd.k]; if(v==null||String(v).trim()==="") return setErr(t("err_field",{f:L(fd.label)})); }
+    setBusy(true); setErr("");
+    try{ const r=await api("create-ticket",{ticket:{category_id:f.cat,title:f.title,description:f.desc,impact:f.impact,urgency:f.urgency,fields:f.fields,link:f.link}}); onCreated(r.ticket); }
+    catch(x){ setErr(x.message); setBusy(false); } };
+  const Opt=({sel,onClick,children})=>e("button",{onClick,"aria-pressed":sel,style:{flex:"1 1 120px",padding:"10px 8px",borderRadius:8,fontSize:"0.82rem",background:sel?"#E11A2222":"#1A1717",border:"1px solid "+(sel?"#E11A22":"#332C2B"),color:sel?"#F16A6F":"#C9C6C4",fontWeight:sel?700:500}},children);
+  const route=c.approval?t("route_approval"):(CFG.autoAssign&&c.owner&&person(c.owner)?t("route_to",{name:pname(c.owner)}):t("route_triage"));
+  return e(Modal,{title:step===1?t("raise_title"):(c.icon+"  "+L(c.n)),onClose,w:660},
+    step===1?e("div",{className:"g3",style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}},CFG.cats.filter(x=>x.active).map(x=>e("button",{key:x.id,className:"tile",onClick:()=>{set("cat",x.id);setStep(2);},style:{...card,padding:14,textAlign:"center",color:"inherit"}},e("div",{style:{fontSize:"1.5rem",marginBottom:6}},x.icon),e("div",{style:{fontWeight:600,fontSize:"0.85rem"}},L(x.n))))):
+    e("div",null,
+      e("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:16,flexWrap:"wrap"}},e(TypeB,{type:c.type}),c.approval&&e(Pill,{c:"#A78BFA"},t("requires_approval")),e("button",{onClick:()=>setStep(1),style:{marginInlineStart:"auto",background:"none",border:"none",color:"#8A8583",fontSize:"0.8rem"}},t("change_cat"))),
+      e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-title"},t("f_title")+" *"),e("input",{id:"nt-title",maxLength:200,value:f.title,onChange:ev=>set("title",ev.target.value),placeholder:t("f_title_ph"),style:IS})),
+      sugg.length>0&&e("div",{style:{background:"#0C2A3A55",border:"1px solid #38BDF844",borderRadius:10,padding:"10px 14px",marginBottom:14}},e("div",{style:{fontSize:"0.78rem",color:"#7DD3FC",fontWeight:700,marginBottom:6}},"💡 "+t("kb_suggest")),sugg.map(a=>e("button",{key:a.id,onClick:()=>onKB(a),style:{display:"block",background:"none",border:"none",fontSize:"0.85rem",color:"#BAE6FD",padding:"3px 0",textDecoration:"underline",textAlign:"start"}},L(a.t)))),
+      e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-desc"},t("f_desc")+" *"),e("textarea",{id:"nt-desc",rows:3,maxLength:5000,value:f.desc,onChange:ev=>set("desc",ev.target.value),placeholder:t("f_desc_ph"),style:{...IS,resize:"vertical"}})),
+      c.fields.length>0&&e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}},c.fields.map(fd=>{ const v=f.fields[fd.k]; const setV=val=>set("fields",{...f.fields,[fd.k]:val}); const id="nt-f-"+fd.k; return e("div",{key:fd.k},e("label",{style:LS,htmlFor:id},L(fd.label)+" *"),
+        fd.kind==="select"?e("select",{id,value:v==null?"":v,onChange:ev=>setV(ev.target.value===""?null:+ev.target.value),style:IS},e("option",{value:""},t("select")),(fd.opts||[]).map((o,i)=>e("option",{key:i,value:i},L(o)))):
+        e("input",{id,type:fd.kind==="date"?"date":"text",value:v||"",placeholder:L(fd.ph),onChange:ev=>setV(ev.target.value),style:IS})); })),
+      incident&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("who_affected")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.impacts.map((x,i)=>e(Opt,{key:i,sel:f.impact===i+1,onClick:()=>set("impact",i+1)},L(x))))),
+      e("div",{style:{marginBottom:14}},e("div",{style:LS},t("how_urgent")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.urgencies.map((x,i)=>e(Opt,{key:i,sel:f.urgency===i+1,onClick:()=>set("urgency",i+1)},L(x))))),
+      e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-link"},t("file_link")),e("input",{id:"nt-link",value:f.link,onChange:ev=>set("link",ev.target.value),placeholder:t("file_link_ph"),dir:"ltr",style:IS})),
+      e("div",{style:{background:"#151211",border:"1px solid #231F1E",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:"0.82rem",color:"#C9C6C4"}},e("span",null,t("calc_prio")),e(PrioB,{p}),e("span",{style:{color:"#8A8583"}},"· "+route+" · "+t("support_note"))),
+      e(ErrBox,{text:err}),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{id:"nt-submit",disabled:busy,onClick:submit,style:BP},busy?t("submitting"):t("submit")))));
+}
+
+/* ═════════ My Requests ═════════ */
+function MyRequests({me,tickets,onOpen}){
+  const [tab,setTab]=useState("open");
+  const act=x=>isOpen(x)||x.status==="Resolved";
+  const mine=tickets.filter(x=>x.req===me).filter(x=>tab==="open"?act(x):!act(x));
+  return e("div",null,e(Tabs,{tabs:[["open",t("tab_active")],["closed",t("tab_closed")]],val:tab,set:setTab}),
+    mine.length?e("div",{style:{display:"grid",gap:10}},mine.map(x=>e("button",{key:x.id,className:"hov",onClick:()=>onOpen(x),style:{...card,padding:16,textAlign:"start",color:"inherit",width:"100%"}},
+      e("div",{style:{display:"flex",justifyContent:"space-between",gap:10,marginBottom:4,flexWrap:"wrap"}},e("div",null,e("span",{style:{fontFamily:"monospace",fontSize:"0.72rem",color:"#8A8583",marginInlineEnd:8}},x.id),e("b",null,x.title)),e("div",{style:{display:"flex",gap:6}},e(PrioB,{p:x.priority}),e(StatB,{s:x.status}))),
+      e("div",{style:{fontSize:"0.75rem",color:"#8A8583",marginBottom:6}},cat(x.cat).icon+" "+L(cat(x.cat).n)+" · "+t("opened",{x:ago(x.created)})+" · "+(x.assignee?t("handled_by",{name:pname(x.assignee)}):t("waiting_pickup"))),
+      e(Stepper,{status:x.status})))):e(Empty,{text:t("nothing")}));
+}
+
+/* ═════════ IT: Queue ═════════ */
+function Queue({me,role,tickets,onOpen,selId}){
+  const [tab,setTab]=useState(role==="agent"?"mine":"all");
+  const [q,setQ]=useState(""), [fc,setFc]=useState(""), [fp,setFp]=useState("");
+  const sets={mine:tickets.filter(x=>x.assignee===me&&isOpen(x)),unassigned:tickets.filter(x=>!x.assignee&&isOpen(x)),all:tickets.filter(isOpen),
+    urgent:tickets.filter(x=>isOpen(x)&&(x.priority==="P1"||x.priority==="P2")),waiting:tickets.filter(x=>x.status==="Waiting on User"||x.status==="Pending Approval"),done:tickets.filter(x=>!isOpen(x))};
+  const rank={P1:0,P2:1,P3:2,P4:3};
+  const rows=sets[tab].filter(x=>(!fc||x.cat===fc)&&(!fp||x.priority===fp)&&(!q||(x.id+" "+x.title+" "+pname(x.req)).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>tab==="done"?b.created-a.created:(rank[a.priority]-rank[b.priority]||a.created-b.created));
+  const cols="86px minmax(0,1fr) 150px 130px 150px 90px 40px";
+  return e("div",null,
+    e(Tabs,{val:tab,set:setTab,tabs:[["mine",t("q_mine"),sets.mine.length],["unassigned",t("q_unassigned"),sets.unassigned.length],["all",t("q_all"),sets.all.length],["urgent",t("q_urgent"),sets.urgent.length],["waiting",t("q_waiting"),sets.waiting.length],["done",t("q_done")]]}),
+    e("div",{style:{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}},
+      e("input",{id:"q-search","aria-label":t("q_search"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("q_search"),style:{...IS,flex:"1 1 220px",maxWidth:340}}),
+      e("select",{"aria-label":t("all_cats"),value:fc,onChange:ev=>setFc(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_cats")),CFG.cats.map(c=>e("option",{key:c.id,value:c.id},c.icon+" "+L(c.n)))),
+      e("select",{"aria-label":t("all_prios"),value:fp,onChange:ev=>setFp(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_prios")),Object.keys(CFG.prio).map(p=>e("option",{key:p,value:p},prioLabel(p))))),
+    e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:850}},
+      e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:12,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_id"),t("h_subject"),t("h_req"),t("h_prio"),t("status"),t("h_opened"),""].map((h,i)=>e("span",{key:i},h))),
+      rows.map((x,i)=>e("button",{key:x.id,className:"hov",onClick:()=>onOpen(x),style:{display:"grid",width:"100%",textAlign:"start",color:"inherit",border:"none",gridTemplateColumns:cols,gap:12,padding:"12px 14px",alignItems:"center",background:selId===x.id?"#3A1512":i%2?"#181514":"#1A1717",borderInlineStart:"3px solid "+(selId===x.id?"#E11A22":x.priority==="P1"&&isOpen(x)?"#EF4444":"transparent")}},
+        e("span",{style:{fontFamily:"monospace",fontSize:"0.75rem",color:"#8A8583"}},x.id),
+        e("div",{style:{minWidth:0}},e("div",{style:{fontSize:"0.9rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(x.major?"🚨 ":"")+x.title),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},cat(x.cat).icon+" "+L(cat(x.cat).n))),
+        e("div",{style:{fontSize:"0.8rem"}},pname(x.req),e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},deptName(x.dept))),
+        e(PrioB,{p:x.priority}),e(StatB,{s:x.status}),e("span",{style:{fontSize:"0.78rem",color:"#8A8583"}},ago(x.created)),e(Av,{id:x.assignee,size:26}))),
+      rows.length===0&&e("div",{style:{padding:34,textAlign:"center",color:"#6B6563"}},tab==="unassigned"?t("nothing_unassigned")+" 👏":t("no_match")))));
+}
+
+/* ═════════ Ticket detail ═════════ */
+function Drawer({tk,me,role,onClose,onChanged,toast}){
+  const agent=isITRole(role), mine=tk.req===me;
+  const [reply,setReply]=useState(""), [internal,setInternal]=useState(false), [busy,setBusy]=useState(false);
+  const [resolveOpen,setResolveOpen]=useState(false), [resNote,setResNote]=useState(""), [rating,setRating]=useState(0);
+  const [rej,setRej]=useState(false), [reason,setReason]=useState("");
+  useEffect(()=>{setReply("");setInternal(false);setRating(0);},[tk.id]);
+  const c=cat(tk.cat), rq=person(tk.req)||{name:"—",dept:tk.dept};
+  const run=async(action,data,okMsg)=>{ setBusy(true); try{ const r=await api(action,{id:tk.id,...data}); onChanged(r.ticket); if(okMsg) toast(okMsg); return true; }catch(x){ toast(x.message,"error"); return false; } finally{ setBusy(false); } };
+  const send=async()=>{ if(!reply.trim())return; if(await run("reply",{text:reply.trim(),internal:agent&&internal},internal?t("toast_note"):t("toast_reply"))) setReply(""); };
+  const row=(k,v)=>e("div",{style:{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:"1px solid #231F1E",fontSize:"0.84rem"}},e("span",{style:{color:"#8A8583"}},k),e("span",{style:{textAlign:"end",minWidth:0,overflowWrap:"anywhere"}},v));
+  const ap=tk.approval, canDecide=ap&&ap.state==="pending"&&(ap.by===me||isLeadRole(role))&&!(mine&&!isLeadRole(role));
+  const canReply=(agent||mine)&&!["Closed","Rejected"].includes(tk.status);
+  return e("div",null,
+    e("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"#00000066",zIndex:900}}),
+    e("div",{className:"drawer",role:"dialog","aria-label":tk.id,style:{position:"fixed",top:0,bottom:0,insetInlineEnd:0,width:600,background:"#12100F",borderInlineStart:"1px solid #332C2B",zIndex:1000,display:"flex",flexDirection:"column",paddingBottom:"env(safe-area-inset-bottom, 0px)"}},
+      e("div",{style:{padding:"18px 22px",borderBottom:"1px solid #332C2B"}},
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},e("div",{style:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}},e("span",{style:{fontFamily:"monospace",color:"#8A8583",fontSize:"0.8rem"}},tk.id),e(TypeB,{type:c.type}),tk.major&&e(Pill,{c:"#EF4444"},"🚨 "+t("major"))),e("button",{onClick:onClose,"aria-label":t("close"),style:{background:"none",border:"none",color:"#8A8583",fontSize:"1.3rem"}},"✕")),
+        e("div",{style:{fontSize:"1.2rem",fontWeight:700,marginBottom:10,overflowWrap:"anywhere"}},tk.title),
+        e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},e(PrioB,{p:tk.priority}),e(StatB,{s:tk.status}),e(Pill,{c:"#C9C6C4"},c.icon+" "+L(c.n)))),
+      e("div",{style:{flex:1,overflowY:"auto",padding:"18px 22px"}},
+        !agent&&e("div",{style:{marginBottom:16}},e(Stepper,{status:tk.status})),
+        ap&&e("div",{style:{background:ap.state==="pending"?"#4C1D9533":ap.state==="approved"?"#064E3B55":"#33415555",border:"1px solid "+(ap.state==="pending"?"#A78BFA66":ap.state==="approved"?"#34D39966":"#94A3B866"),borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:"0.85rem"}},
+          e("div",null,ap.state==="pending"?"⏳ "+(ap.by?t("waiting_approval",{name:pname(ap.by)}):t("waiting_approval_any")):ap.state==="approved"?"✓ "+t("approved_by",{name:pname(ap.by)}):"✕ "+t("rejected_by",{name:pname(ap.by)})+(ap.reason?": "+ap.reason:"")),
+          canDecide&&e("div",{style:{display:"flex",gap:8,marginTop:10}},e("button",{disabled:busy,onClick:()=>run("approve",{},t("toast_approved")),style:{...BP,background:"#059669",padding:"7px 14px"}},t("approve")),e("button",{disabled:busy,onClick:()=>setRej(true),style:{...BS,padding:"7px 14px"}},t("reject")))),
+        mine&&tk.status==="Resolved"&&e("div",{style:{background:"#064E3B44",border:"1px solid #34D39966",borderRadius:10,padding:14,marginBottom:14}},e("div",{style:{fontWeight:700,marginBottom:8}},t("resolved_q")),
+          CFG.csat&&e("div",{style:{display:"flex",gap:4,marginBottom:10,alignItems:"center"}},e("span",{style:{fontSize:"0.8rem",color:"#8A8583",marginInlineEnd:6}},t("rate")),[1,2,3,4,5].map(n=>e("button",{key:n,onClick:()=>setRating(n),"aria-label":n+" / 5","aria-pressed":n<=rating,style:{background:"none",border:"none",fontSize:"1.4rem",color:n<=rating?"#FACC15":"#3A3231",padding:0}},"★"))),
+          e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},e("button",{disabled:busy,onClick:()=>run("confirm",{csat:rating||null},t("toast_closed")),style:{...BP,background:"#059669"}},t("yes_close")),e("button",{disabled:busy,onClick:()=>run("reopen",{},t("toast_reopened")),style:BS},t("still_broken")))),
+        agent&&isOpen(tk)&&e("div",{className:"g3",style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}},
+          e("div",null,e("label",{style:LS,htmlFor:"d-asg"},t("assignee")),e("select",{id:"d-asg",disabled:busy,value:tk.assignee||"",onChange:ev=>run("update-ticket",{assignee:ev.target.value||null},t("toast_saved_t")),style:IS},e("option",{value:""},t("unassigned")),CFG.people.filter(p=>isITRole(p.role)&&(p.active!==false||p.id===tk.assignee)).map(a=>e("option",{key:a.id,value:a.id},a.name)))),
+          e("div",null,e("label",{style:LS,htmlFor:"d-st"},t("status")),e("select",{id:"d-st",disabled:busy||tk.status==="Pending Approval",value:tk.status,onChange:ev=>run("update-ticket",{status:ev.target.value},t("toast_saved_t")),style:IS},["New","Assigned","In Progress","Waiting on User"].concat(tk.status==="Pending Approval"?["Pending Approval"]:[]).map(x=>e("option",{key:x,value:x},stLabel(x))))),
+          e("div",null,e("label",{style:LS,htmlFor:"d-pr"},t("h_prio")),e("select",{id:"d-pr",disabled:busy,value:tk.priority,onChange:ev=>run("update-ticket",{priority:ev.target.value},t("toast_saved_t")),style:IS},Object.keys(CFG.prio).map(p=>e("option",{key:p,value:p},prioLabel(p)))))),
+        agent&&isOpen(tk)&&e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
+          !tk.assignee&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{assignee:me},t("toast_took")),style:{...BP,padding:"8px 14px"}},t("take_it")),
+          tk.status!=="Pending Approval"&&e("button",{disabled:busy,onClick:()=>setResolveOpen(true),style:{...BP,background:"#059669",padding:"8px 14px"}},t("resolve")),
+          isLeadRole(role)&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{major:!tk.major},tk.major?t("toast_saved_t"):t("toast_major")),style:{...BS,padding:"8px 14px",color:"#FCA5A5"}},tk.major?t("clear_major"):t("declare_major"))),
+        e(Section,{title:t("details"),style:{marginBottom:14,padding:14}},
+          e("div",{style:{fontSize:"0.88rem",lineHeight:1.6,color:"#D6D3D1",marginBottom:10,whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},tk.desc),
+          row(t("requester"),e("span",{style:{display:"inline-flex",gap:6,alignItems:"center"}},e(Av,{id:tk.req,size:20}),rq.name+" · "+deptName(tk.dept))),
+          c.fields.map(fd=>{const v=fieldVal(fd,(tk.fields||{})[fd.k]);return v?e("div",{key:fd.k},row(L(fd.label),v)):null;}),
+          row(t("opened_on"),fmtDate(tk.created)),
+          tk.link&&/^https?:\/\//i.test(tk.link)&&row(t("attachment"),e("a",{href:tk.link,target:"_blank",rel:"noopener noreferrer",style:{color:"#F16A6F"}},t("open_link"))),
+          tk.csat&&row(t("satisfaction"),"★".repeat(tk.csat)+"☆".repeat(5-tk.csat))),
+        e("div",{style:{fontSize:"0.88rem",fontWeight:700,color:"#C9C6C4",margin:"6px 0 10px"}},t("conversation")),
+        e("div",{style:{display:"flex",gap:10,marginBottom:12}},e(Av,{id:tk.req,size:28}),e("div",{style:{flex:1,minWidth:0,background:"#1A1717",border:"1px solid #332C2B",borderRadius:10,padding:"10px 12px"}},e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginBottom:4}},t("opened_ticket",{name:rq.name})+" · "+ago(tk.created)),e("div",{style:{fontSize:"0.88rem",whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},tk.desc))),
+        tk.thread.map((m,i)=>e("div",{key:i,style:{display:"flex",gap:10,marginBottom:12}},e(Av,{id:m.by,size:28}),e("div",{style:{flex:1,minWidth:0,background:m.internal?"#422006":"#1A1717",border:"1px solid "+(m.internal?"#A16207":"#332C2B"),borderRadius:10,padding:"10px 12px"}},e("div",{style:{fontSize:"0.72rem",color:m.internal?"#FCD34D":"#8A8583",marginBottom:4}},(m.internal?t("internal_note_lbl")+" · ":"")+pname(m.by)+" · "+ago(m.ts)),e("div",{style:{fontSize:"0.88rem",whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},m.text))))),
+      canReply&&e("div",{style:{borderTop:"1px solid #332C2B",padding:"12px 22px",background:"#151211"}},
+        agent&&e("div",{style:{display:"flex",gap:8,marginBottom:8,alignItems:"center",flexWrap:"wrap"}},
+          e("div",{style:{display:"flex",background:"#1A1717",borderRadius:8,border:"1px solid #332C2B",overflow:"hidden"}},[[t("reply_user"),false],[t("internal_note_lbl"),true]].map(([l,v])=>e("button",{key:String(v),"aria-pressed":internal===v,onClick:()=>setInternal(v),style:{border:"none",padding:"6px 12px",fontSize:"0.78rem",fontWeight:600,background:internal===v?(v?"#A16207":"#E11A22"):"transparent",color:internal===v?"#fff":"#8A8583"}},l))),
+          CFG.canned.length>0&&e("select",{"aria-label":t("canned"),value:"",onChange:ev=>{if(ev.target.value!=="")setReply(L(CFG.canned[+ev.target.value].t));},style:{...IS,width:"auto",padding:"6px 10px",fontSize:"0.78rem"}},e("option",{value:""},t("canned")),CFG.canned.map((x,i)=>e("option",{key:x.id||i,value:i},L(x.l)))),
+          CFG.kb.length>0&&e("select",{"aria-label":t("insert_article"),value:"",onChange:ev=>{const a=CFG.kb.find(k=>k.id===ev.target.value);if(a)setReply(r=>(r?r+"\n\n":"")+t("article_ref",{t:L(a.t),id:a.id}));},style:{...IS,width:"auto",padding:"6px 10px",fontSize:"0.78rem"}},e("option",{value:""},t("insert_article")),CFG.kb.map(a=>e("option",{key:a.id,value:a.id},L(a.t))))),
+        e("div",{style:{display:"flex",gap:8}},e("textarea",{id:"composer","aria-label":t("send"),rows:2,maxLength:5000,value:reply,onChange:ev=>setReply(ev.target.value),placeholder:agent?(internal?t("ph_internal"):t("ph_reply",{name:rq.name.split(" ")[0]})):t("ph_req"),style:{...IS,resize:"none",flex:1,borderColor:internal?"#A16207":"#332C2B"}}),e("button",{id:"send-btn",disabled:busy||!reply.trim(),onClick:send,style:{...BP,alignSelf:"stretch",background:internal?"#A16207":"#E11A22"}},t("send"))))),
+    resolveOpen&&e(Modal,{title:t("resolve_title",{id:tk.id}),onClose:()=>setResolveOpen(false),w:480},e("label",{style:LS,htmlFor:"fix-note"},t("fix_q")+" *"),e("textarea",{id:"fix-note",rows:4,value:resNote,onChange:ev=>setResNote(ev.target.value),placeholder:t("fix_ph"),style:{...IS,marginBottom:12}}),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},t("fix_hint")),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setResolveOpen(false),style:BS},t("cancel")),e("button",{disabled:busy||!resNote.trim(),onClick:async()=>{ if(await run("resolve",{note:resNote.trim()},t("toast_resolved"))){setResolveOpen(false);setResNote("");} },style:{...BP,background:"#059669"}},t("mark_resolved")))),
+    rej&&e(Modal,{title:t("reject_title",{id:tk.id}),onClose:()=>setRej(false),w:440},e("label",{style:LS,htmlFor:"rej-reason"},t("reason_lbl")),e("textarea",{id:"rej-reason",rows:3,value:reason,onChange:ev=>setReason(ev.target.value),style:{...IS,marginBottom:14}}),
+      e("div",{style:{display:"flex",justifyContent:"flex-end",gap:10}},e("button",{onClick:()=>setRej(false),style:BS},t("cancel")),e("button",{disabled:busy,onClick:async()=>{ if(await run("reject",{reason},t("toast_rejected"))){setRej(false);setReason("");} },style:BP},t("reject")))));
+}
+
+/* ═════════ Approvals ═════════ */
+function Approvals({me,role,tickets,onOpen,onChanged,toast}){
+  const [busy,setBusy]=useState(""), [rej,setRej]=useState(null), [reason,setReason]=useState("");
+  const mineToDecide=x=>x.approval&&(x.approval.by===me||isLeadRole(role));
+  const pend=tickets.filter(x=>mineToDecide(x)&&x.approval.state==="pending"), hist=tickets.filter(x=>mineToDecide(x)&&x.approval.state!=="pending");
+  const decide=async(x,action,data)=>{ setBusy(x.id); try{ const r=await api(action,{id:x.id,...(data||{})}); onChanged(r.ticket); toast(action==="approve"?t("toast_approved"):t("toast_rejected")); return true; }catch(err){ toast(err.message,"error"); return false; } finally{ setBusy(""); } };
+  return e("div",null,
+    e("p",{style:{color:"#8A8583",fontSize:"0.88rem",marginBottom:14,maxWidth:"70ch"}},t("appr_intro")),
+    pend.length?pend.map(x=>{const c=cat(x.cat);return e("div",{key:x.id,style:{...card,padding:16,marginBottom:10,display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}},e("div",{style:{fontSize:"1.6rem"}},c.icon),
+      e("div",{style:{flex:1,minWidth:220}},e("button",{onClick:()=>onOpen(x),style:{fontWeight:700,background:"none",border:"none",color:"inherit",padding:0,textAlign:"start",fontSize:"0.95rem"}},x.title),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",margin:"3px 0"}},x.id+" · "+t("requested_by",{name:pname(x.req),dept:deptName(x.dept)})+" · "+ago(x.created)),e("div",{style:{fontSize:"0.8rem",color:"#C9C6C4"}},c.fields.map(fd=>fieldVal(fd,(x.fields||{})[fd.k])).filter(Boolean).join(" · "))),
+      x.req===me&&!isLeadRole(role)?null:e("div",{style:{display:"flex",gap:8}},e("button",{disabled:busy===x.id,onClick:()=>decide(x,"approve"),style:{...BP,background:"#059669"}},t("approve")),e("button",{disabled:busy===x.id,onClick:()=>setRej(x),style:BS},t("reject"))));}):e(Empty,{text:t("no_approvals")}),
+    hist.length>0&&e("div",{style:{marginTop:22}},e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,marginBottom:8}},t("decided")),hist.map(x=>e("div",{key:x.id,style:{display:"flex",gap:10,padding:"9px 12px",fontSize:"0.85rem",borderBottom:"1px solid #231F1E",alignItems:"center"}},e("span",{style:{fontFamily:"monospace",color:"#8A8583"}},x.id),e("span",{style:{flex:1,minWidth:0}},x.title),e(Pill,{c:x.approval.state==="approved"?"#34D399":"#94A3B8"},t(x.approval.state))))),
+    rej&&e(Modal,{title:t("reject_title",{id:rej.id}),onClose:()=>setRej(null),w:440},e("label",{style:LS,htmlFor:"ap-reason"},t("reason_lbl")),e("textarea",{id:"ap-reason",rows:3,value:reason,onChange:ev=>setReason(ev.target.value),style:{...IS,marginBottom:14}}),
+      e("div",{style:{display:"flex",justifyContent:"flex-end",gap:10}},e("button",{onClick:()=>setRej(null),style:BS},t("cancel")),e("button",{disabled:!!busy,onClick:async()=>{ if(await decide(rej,"reject",{reason})){setRej(null);setReason("");} },style:BP},t("reject")))));
+}
+
+/* ═════════ Knowledge base ═════════ */
+function KBView({onKB,admin,onEdit,onAdd,onDelete}){
+  const [q,setQ]=useState("");
+  const list=CFG.kb.filter(a=>!q||[a.t.en,a.t.ar,...(a.body.en||[]),...(a.body.ar||[])].join(" ").toLowerCase().includes(q.toLowerCase()));
+  return e("div",null,
+    e("div",{style:{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}},e("input",{id:"kb-search","aria-label":t("search_kb"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("search_kb"),style:{...IS,maxWidth:420}}),admin&&e("button",{onClick:onAdd,style:{...BP,marginInlineStart:"auto"}},t("add_article"))),
+    list.length?e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},list.map(a=>e("div",{key:a.id,style:{...card,padding:16}},
+      e("button",{className:"tile",onClick:()=>onKB(a),style:{display:"block",width:"100%",textAlign:"start",background:"none",border:"none",color:"inherit",padding:0}},
+        e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginBottom:4}},cat(a.cat).icon+" "+L(cat(a.cat).n)+" · "+a.id),e("div",{style:{fontWeight:700,marginBottom:6}},L(a.t)),e("div",{style:{fontSize:"0.8rem",color:"#8A8583"}},((a.body[LANG]&&a.body[LANG].length?a.body[LANG]:a.body.en)||[])[0]||"")),
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}},e("span",{style:{fontSize:"0.72rem",color:"#6B6563"}},t("views",{n:a.views})),admin&&e("div",{style:{display:"flex",gap:6}},e("button",{onClick:()=>onEdit(a),style:BSm},t("edit")),e("button",{onClick:()=>onDelete(a),"aria-label":t("delete"),style:{...BSm,color:"#FCA5A5"}},"🗑")))))):e(Empty,{text:t("nothing")}));
+}
+function KBModal({a,onClose}){ const [fb,setFb]=useState(null); const steps=(a.body[LANG]&&a.body[LANG].length?a.body[LANG]:a.body.en)||[];
+  useEffect(()=>{ api("kb-view",{id:a.id}).catch(()=>{}); },[a.id]);
+  return e(Modal,{title:"📘 "+L(a.t),onClose,w:560},e("div",{style:{fontSize:"0.75rem",color:"#8A8583",marginBottom:12}},L(cat(a.cat).n)+" · "+a.id),e("ol",{style:{paddingInlineStart:22,lineHeight:1.9,fontSize:"0.92rem",marginBottom:18}},steps.map((s,i)=>e("li",{key:i},s))),
+    e("div",{style:{background:"#151211",borderRadius:10,padding:12,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}},fb?e("span",{style:{color:"#34D399",fontSize:"0.88rem"}},fb==="y"?t("fb_yes"):t("fb_no")):[e("span",{key:"q",style:{fontSize:"0.88rem"}},t("solved_q")),e("button",{key:"y",onClick:()=>setFb("y"),style:BSm},t("yes")),e("button",{key:"n",onClick:()=>setFb("n"),style:BSm},t("no"))])); }
+
+/* ═════════ Dashboard (single-series bars, hover tooltip) ═════════ */
+function HBars({data}){ const [hov,setHov]=useState(null); const max=Math.max(1,...data.map(d=>d.v));
+  if(!data.length) return e(Empty,{text:t("nothing")});
+  return e("div",null,data.map((d,i)=>e("div",{key:d.k,onMouseEnter:()=>setHov(i),onMouseLeave:()=>setHov(null),style:{display:"grid",gridTemplateColumns:"minmax(0,170px) 1fr 30px",gap:10,alignItems:"center",padding:"5px 0"}},
+    e("span",{style:{fontSize:"0.8rem",color:"#C9C6C4",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},d.k),
+    e("div",{style:{height:12,background:"#231F1E",borderRadius:4,position:"relative"}},e("div",{style:{width:(d.v/max*100)+"%",height:"100%",background:hov===i?"#EDEBEA":"#A8A29E",borderStartEndRadius:4,borderEndEndRadius:4}}),
+      hov===i&&e("div",{style:{position:"absolute",insetInlineStart:Math.min(d.v/max*100,65)+"%",top:-32,background:"#2A2524",border:"1px solid #3A3231",borderRadius:6,padding:"4px 8px",fontSize:"0.72rem",whiteSpace:"nowrap",zIndex:3}},d.k+": "+d.v+" "+t("tickets_u"))),
+    e("span",{style:{fontSize:"0.8rem",textAlign:"end",fontWeight:600,fontVariantNumeric:"tabular-nums"}},d.v)))); }
+function Dashboard({tickets}){
+  const open=tickets.filter(isOpen), done=tickets.filter(x=>x.resolved);
+  const avg=done.length?done.reduce((a,x)=>a+(x.resolved-x.created),0)/done.length:0;
+  const rated=tickets.filter(x=>x.csat), csat=rated.length?rated.reduce((a,x)=>a+x.csat,0)/rated.length:0;
+  const urgent=open.filter(x=>x.priority==="P1"||x.priority==="P2").length, wk=Date.now()-7*DAY;
+  const kpi=(l,v,sub,tone)=>e("div",{key:l,style:{...card,padding:16}},e("div",{style:{fontSize:"0.75rem",color:"#8A8583",marginBottom:6}},l),e("div",{style:{fontSize:"1.8rem",fontWeight:800,fontVariantNumeric:"tabular-nums"}},e("bdi",{dir:"ltr"},v)),sub&&e("div",{style:{fontSize:"0.72rem",color:tone||"#8A8583",marginTop:4}},sub));
+  const byCat=CFG.cats.map(c=>({k:c.icon+" "+L(c.n),v:tickets.filter(x=>x.cat===c.id).length})).filter(d=>d.v).sort((a,b)=>b.v-a.v);
+  const byDept=Object.keys(CFG.depts).map(k=>({k:deptName(k),v:tickets.filter(x=>x.dept===k).length})).filter(d=>d.v).sort((a,b)=>b.v-a.v);
+  const team=CFG.people.filter(p=>isITRole(p.role)&&p.active!==false).map(a=>({a,open:open.filter(x=>x.assignee===a.id).length,done:done.filter(x=>x.assignee===a.id).length,csat:(r=>r.length?(r.reduce((s,x)=>s+x.csat,0)/r.length).toFixed(1):"—")(tickets.filter(x=>x.assignee===a.id&&x.csat))}));
+  return e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
+    e("div",{className:"g4",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}},
+      kpi(t("k_open"),open.length,t("k_unassigned_sub",{n:open.filter(x=>!x.assignee).length})),
+      kpi(t("k_urgent"),urgent,urgent?"⚠ "+t("attention"):"✓ "+t("all_good"),urgent?"#F59E0B":"#34D399"),
+      kpi(t("k_resolved7"),done.filter(x=>x.resolved>=wk).length),
+      kpi(t("k_avg"),done.length?dur(avg):"—"),
+      kpi(t("k_csat"),csat?csat.toFixed(1)+" / 5":"—",t("k_ratings",{n:rated.length})),
+      kpi(t("k_pending"),tickets.filter(x=>x.status==="Pending Approval").length),
+      kpi(t("k_waiting"),tickets.filter(x=>x.status==="Waiting on User").length),
+      kpi(t("k_total"),tickets.length)),
+    e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},e(Section,{title:t("by_cat")},e(HBars,{data:byCat})),e(Section,{title:t("by_dept")},e(HBars,{data:byDept}))),
+    e(Section,{title:t("workload")},e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:520}},
+      e("div",{style:{display:"grid",gridTemplateColumns:"1.6fr 90px 90px 90px",gap:12,padding:"8px 4px",...HEAD}},[t("h_member"),t("h_open"),t("h_resolved"),t("h_csat")].map(h=>e("span",{key:h},h))),
+      team.map(r=>e("div",{key:r.a.id,style:{display:"grid",gridTemplateColumns:"1.6fr 90px 90px 90px",gap:12,padding:"10px 4px",borderTop:"1px solid #231F1E",alignItems:"center",fontSize:"0.86rem",fontVariantNumeric:"tabular-nums"}},e("div",{style:{display:"flex",gap:8,alignItems:"center"}},e(Av,{id:r.a.id,size:26}),e("div",null,r.a.name,e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},t("role_"+r.a.role)))),e("span",{style:{fontWeight:700,color:r.open>=4?"#F59E0B":"#EDEBEA"}},r.open),e("span",null,r.done),e("span",null,r.csat==="—"?"—":"★ "+r.csat)))))));
+}
+
+function Matrix({value,setValue}){ const m=value||CFG.matrix; return e("div",{style:{overflowX:"auto"}},e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:"0.85rem",minWidth:520}},
+  e("thead",null,e("tr",null,[t("matrix_corner")].concat(CFG.urgencies.map(L)).map((h,i)=>e("th",{key:i,style:{textAlign:"start",padding:8,...HEAD,borderBottom:"1px solid #332C2B"}},h)))),
+  e("tbody",null,[2,1,0].map(ii=>e("tr",{key:ii},e("td",{style:{padding:"9px 8px",borderBottom:"1px solid #231F1E"}},L(CFG.impacts[ii])),[0,1,2].map(ui=>e("td",{key:ui,style:{padding:"9px 8px",borderBottom:"1px solid #231F1E"}},
+    setValue?e("select",{"aria-label":L(CFG.impacts[ii])+" / "+L(CFG.urgencies[ui]),value:m[ii][ui],onChange:ev=>{const v=ev.target.value;const n=m.map(r=>r.slice());n[ii][ui]=v;setValue(n);},style:{...IS,width:"auto",padding:"6px 8px"}},Object.keys(CFG.prio).map(p=>e("option",{key:p,value:p},prioLabel(p)))):e(PrioB,{p:m[ii][ui]})))))))); }
+
+function Rules(){ const td={padding:"10px 8px",borderBottom:"1px solid #231F1E"};
+  return e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
+    e("p",{style:{color:"#8A8583",fontSize:"0.88rem",maxWidth:"70ch"}},t("rules_intro")),
+    e("div",{style:{...card,padding:"12px 16px",display:"flex",gap:10,alignItems:"center",borderColor:CFG.autoAssign?"#34D39966":"#F59E0B66"}},e("span",null,CFG.autoAssign?"✅":"⏸"),e("b",null,CFG.autoAssign?t("auto_on"):t("auto_off"))),
+    e(Section,{title:t("nav_rules")},e("div",{style:{overflowX:"auto"}},e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:"0.86rem",minWidth:520}},
+      e("thead",null,e("tr",null,[t("h_cat"),t("h_type"),t("h_owner2"),t("h_approval")].map(h=>e("th",{key:h,style:{textAlign:"start",padding:8,...HEAD,borderBottom:"1px solid #332C2B"}},h)))),
+      e("tbody",null,CFG.cats.filter(c=>c.active).map(c=>e("tr",{key:c.id},e("td",{style:td},c.icon+" "+L(c.n)),e("td",{style:td},e(TypeB,{type:c.type})),
+        e("td",{style:td},c.owner&&person(c.owner)?e("span",{style:{display:"inline-flex",gap:6,alignItems:"center"}},e(Av,{id:c.owner,size:22}),pname(c.owner)):e("span",{style:{color:"#8A8583"}},t("triage"))),
+        e("td",{style:td},c.approval?"✓":"—"))))))),
+    e(Section,{title:t("prio_matrix")},e(Matrix,{})));
+}
+
+/* ═════════ Admin Console ═════════ */
+function CatEditor({c0,onSave,onClose,busy,err}){
+  const [c,setC]=useState(()=>clone(c0));
+  const set=(k,v)=>setC(x=>({...x,[k]:v}));
+  const setField=(i,patch)=>setC(x=>({...x,fields:x.fields.map((f,j)=>j===i?{...f,...patch}:f)}));
+  const optsText=(f,l)=>(f.opts||[]).map(o=>o[l]||"").join("\n");
+  const setOpts=(i,l,txt)=>{ const lines=txt.split("\n"); const old=c.fields[i].opts||[]; const n=Math.max(lines.length,l==="ar"?old.length:lines.length); const opts=[];
+    for(let k=0;k<n;k++){ const o={...(old[k]||{en:"",ar:""})}; o[l]=lines[k]!==undefined?lines[k]:""; opts.push(o);} setField(i,{opts}); };
+  return e(Modal,{title:c0.id?t("edit")+": "+L(c0.n):t("new_cat"),onClose,w:760},
+    e("div",{style:{display:"grid",gridTemplateColumns:"80px 1fr",gap:12}},e("div",null,e("label",{style:LS,htmlFor:"ce-icon"},t("icon")),e("input",{id:"ce-icon",value:c.icon,onChange:ev=>set("icon",ev.target.value),style:{...IS,textAlign:"center",fontSize:"1.3rem",padding:6,marginTop:17}})),e("div",{style:{minWidth:0}},e(Bi,{label:t("name"),val:c.n,set:v=>set("n",v)}))),
+    e(Bi,{label:t("description"),val:c.d,set:v=>set("d",v)}),
+    e("div",{className:"g3",style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14,alignItems:"end"}},
+      e("div",null,e("label",{style:LS,htmlFor:"ce-type"},t("type")),e("select",{id:"ce-type",value:c.type,onChange:ev=>set("type",ev.target.value),style:IS},e("option",{value:"incident"},t("incident")),e("option",{value:"request"},t("request")))),
+      e("div",null,e("label",{style:LS,htmlFor:"ce-owner"},t("owner")),e("select",{id:"ce-owner",value:c.owner||"",onChange:ev=>set("owner",ev.target.value||null),style:IS},e("option",{value:""},t("nobody_triage")),CFG.people.filter(p=>isITRole(p.role)&&p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
+      e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",paddingBottom:10}},e(Switch,{on:c.approval,set:v=>set("approval",v),label:t("needs_appr_lbl")}),t("needs_appr_lbl"))),
+    e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"8px 0 10px"}},t("form_fields")),
+    c.fields.map((f,i)=>e("div",{key:f.k,style:{...card,background:"#151211",padding:14,marginBottom:10}},
+      e("div",{style:{display:"flex",gap:10,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}},e("div",{style:{flex:"1 1 160px"}},e("label",{style:LS},t("field_kind")),e("select",{value:f.kind,onChange:ev=>setField(i,{kind:ev.target.value,opts:ev.target.value==="select"?(f.opts&&f.opts.length?f.opts:[{en:"",ar:""}]):f.opts}),style:IS},e("option",{value:"text"},t("kind_text")),e("option",{value:"select"},t("kind_select")),e("option",{value:"date"},t("kind_date")))),
+        e("button",{onClick:()=>setC(x=>({...x,fields:x.fields.filter((_,j)=>j!==i)})),style:{...BSm,color:"#FCA5A5"}},t("remove"))),
+      e(Bi,{label:t("field_label"),val:f.label,set:v=>setField(i,{label:v})}),
+      f.kind==="select"&&e("div",null,e("div",{style:LS},t("options")),e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},["en","ar"].map(l=>e("textarea",{key:l,"aria-label":t("options")+" "+l,rows:Math.max(3,(f.opts||[]).length),dir:l==="ar"?"rtl":"ltr",value:optsText(f,l),onChange:ev=>setOpts(i,l,ev.target.value),placeholder:l==="en"?"English":"العربية",style:{...IS,resize:"vertical"}})))))),
+    e("button",{onClick:()=>set("fields",[...c.fields,{k:"f"+Date.now().toString(36),kind:"text",label:{en:"",ar:""}}]),style:{...BS,marginBottom:18}},t("add_field")),
+    e(ErrBox,{text:err}),
+    e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{disabled:busy,onClick:()=>onSave({...c,fields:c.fields.map(f=>f.kind==="select"?{...f,opts:(f.opts||[]).filter(o=>(o.en||"").trim()||(o.ar||"").trim())}:f)}),style:BP},busy?t("saving"):t("save"))));
+}
+function UserEditor({u0,onSave,onClose,busy,err}){
+  const [u,setU]=useState(()=>clone(u0)); const set=(k,v)=>setU(x=>({...x,[k]:v})); const self=u0.id===CFG.me.id;
+  const field=(id,label,el)=>e("div",{style:{marginBottom:12}},e("label",{style:LS,htmlFor:id},label),el);
+  return e(Modal,{title:u0.id?t("edit")+": "+u0.name:t("new_user"),onClose,w:560},
+    e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+      field("ue-name",t("name"),e("input",{id:"ue-name",value:u.name,onChange:ev=>set("name",ev.target.value),style:IS})),
+      field("ue-email",t("email"),e("input",{id:"ue-email",type:"email",dir:"ltr",value:u.email,onChange:ev=>set("email",ev.target.value),style:IS})),
+      field("ue-dept",t("department"),e("select",{id:"ue-dept",value:u.dept||"",onChange:ev=>set("dept",ev.target.value||null),style:IS},e("option",{value:""},t("no_dept")),Object.keys(CFG.depts).map(k=>e("option",{key:k,value:k},deptName(k))))),
+      field("ue-mgr",t("manager"),e("select",{id:"ue-mgr",value:u.manager||"",onChange:ev=>set("manager",ev.target.value||null),style:IS},e("option",{value:""},t("none_opt")),CFG.people.filter(p=>p.id!==u.id&&p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
+      field("ue-role",t("it_role"),e("select",{id:"ue-role",disabled:self,value:u.role,onChange:ev=>set("role",ev.target.value),style:IS},ROLES.map(r=>e("option",{key:r,value:r},t("role_"+r))))),
+      e("div",{style:{display:"flex",gap:10,alignItems:"center",paddingTop:18}},e(Switch,{on:u.active,disabled:self,label:t("active"),set:v=>set("active",v)}),t("active"))),
+    e(ErrBox,{text:err}),
+    e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{id:"ue-save",disabled:busy,onClick:()=>onSave(u),style:BP},busy?t("saving"):t("save"))));
+}
+function DeptEditor({d0,onSave,onClose,busy,err}){
+  const [d,setD]=useState(()=>clone(d0));
+  return e(Modal,{title:d0.id?t("edit")+": "+L(d0.n):t("new_dept"),onClose,w:560},
+    e("div",{style:{display:"grid",gridTemplateColumns:"80px 1fr",gap:12}},e("div",null,e("label",{style:LS,htmlFor:"de-icon"},t("icon")),e("input",{id:"de-icon",value:d.icon,onChange:ev=>setD(x=>({...x,icon:ev.target.value})),style:{...IS,textAlign:"center",fontSize:"1.3rem",padding:6,marginTop:17}})),
+      e("div",{style:{minWidth:0}},e(Bi,{label:t("name"),val:d.n,set:v=>setD(x=>({...x,n:v}))}))),
+    e(ErrBox,{text:err}),
+    e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{disabled:busy,onClick:()=>onSave(d),style:BP},busy?t("saving"):t("save"))));
+}
+function SimpleEditor({title,init,fields,onSave,onClose,busy,err}){
+  const [v,setV]=useState(()=>clone(init));
+  const set=(k,x)=>setV(o=>({...o,[k]:x}));
+  return e(Modal,{title,onClose,w:640},fields.map(f=>e("div",{key:f.k},
+    f.kind==="bi"?e(Bi,{label:f.label,val:v[f.k],set:x=>set(f.k,x),rows:f.rows}):
+    f.kind==="bilines"?e(Bi,{label:f.label,rows:5,val:{en:((v[f.k]||{}).en||[]).join("\n"),ar:((v[f.k]||{}).ar||[]).join("\n")},set:x=>set(f.k,{en:(x.en||"").split("\n"),ar:(x.ar||"").split("\n")})}):
+    e("div",{style:{marginBottom:12}},e("label",{style:LS},f.label),e("select",{value:v[f.k]==null?"":v[f.k],onChange:ev=>set(f.k,ev.target.value||null),style:IS},f.opts.map(([val,lab])=>e("option",{key:val,value:val},lab)))))),
+    e(ErrBox,{text:err}),
+    e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{disabled:busy,onClick:()=>onSave(v),style:BP},busy?t("saving"):t("save"))));
+}
+function AdminTable({cols,rows}){ return e("div",{style:{overflowX:"auto"}},e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:"0.86rem",minWidth:600}},e("thead",null,e("tr",null,cols.map((h,i)=>e("th",{key:i,style:{textAlign:"start",padding:8,...HEAD,borderBottom:"1px solid #332C2B"}},h)))),e("tbody",null,rows.map((r,i)=>e("tr",{key:i},r.map((x,j)=>e("td",{key:j,style:{padding:"9px 8px",borderBottom:"1px solid #231F1E",verticalAlign:"middle"}},x)))))));}
+const both = o => { const other=AR()?"en":"ar"; return e("div",null,e("div",null,(o||{})[LANG]||"—"),e("div",{dir:other==="ar"?"rtl":"ltr",style:{color:"#8A8583",fontSize:"0.8rem",textAlign:"start"}},(o||{})[other]||"—")); };
+
+function Admin({setCfg,toast,onKB}){
+  const [tab,setTab]=useState("cats");
+  const [ed,setEd]=useState(null), [del,setDel]=useState(null), [busy,setBusy]=useState(false), [err,setErr]=useState("");
+  const [draft,setDraft]=useState(()=>clone({prio:CFG.prio,impacts:CFG.impacts,urgencies:CFG.urgencies,matrix:CFG.matrix,statuses:CFG.statuses,
+    autoAssign:CFG.autoAssign,approvalMode:CFG.approvalMode,approverId:CFG.approver,kbSuggest:CFG.kbSuggest,csat:CFG.csat,supportCcUpdates:CFG.supportCcUpdates,greeting:CFG.greeting,heroSub:CFG.heroSub}));
+  const dset=(k,v)=>setDraft(d=>({...d,[k]:v}));
+  const call=async(action,data,closeEd)=>{ setBusy(true); setErr(""); try{ const cfg=await api(action,data); setCfg(cfg); if(closeEd) setEd(null); toast(t("saved")); return true; }catch(x){ setErr(x.message); toast(x.message,"error"); return false; } finally{ setBusy(false); } };
+  const saveKeys=keys=>call("admin-save-settings",{values:Object.fromEntries(keys.map(k=>[k,draft[k]]))});
+  const SaveBar=({keys})=>e("div",{style:{display:"flex",justifyContent:"flex-end",marginTop:14}},e("button",{disabled:busy,onClick:()=>saveKeys(keys),style:BP},busy?t("saving"):t("save_changes")));
+  const editBtns=(onE,onD)=>e("div",{style:{display:"flex",gap:6,justifyContent:"flex-end"}},e("button",{onClick:()=>{setErr("");onE();},style:BSm},t("edit")),onD&&e("button",{onClick:onD,"aria-label":t("delete"),style:{...BSm,color:"#FCA5A5"}},"🗑"));
+  const colorInput=(val,onCh,label)=>e("input",{type:"color","aria-label":label,value:val,onChange:ev=>onCh(ev.target.value),style:{width:44,height:32,background:"none",border:"none"}});
+  const askDel=(text,action,data)=>setDel({text,go:()=>call(action,data).then(()=>setDel(null))});
+  let body;
+  if(tab==="cats"){
+    const ids=CFG.cats.map(c=>c.id), last=ids.length-1;
+    const move=(i,d)=>{ const j=i+d; if(j<0||j>last) return; const n=ids.slice(); [n[i],n[j]]=[n[j],n[i]]; call("admin-reorder-categories",{ids:n}); };
+    body=e(Section,{title:t("a_cats"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"cat",item:{id:"",icon:"🆕",active:true,type:"incident",owner:null,approval:false,n:{en:"",ar:""},d:{en:"",ar:""},fields:[]}});},style:BP},t("add_cat"))},
+      e(AdminTable,{cols:["",t("name"),t("type"),t("owner"),t("h_approval"),t("form_fields"),t("shown"),""],rows:CFG.cats.map((c,i)=>[
+        e("div",{style:{display:"flex",flexDirection:"column",gap:2}},e("button",{onClick:()=>move(i,-1),"aria-label":"↑",disabled:busy||i===0,style:{...BSm,padding:"0 6px"}},"▲"),e("button",{onClick:()=>move(i,1),"aria-label":"↓",disabled:busy||i===last,style:{...BSm,padding:"0 6px"}},"▼")),
+        e("div",{style:{display:"flex",gap:8,alignItems:"center"}},e("span",{style:{fontSize:"1.3rem"}},c.icon),both(c.n)),e(TypeB,{type:c.type}),c.owner&&person(c.owner)?pname(c.owner):e("span",{style:{color:"#8A8583"}},t("triage")),c.approval?"✓":"—",c.fields.length===1?t("fields_1"):t("fields_n",{n:c.fields.length}),
+        e(Switch,{on:c.active,label:t("shown"),disabled:busy,set:v=>call("admin-toggle-category",{id:c.id,active:v})}),
+        editBtns(()=>setEd({kind:"cat",item:c}),()=>askDel(t("confirm_delete",{x:L(c.n)}),"admin-delete-category",{id:c.id}))])}));
+  } else if(tab==="users"){
+    const userRow=p=>({id:p.id,name:p.name,email:p.email||"",dept:p.dept||null,manager:p.manager||null,role:p.role,active:p.active!==false});
+    body=e(Section,{title:t("a_users"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"user",item:{id:null,name:"",email:"",dept:null,manager:null,role:"requester",active:true}});},style:BP},t("add_user"))},
+      e("p",{style:{color:"#8A8583",fontSize:"0.84rem",marginBottom:12,maxWidth:"70ch"}},t("users_note")),
+      e(AdminTable,{cols:[t("name"),t("email"),t("department"),t("manager"),t("it_role"),""],rows:CFG.people.map(p=>[
+        e("div",{style:{display:"flex",gap:8,alignItems:"center",opacity:p.active===false?.5:1}},e(Av,{id:p.id,size:26}),p.name,p.active===false&&e(Pill,{c:"#94A3B8"},t("inactive"))),e("span",{dir:"ltr",style:{color:"#8A8583"}},p.email||""),deptName(p.dept),p.manager?pname(p.manager):"—",
+        e("select",{"aria-label":t("it_role")+": "+p.name,disabled:busy||p.id===CFG.me.id,value:p.role,onChange:ev=>call("admin-save-user",{user:{...userRow(p),role:ev.target.value}}),style:{...IS,width:"auto",padding:"6px 8px"}},ROLES.map(r=>e("option",{key:r,value:r},t("role_"+r)))),
+        editBtns(()=>setEd({kind:"user",item:userRow(p)}))])}));
+  } else if(tab==="prio"){
+    body=e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
+      e(Section,{title:t("prio_levels")},e(AdminTable,{cols:["",t("name"),t("color")],rows:Object.keys(draft.prio).map(p=>[e("b",null,p),
+        e("div",{style:{minWidth:320}},e(Bi,{val:draft.prio[p].n,set:v=>dset("prio",{...draft.prio,[p]:{...draft.prio[p],n:v}})})),colorInput(draft.prio[p].c,v=>dset("prio",{...draft.prio,[p]:{...draft.prio[p],c:v}}),p)])})),
+      e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+        ["impacts","urgencies"].map(k=>e(Section,{key:k,title:t(k==="impacts"?"impact_opts":"urgency_opts")},draft[k].map((o,i)=>e(Bi,{key:i,val:o,set:v=>dset(k,draft[k].map((x,j)=>j===i?v:x))}))))),
+      e(Section,{title:t("matrix_edit")},e(Matrix,{value:draft.matrix,setValue:v=>dset("matrix",v)})),
+      e(SaveBar,{keys:["prio","impacts","urgencies","matrix"]}));
+  } else if(tab==="status"){
+    body=e(Section,{title:t("a_status")},e("p",{style:{color:"#8A8583",fontSize:"0.84rem",marginBottom:12}},t("status_note")),
+      e(AdminTable,{cols:["",t("name"),t("color")],rows:Object.keys(draft.statuses).map(s=>[e(Pill,{c:draft.statuses[s].c},s),e("div",{style:{minWidth:320}},e(Bi,{val:draft.statuses[s].n,set:v=>dset("statuses",{...draft.statuses,[s]:{...draft.statuses[s],n:v}})})),
+        colorInput(draft.statuses[s].c,v=>dset("statuses",{...draft.statuses,[s]:{...draft.statuses[s],c:v}}),s)])}),e(SaveBar,{keys:["statuses"]}));
+  } else if(tab==="canned"){
+    body=e(Section,{title:t("a_canned"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"canned",item:{id:null,l:{en:"",ar:""},t:{en:"",ar:""}}});},style:BP},t("add_canned"))},
+      CFG.canned.length?e(AdminTable,{cols:[t("title_lbl"),t("text_lbl"),""],rows:CFG.canned.map(x=>[both(x.l),e("div",{style:{maxWidth:520}},both(x.t)),editBtns(()=>setEd({kind:"canned",item:x}),()=>askDel(t("confirm_delete",{x:L(x.l)}),"admin-delete-canned",{id:x.id}))])}):e(Empty,{text:t("nothing")}));
+  } else if(tab==="kb"){
+    body=e(KBView,{onKB,admin:true,onAdd:()=>{setErr("");setEd({kind:"kb",item:{id:"",cat:(CFG.cats[0]||{}).id||null,t:{en:"",ar:""},body:{en:[],ar:[]}}});},onEdit:a=>{setErr("");setEd({kind:"kb",item:a});},onDelete:a=>askDel(t("confirm_delete",{x:L(a.t)}),"admin-delete-kb",{id:a.id})});
+  } else if(tab==="depts"){
+    body=e(Section,{title:t("a_depts"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"dept",item:{id:null,icon:"🏢",n:{en:"",ar:""}}});},style:BP},t("add_dept"))},e("p",{style:{color:"#8A8583",fontSize:"0.84rem",marginBottom:12}},t("depts_note")),
+      e(AdminTable,{cols:[t("icon"),t("name"),"",""],rows:Object.keys(CFG.depts).sort((a,b)=>CFG.depts[a].sort-CFG.depts[b].sort).map(k=>[e("span",{style:{fontSize:"1.2rem"}},CFG.depts[k].icon),both(CFG.depts[k].n),t("people_n",{n:CFG.people.filter(p=>p.dept===k).length}),
+        editBtns(()=>setEd({kind:"dept",item:{id:k,icon:CFG.depts[k].icon,n:CFG.depts[k].n}}),()=>askDel(t("confirm_delete",{x:L(CFG.depts[k].n)}),"admin-delete-dept",{id:k}))])}));
+  } else {
+    const rowS={display:"flex",gap:14,alignItems:"center",padding:"14px 0",borderTop:"1px solid #231F1E",flexWrap:"wrap"};
+    body=e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
+      e(Section,{title:t("a_general")},
+        e("div",{style:{...rowS,borderTop:"none"}},e("span",{style:{fontSize:"1.2rem"}},"📮"),e("div",{style:{flex:1,minWidth:200}},e("div",{style:{fontWeight:600}},t("g_support")+": ",e("span",{dir:"ltr",style:{color:"#F16A6F"}},CFG.supportEmail||"")),e("div",{style:{fontSize:"0.8rem",color:"#8A8583"}},t("g_support_d")))),
+        e("div",{style:rowS},e(Switch,{on:draft.supportCcUpdates,label:t("g_cc"),set:v=>dset("supportCcUpdates",v)}),e("div",{style:{fontWeight:600,flex:1,minWidth:200}},t("g_cc"))),
+        e("div",{style:rowS},e(Switch,{on:draft.autoAssign,label:t("g_auto"),set:v=>dset("autoAssign",v)}),e("div",{style:{flex:1,minWidth:200}},e("div",{style:{fontWeight:600}},t("g_auto")),e("div",{style:{fontSize:"0.8rem",color:"#8A8583"}},t("g_auto_d")))),
+        e("div",{style:rowS},e("div",{style:{flex:"1 1 260px"}},e("label",{style:LS,htmlFor:"g-mode"},t("g_approval")),e("select",{id:"g-mode",value:draft.approvalMode,onChange:ev=>dset("approvalMode",ev.target.value),style:IS},e("option",{value:"direct_manager"},t("g_mode_dm")),e("option",{value:"fixed"},t("g_mode_fixed")))),
+          e("div",{style:{flex:"1 1 220px"}},e("label",{style:LS,htmlFor:"g-appr"},t("g_approver")),e("select",{id:"g-appr",value:draft.approverId||"",onChange:ev=>dset("approverId",ev.target.value||null),style:IS},e("option",{value:""},t("none_opt")),CFG.people.filter(p=>p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name))))),
+        e("div",{style:rowS},e(Switch,{on:draft.kbSuggest,label:t("g_kb"),set:v=>dset("kbSuggest",v)}),e("div",{style:{fontWeight:600}},t("g_kb"))),
+        e("div",{style:rowS},e(Switch,{on:draft.csat,label:t("g_csat"),set:v=>dset("csat",v)}),e("div",{style:{fontWeight:600}},t("g_csat"))),
+        e(SaveBar,{keys:["supportCcUpdates","autoAssign","approvalMode","approverId","kbSuggest","csat"]})),
+      e(Section,{title:t("general_texts")},e(Bi,{label:t("g_greeting"),val:draft.greeting,set:v=>dset("greeting",v)}),e(Bi,{label:t("g_hero_sub"),val:draft.heroSub,set:v=>dset("heroSub",v)}),e(SaveBar,{keys:["greeting","heroSub"]})));
+  }
+  const kbFields=[{k:"t",label:t("title_lbl"),kind:"bi"},{k:"cat",label:t("category"),kind:"select",opts:CFG.cats.map(c=>[c.id,c.icon+" "+L(c.n)])},{k:"body",label:t("steps"),kind:"bilines"}];
+  return e("div",null,
+    e("p",{style:{color:"#8A8583",fontSize:"0.88rem",marginBottom:14,maxWidth:"75ch"}},t("admin_intro")),
+    e(Tabs,{val:tab,set:k=>{setTab(k);setErr("");},tabs:[["cats",t("a_cats")],["users",t("a_users")],["prio",t("a_prio")],["status",t("a_status")],["canned",t("a_canned")],["kb",t("a_kb")],["depts",t("a_depts")],["general",t("a_general")]]}),
+    body,
+    ed&&ed.kind==="user"&&e(UserEditor,{u0:ed.item,busy,err,onClose:()=>setEd(null),onSave:u=>call("admin-save-user",{user:u},true)}),
+    ed&&ed.kind==="dept"&&e(DeptEditor,{d0:ed.item,busy,err,onClose:()=>setEd(null),onSave:d=>call("admin-save-dept",{dept:d},true)}),
+    ed&&ed.kind==="cat"&&e(CatEditor,{c0:ed.item,busy,err,onClose:()=>setEd(null),onSave:c=>call("admin-save-category",{category:c},true)}),
+    ed&&ed.kind==="canned"&&e(SimpleEditor,{title:ed.item.id?t("edit"):t("new_canned"),init:ed.item,busy,err,onClose:()=>setEd(null),fields:[{k:"l",label:t("title_lbl"),kind:"bi"},{k:"t",label:t("text_lbl"),kind:"bi",rows:3}],onSave:v=>call("admin-save-canned",{item:v},true)}),
+    ed&&ed.kind==="kb"&&e(SimpleEditor,{title:ed.item.id?t("edit")+": "+L(ed.item.t):t("new_article"),init:ed.item,busy,err,fields:kbFields,onClose:()=>setEd(null),onSave:a=>call("admin-save-kb",{article:a},true)}),
+    del&&e(Confirm,{text:del.text,busy,onYes:del.go,onClose:()=>setDel(null)}));
+}
+
+/* ═════════ App shell ═════════ */
+const NAV = {
+  requester:[["home","🏠","nav_home"],["mine","📨","nav_mine"],["kb","📘","nav_kb"]],
+  agent:[["queue","📥","nav_queue"],["mine","📨","nav_mine"],["kb","📘","nav_kb"]],
+  manager:[["dash","📊","nav_dash"],["queue","📥","nav_queue"],["approvals","✅","nav_approvals"],["mine","📨","nav_mine"],["kb","📘","nav_kb"],["rules","🔀","nav_rules"]],
+  admin:[["admin","🛡️","nav_admin"],["dash","📊","nav_dash"],["queue","📥","nav_queue"],["approvals","✅","nav_approvals"],["mine","📨","nav_mine"],["kb","📘","nav_kb"]],
+};
+const TITLE = {home:"title_home",mine:"nav_mine",kb:"nav_kb",queue:"nav_queue",dash:"title_dash",approvals:"nav_approvals",rules:"nav_rules",admin:"nav_admin"};
+
+function Center({children}){ return e("div",{style:{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}},e("div",{style:{...card,padding:32,maxWidth:460,textAlign:"center"}},e("div",{style:{fontSize:"1.4rem",fontWeight:800,marginBottom:14}},e("span",{style:{color:"#E11A22"}},"◆")," IT ",e("span",{style:{color:"#F16A6F"}},"Help Desk")),children)); }
+
+function App(){
+  const [phase,setPhase]=useState("loading"); /* loading | login | setup | error | ready */
+  const [loadErr,setLoadErr]=useState("");
+  const [cfg,setCfgS]=useState(null);
+  const [tickets,setTickets]=useState([]);
+  const [view,setView]=useState(null);
+  const [sel,setSel]=useState(null), [newT,setNewT]=useState(null), [kb,setKb]=useState(null);
+  const [toastS,setToastS]=useState(null), [nav,setNav]=useState(false), [lang,setLangS]=useState(LANG);
+  const [,tick]=useState(0);
+  const setCfg=c=>{ CFG=c; setCfgS(c); };
+  if(cfg) CFG=cfg;
+  const toast=(text,kind)=>{ setToastS({text,kind}); clearTimeout(window.__tt); window.__tt=setTimeout(()=>setToastS(null),kind==="error"?5000:2800); };
+  const load=useCallback(async()=>{
+    setPhase("loading");
+    try{ const [c,ts]=await Promise.all([api("bootstrap"),api("list-tickets")]); setCfg(c); setTickets(ts); setPhase("ready"); }
+    catch(x){ if(x.status===401) setPhase("login"); else if(x.status===503) setPhase("setup"); else { setLoadErr(x.message); setPhase("error"); } }
+  },[]);
+  useEffect(()=>{ load(); },[load]);
+  /* Refresh the ticket list every minute while the tab is visible. */
+  useEffect(()=>{ if(phase!=="ready") return; const i=setInterval(()=>{ if(document.visibilityState==="visible") api("list-tickets").then(setTickets).catch(()=>{}); tick(x=>x+1); },60000); return()=>clearInterval(i); },[phase]);
+  useEffect(()=>{ const k=ev=>{ if(ev.key!=="Escape") return; if(kb) setKb(null); else if(newT) setNewT(null); else setSel(null); }; window.addEventListener("keydown",k); return()=>window.removeEventListener("keydown",k); },[kb,newT]);
+  const toggleLang=()=>{ LANG=LANG==="ar"?"en":"ar"; try{localStorage.setItem("ithd_lang",LANG);}catch(_){} applyDir(); setLangS(LANG); };
+  const langBtn=e("button",{id:"lang-btn",onClick:toggleLang,style:{...BSm,display:"inline-flex",gap:6,alignItems:"center",whiteSpace:"nowrap"}},"🌐 "+t("lang_btn"));
+
+  const qs=new URLSearchParams(location.search), qerr=qs.get("error");
+  const loginMsg=qerr&&S["err_"+qerr]?{text:t("err_"+qerr)}:qs.get("signed_out")?{text:t("signed_out"),ok:true}:null;
+  if(phase==="loading") return e(Center,null,e("div",{style:{color:"#F16A6F"}},t("loading")));
+  if(phase==="login") return e(Center,null,e("h1",{style:{fontSize:"1.15rem",marginBottom:10}},t("login_title")),e("p",{style:{color:"#8A8583",fontSize:"0.9rem",lineHeight:1.6,marginBottom:20}},t("login_sub")),loginMsg&&e("div",{role:"alert",style:{background:loginMsg.ok?"#064E3B":"#7F1D1D",border:"1px solid "+(loginMsg.ok?"#34D399":"#EF4444"),color:loginMsg.ok?"#D1FAE5":"#FCA5A5",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:"0.85rem"}},loginMsg.text),e("a",{href:"/api/auth-login",style:{...BP,display:"inline-block",textDecoration:"none"}},t("login_btn")),e("div",{style:{marginTop:16}},langBtn));
+  if(phase==="setup") return e(Center,null,e("h1",{style:{fontSize:"1.15rem",marginBottom:10}},t("setup_title")),e("p",{style:{color:"#8A8583",fontSize:"0.9rem",lineHeight:1.6,marginBottom:18}},t("setup_sub")),e("button",{onClick:load,style:BS},t("retry")));
+  if(phase==="error") return e(Center,null,e("h1",{style:{fontSize:"1.15rem",marginBottom:10}},t("load_err")),e("p",{style:{color:"#FCA5A5",fontSize:"0.85rem",marginBottom:18}},loadErr),e("button",{onClick:load,style:BS},t("retry")));
+
+  const role=CFG.me.role, me=CFG.me.id, meP=person(me)||{name:"",dept:null};
+  let navItems=NAV[role]||NAV.requester;
+  const approverOfAny=tickets.some(x=>x.approval&&x.approval.by===me);
+  if(!isLeadRole(role)&&approverOfAny) navItems=[...navItems,["approvals","✅","nav_approvals"]];
+  const cur=view&&navItems.some(n=>n[0]===view)?view:navItems[0][0];
+  const go=v=>{ setView(v); setNav(false); };
+  const onChanged=tk=>setTickets(ts=>ts.some(x=>x.id===tk.id)?ts.map(x=>x.id===tk.id?tk:x):[tk,...ts]);
+  const pending=tickets.filter(x=>x.approval&&x.approval.state==="pending"&&(x.approval.by===me||isLeadRole(role))).length;
+  const unassigned=isITRole(role)?tickets.filter(x=>!x.assignee&&isOpen(x)).length:0;
+  const selT=sel&&tickets.find(x=>x.id===sel);
+
+  const sidebar=e("nav",{className:"sidebar"+(nav?" open":""),style:{width:256,background:"#1A1717",borderInlineEnd:"1px solid #332C2B",display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",position:"sticky",top:0}},
+    e("div",{style:{padding:"20px 18px 14px",borderBottom:"1px solid #332C2B"}},e("div",{style:{fontSize:"1.25rem",fontWeight:800}},e("span",{style:{color:"#E11A22"}},"◆")," IT ",e("span",{style:{color:"#F16A6F"}},"Help Desk")),e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginTop:2}},t("app_sub"))),
+    e("div",{style:{padding:"12px 10px",flex:1,overflowY:"auto"}},
+      e("button",{id:"new-ticket",onClick:()=>setNewT({cat:null}),style:{...BP,width:"100%",marginBottom:14}},t("new_ticket_btn")),
+      navItems.map(([k,ic,l])=>e("button",{key:k,id:"nav-"+k,onClick:()=>go(k),"aria-current":cur===k?"page":undefined,style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 12px",borderRadius:8,border:"none",background:cur===k?"#E11A2222":"transparent",color:cur===k?"#F16A6F":"#C9C6C4",fontWeight:cur===k?700:500,marginBottom:2,textAlign:"start"}},e("span",null,ic),e("span",{style:{flex:1}},t(l)),
+        k==="approvals"&&pending>0&&e("span",{style:{fontSize:"0.7rem",background:"#A78BFA",color:"#fff",borderRadius:10,padding:"1px 7px"}},pending),k==="queue"&&unassigned>0&&e("span",{style:{fontSize:"0.7rem",background:"#E11A22",color:"#fff",borderRadius:10,padding:"1px 7px"}},unassigned))),
+      null),
+    e("div",{style:{padding:14,borderTop:"1px solid #332C2B",background:"#151211",display:"flex",gap:8,alignItems:"center"}},e(Av,{id:me,size:32}),e("div",{style:{minWidth:0,flex:1}},e("div",{style:{fontSize:"0.84rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},meP.name),e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},t("role_"+role))),e("a",{href:"/api/auth-logout",title:t("sign_out"),"aria-label":t("sign_out"),style:{color:"#8A8583",textDecoration:"none",fontSize:"1.1rem",padding:4}},"⏻")));
+
+  let body;
+  if(cur==="home") body=e(HelpHome,{me,tickets,onNew:(c,x)=>setNewT({cat:c,text:x}),onOpen:x=>setSel(x.id),onKB:setKb,go});
+  else if(cur==="mine") body=e(MyRequests,{me,tickets,onOpen:x=>setSel(x.id)});
+  else if(cur==="queue") body=e(Queue,{me,role,tickets,onOpen:x=>setSel(x.id),selId:sel});
+  else if(cur==="approvals") body=e(Approvals,{me,role,tickets,onOpen:x=>setSel(x.id),onChanged,toast});
+  else if(cur==="kb") body=e(KBView,{onKB:setKb});
+  else if(cur==="dash") body=e(Dashboard,{tickets});
+  else if(cur==="rules") body=e(Rules);
+  else if(cur==="admin") body=e(Admin,{setCfg,toast,onKB:setKb});
+
+  return e("div",{"data-lang":lang,style:{display:"flex",minHeight:"100vh"}},
+    nav&&e("div",{className:"overlay",onClick:()=>setNav(false)}),
+    sidebar,
+    e("main",{style:{flex:1,minWidth:0}},
+      e("div",{style:{padding:"14px 26px",borderBottom:"1px solid #332C2B",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,background:"#12100Fee",backdropFilter:"blur(6px)",zIndex:50}},
+        e("button",{className:"hamb",onClick:()=>setNav(true),"aria-label":t("menu"),style:{display:"none",background:"none",border:"1px solid #332C2B",color:"#C9C6C4",borderRadius:8,padding:"6px 10px"}},"☰"),
+        e("h2",{style:{fontSize:"1.15rem",fontWeight:700,flex:1,minWidth:0}},t(TITLE[cur])),langBtn),
+      e("div",{className:"main-pad",style:{padding:"22px 26px",maxWidth:1260}},body)),
+    selT&&e(Drawer,{tk:selT,me,role,onClose:()=>setSel(null),onChanged,toast}),
+    newT&&e(NewTicket,{me,initialCat:newT.cat,initialText:newT.text,onClose:()=>setNewT(null),onKB:setKb,onCreated:tk=>{ onChanged(tk); setNewT(null); go("mine"); toast(t("toast_created",{id:tk.id})); }}),
+    kb&&e(KBModal,{a:kb,onClose:()=>setKb(null)}),
+    e(Toast,{toast:toastS}));
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(e(App));
+</script>
+</body>
+</html>
