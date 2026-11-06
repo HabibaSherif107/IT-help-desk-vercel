@@ -6,8 +6,12 @@ const { sendEmail, SEP } = require("./_email");
 
 const B = (en, ar) => ({ en, ar });
 
-// Every new IT ticket is emailed here. Fixed by the server (env var), not editable in the app.
-const SUPPORT_EMAIL = () => (process.env.IT_SUPPORT_EMAIL || "support@company.com").trim();
+// Optional shared support mailbox (env IT_SUPPORT_EMAIL). Empty = no support mailbox at all.
+// There is deliberately NO fallback address: if it's not set, nothing is sent to "support".
+const SUPPORT_EMAIL = () => {
+  const v = String(process.env.IT_SUPPORT_EMAIL || "").trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? v : null;
+};
 const APP_LINK = () => (process.env.APP_URL || "").replace(/\/+$/, "") + "/";
 
 const IT_ROLES = ["requester", "agent", "manager", "admin"];
@@ -160,6 +164,7 @@ async function loadConfig(viewer) {
   return {
     me: { id: viewer.id, role, name: viewer.name },
     supportEmail: isLead(role) ? SUPPORT_EMAIL() : undefined,
+    supportEnabled: !!SUPPORT_EMAIL(),
     autoAssign: settings.autoAssign, approvalMode: settings.approvalMode, approver: settings.approverId,
     kbSuggest: settings.kbSuggest, csat: settings.csat, supportCcUpdates: settings.supportCcUpdates,
     escalateTo: settings.escalateTo, escalateTarget: pickEscalationTarget(settings, users),
@@ -231,6 +236,7 @@ function buildEmail(kind, t, ctx, extra = {}) {
     reply_to_it: ["رد جديد من الموظف", "New reply from the employee", `${note}\n\n${sAr}`, `${note}\n\n${sEn}`],
     resolved: ["تم حل تذكرتك", "Your ticket was resolved", `حدد فريق التقنية هذه التذكرة كمحلولة. افتح مكتب الدعم لتأكيد الحل وتقييمه، أو لإعادة فتحها.\nالحل: ${note}\n\n${sAr}`, `IT marked this ticket as resolved. Open the Help Desk to confirm and rate the fix, or reopen it.\nFix: ${note}\n\n${sEn}`],
     escalated: ["تم تصعيد تذكرة إليك", "Ticket escalated to you", `صعّد ${extra.by || "فريق التقنية"} هذه التذكرة إليك.\nالسبب: ${note}\n\n${sAr}\n\nالتفاصيل:\n${t.description}`, `${extra.by || "IT"} escalated this ticket to you.\nReason: ${note}\n\n${sEn}\n\nDetails:\n${t.description}`],
+    unassigned_new: ["تذكرة جديدة بانتظار الإسناد", "New ticket waiting to be assigned", `فُتحت تذكرة جديدة ولم تُسند لأحد. يُرجى إسنادها من قائمة التذاكر ← غير مُسندة.\n\n${sAr}\n\nالتفاصيل:\n${t.description}`, `A new ticket was raised and nobody is assigned to it. Please assign it from Ticket Queue → Unassigned.\n\n${sEn}\n\nDetails:\n${t.description}`],
     reopened: ["أُعيد فتح التذكرة", "Ticket reopened", `أعاد الموظف فتح التذكرة لأن المشكلة ما زالت قائمة.\n\n${sAr}`, `The employee reopened the ticket because the issue is still happening.\n\n${sEn}`],
   }[kind];
   const [hAr, hEn, bAr, bEn] = T;

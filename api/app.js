@@ -2,8 +2,9 @@
 // POST /api/app { action, ... }. Identity always comes from the session
 // cookie (see _session.js), never from the request body.
 //
-// Every new ticket is emailed to the support mailbox (IT_SUPPORT_EMAIL,
-// default support@company.com) — see "create-ticket" below.
+// Emails go to the people involved. An optional shared support mailbox
+// (IT_SUPPORT_EMAIL) can also get copies; when it isn't set, nothing is sent to
+// "support" and notices that had no owner go to the escalation contact instead.
 const { getUser } = require("./_session");
 const IT = require("./_core");
 const { supabase, check, str, bi, isColor, itRoleOf, isIT, isLead, SetupRequired } = IT;
@@ -62,7 +63,10 @@ async function emailCtx(t) {
     settings, members, byId, cat: catRow,
     requester: byId(t.requester_id), assignee: byId(t.assignee_id), approver: byId(t.approver_id),
     dept: deptRow ? deptRow.name : null,
-    supportCc: settings.supportCcUpdates ? IT.SUPPORT_EMAIL() : null,
+    supportCc: settings.supportCcUpdates && IT.SUPPORT_EMAIL() ? IT.SUPPORT_EMAIL() : null,
+    // Who hears about a ticket when nobody is assigned: the support mailbox if there is one,
+    // otherwise the escalation contact (normally the IT manager).
+    fallback: IT.SUPPORT_EMAIL() || ((members.find(m => m.id === IT.pickEscalationTarget(settings, members)) || {}).email || null),
   };
 }
 
@@ -209,8 +213,10 @@ module.exports = async function handler(req, res) {
       const created = await getTicketRow(id);
       const ctx = await emailCtx(created);
       await Promise.all([
-        // Support mailbox: every new ticket, unless the admin turned this off for the category.
-        cat.notify_support !== false ? IT.notify("created_support", created, ctx, IT.SUPPORT_EMAIL(), {}, "created_support") : null,
+        // Support mailbox (only if one is configured and the category's copy is on).
+        IT.SUPPORT_EMAIL() && cat.notify_support !== false ? IT.notify("created_support", created, ctx, IT.SUPPORT_EMAIL(), {}, "created_support") : null,
+        // Nobody assigned and support didn't get it: tell the escalation contact so it isn't missed.
+        !needsApproval && !owner && !(IT.SUPPORT_EMAIL() && cat.notify_support !== false) ? IT.notify("unassigned_new", created, ctx, ctx.fallback, {}, "unassigned_new") : null,
         IT.notify("created_requester", created, ctx, me.email),
         needsApproval
           ? IT.notify("approval_request", created, ctx, ctx.approver && ctx.approver.email)
@@ -248,7 +254,7 @@ module.exports = async function handler(req, res) {
         if (!internal) {
           const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
           if (isIT(role)) await IT.notify("reply_to_requester", fresh, ctx, ctx.requester && ctx.requester.email, { text });
-          else await IT.notify("reply_to_it", fresh, ctx, (ctx.assignee && ctx.assignee.email) || IT.SUPPORT_EMAIL(), { text });
+          else await IT.notify("reply_to_it", fresh, ctx, (ctx.assignee && ctx.assignee.email) || ctx.fallback, { text });
         }
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
       }
@@ -342,7 +348,7 @@ module.exports = async function handler(req, res) {
         await patchTicket(t.id, { status: "In Progress", resolved_at: null });
         await addEvent(t.id, viewer.id, "reopened", ev("Employee reopened the ticket", "أعاد الموظف فتح التذكرة"));
         const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
-        await IT.notify("reopened", fresh, ctx, [(ctx.assignee && ctx.assignee.email) || IT.SUPPORT_EMAIL(), ctx.supportCc]);
+        await IT.notify("reopened", fresh, ctx, [(ctx.assignee && ctx.assignee.email) || ctx.fallback, ctx.supportCc]);
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
       }
 

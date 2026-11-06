@@ -134,7 +134,8 @@ const S = {
   title_lbl:["Title","العنوان"], text_lbl:["Text","النص"], add_canned:["+ Add reply","+ إضافة رد"], new_canned:["New reply","رد جديد"],
   steps:["Steps (one per line)","الخطوات (خطوة في كل سطر)"], category:["Category","الفئة"], add_article:["+ New article","+ مقالة جديدة"], new_article:["New article","مقالة جديدة"],
   depts_note:["Departments are used on tickets, on the dashboard and to group people. A department in use can't be deleted.","تُستخدم الأقسام في التذاكر ولوحة المتابعة وتجميع الأشخاص. لا يمكن حذف قسم مستخدم."],
-  g_support:["IT support mailbox","صندوق بريد الدعم الفني"], g_support_d:["Every new ticket is emailed here. To change it, update IT_SUPPORT_EMAIL in Vercel.","تُرسل كل تذكرة جديدة إلى هذا العنوان. لتغييره عدّل IT_SUPPORT_EMAIL في Vercel."],
+  g_support:["IT support mailbox","صندوق بريد الدعم الفني"], g_support_d:["New tickets in categories with the support copy on are emailed here. To change or remove it, edit IT_SUPPORT_EMAIL in Vercel.","تُرسل إليه التذاكر الجديدة في الفئات التي فُعّلت لها نسخة الدعم. لتغييره أو إزالته عدّل IT_SUPPORT_EMAIL في Vercel."],
+  g_support_off:["No support mailbox","لا يوجد صندوق بريد للدعم"], g_support_off_d:["Every ticket is emailed to its assigned person. New tickets that nobody is assigned to, and replies on them, go to {name} (the escalation contact).","تُرسل كل تذكرة إلى المسؤول عنها. التذاكر الجديدة غير المُسندة والردود عليها تُرسل إلى {name} (مستقبل التصعيد)."],
   g_cc:["Also copy the support mailbox on resolve, reopen and approval decisions","إرسال نسخة لصندوق الدعم أيضًا عند الحل وإعادة الفتح وقرارات الموافقة"],
   g_auto:["Auto-assign new tickets by category","إسناد التذاكر الجديدة تلقائيًا حسب الفئة"], g_auto_d:["When off, every ticket arrives unassigned and the IT team picks it up from the queue.","عند الإيقاف تصل كل تذكرة دون إسناد ويستلمها الفريق من القائمة."],
   g_approval:["Who approves requests","من يوافق على الطلبات"], g_mode_dm:["The employee's manager (set in Users & roles)","مدير الموظف (يُحدد في المستخدمون والأدوار)"], g_mode_fixed:["Always the person below","دائمًا الشخص المحدد أدناه"],
@@ -278,7 +279,7 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
       incident&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("who_affected")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.impacts.map((x,i)=>e(Opt,{key:i,sel:f.impact===i+1,onClick:()=>set("impact",i+1)},L(x))))),
       e("div",{style:{marginBottom:14}},e("div",{style:LS},t("how_urgent")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.urgencies.map((x,i)=>e(Opt,{key:i,sel:f.urgency===i+1,onClick:()=>set("urgency",i+1)},L(x))))),
       e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-link"},t("file_link")),e("input",{id:"nt-link",value:f.link,onChange:ev=>set("link",ev.target.value),placeholder:t("file_link_ph"),dir:"ltr",style:IS})),
-      e("div",{style:{background:"#151211",border:"1px solid #231F1E",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:"0.82rem",color:"#C9C6C4"}},e("span",null,t("calc_prio")),e(PrioB,{p}),e("span",{style:{color:"#8A8583"}},"· "+route+(c.notifySupport!==false?" · "+t("support_note"):""))),
+      e("div",{style:{background:"#151211",border:"1px solid #231F1E",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:"0.82rem",color:"#C9C6C4"}},e("span",null,t("calc_prio")),e(PrioB,{p}),e("span",{style:{color:"#8A8583"}},"· "+route+(CFG.supportEnabled&&c.notifySupport!==false?" · "+t("support_note"):""))),
       e(ErrBox,{text:err}),
       e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{id:"nt-submit",disabled:busy,onClick:submit,style:BP},busy?t("submitting"):t("submit")))));
 }
@@ -466,10 +467,10 @@ function Rules(){ const td={padding:"10px 8px",borderBottom:"1px solid #231F1E"}
     e("div",{style:{...card,padding:"12px 16px",display:"flex",gap:10,alignItems:"center"}},e("span",null,"⬆"),e("b",null,CFG.escalateTarget?t("esc_to_line",{name:pname(CFG.escalateTarget)}):t("esc_none"))),
     e("div",{style:{...card,padding:"12px 16px",display:"flex",gap:10,alignItems:"center",borderColor:CFG.autoAssign?"#34D39966":"#F59E0B66"}},e("span",null,CFG.autoAssign?"✅":"⏸"),e("b",null,CFG.autoAssign?t("auto_on"):t("auto_off"))),
     e(Section,{title:t("nav_rules")},e("div",{style:{overflowX:"auto"}},e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:"0.86rem",minWidth:520}},
-      e("thead",null,e("tr",null,[t("h_cat"),t("h_type"),t("h_owner2"),t("h_approval"),t("h_support")].map(h=>e("th",{key:h,style:{textAlign:"start",padding:8,...HEAD,borderBottom:"1px solid #332C2B"}},h)))),
+      e("thead",null,e("tr",null,[t("h_cat"),t("h_type"),t("h_owner2"),t("h_approval")].concat(CFG.supportEnabled?[t("h_support")]:[]).map(h=>e("th",{key:h,style:{textAlign:"start",padding:8,...HEAD,borderBottom:"1px solid #332C2B"}},h)))),
       e("tbody",null,CFG.cats.filter(c=>c.active).map(c=>e("tr",{key:c.id},e("td",{style:td},c.icon+" "+L(c.n)),e("td",{style:td},e(TypeB,{type:c.type})),
         e("td",{style:td},c.owner&&person(c.owner)?e("span",{style:{display:"inline-flex",gap:6,alignItems:"center"}},e(Av,{id:c.owner,size:22}),pname(c.owner)):e("span",{style:{color:"#8A8583"}},t("triage"))),
-        e("td",{style:td},c.approval?"✓":"—"),e("td",{style:td},c.notifySupport!==false?"✓":"—"))))))),
+        e("td",{style:td},c.approval?"✓":"—"),CFG.supportEnabled&&e("td",{style:td},c.notifySupport!==false?"✓":"—"))))))),
     e(Section,{title:t("prio_matrix")},e(Matrix,{})));
 }
 
@@ -488,7 +489,7 @@ function CatEditor({c0,onSave,onClose,busy,err}){
       e("div",null,e("label",{style:LS,htmlFor:"ce-type"},t("type")),e("select",{id:"ce-type",value:c.type,onChange:ev=>set("type",ev.target.value),style:IS},e("option",{value:"incident"},t("incident")),e("option",{value:"request"},t("request")))),
       e("div",null,e("label",{style:LS,htmlFor:"ce-owner"},t("owner")),e("select",{id:"ce-owner",value:c.owner||"",onChange:ev=>set("owner",ev.target.value||null),style:IS},e("option",{value:""},t("nobody_triage")),CFG.people.filter(p=>isITRole(p.role)&&p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
       e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",paddingBottom:10}},e(Switch,{on:c.approval,set:v=>set("approval",v),label:t("needs_appr_lbl")}),t("needs_appr_lbl"))),
-    e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",marginBottom:14}},e(Switch,{on:c.notifySupport!==false,set:v=>set("notifySupport",v),label:t("cat_support")}),t("cat_support")),
+    CFG.supportEnabled&&e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",marginBottom:14}},e(Switch,{on:c.notifySupport!==false,set:v=>set("notifySupport",v),label:t("cat_support")}),t("cat_support")),
     e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"8px 0 10px"}},t("form_fields")),
     c.fields.map((f,i)=>e("div",{key:f.k,style:{...card,background:"#151211",padding:14,marginBottom:10}},
       e("div",{style:{display:"flex",gap:10,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}},e("div",{style:{flex:"1 1 160px"}},e("label",{style:LS},t("field_kind")),e("select",{value:f.kind,onChange:ev=>setField(i,{kind:ev.target.value,opts:ev.target.value==="select"?(f.opts&&f.opts.length?f.opts:[{en:"",ar:""}]):f.opts}),style:IS},e("option",{value:"text"},t("kind_text")),e("option",{value:"select"},t("kind_select")),e("option",{value:"date"},t("kind_date")))),
@@ -551,11 +552,11 @@ function Admin({setCfg,toast,onKB}){
     const ids=CFG.cats.map(c=>c.id), last=ids.length-1;
     const move=(i,d)=>{ const j=i+d; if(j<0||j>last) return; const n=ids.slice(); [n[i],n[j]]=[n[j],n[i]]; call("admin-reorder-categories",{ids:n}); };
     body=e(Section,{title:t("a_cats"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"cat",item:{id:"",icon:"🆕",active:true,type:"incident",owner:null,approval:false,notifySupport:true,n:{en:"",ar:""},d:{en:"",ar:""},fields:[]}});},style:BP},t("add_cat"))},
-      e(AdminTable,{cols:["",t("name"),t("type"),t("owner"),t("h_approval"),t("h_support"),t("form_fields"),t("shown"),""],rows:CFG.cats.map((c,i)=>[
+      e(AdminTable,{cols:["",t("name"),t("type"),t("owner"),t("h_approval")].concat(CFG.supportEnabled?[t("h_support")]:[]).concat([t("form_fields"),t("shown"),""]),rows:CFG.cats.map((c,i)=>[
         e("div",{style:{display:"flex",flexDirection:"column",gap:2}},e("button",{onClick:()=>move(i,-1),"aria-label":"↑",disabled:busy||i===0,style:{...BSm,padding:"0 6px"}},"▲"),e("button",{onClick:()=>move(i,1),"aria-label":"↓",disabled:busy||i===last,style:{...BSm,padding:"0 6px"}},"▼")),
-        e("div",{style:{display:"flex",gap:8,alignItems:"center"}},e("span",{style:{fontSize:"1.3rem"}},c.icon),both(c.n)),e(TypeB,{type:c.type}),c.owner&&person(c.owner)?pname(c.owner):e("span",{style:{color:"#8A8583"}},t("triage")),c.approval?"✓":"—",c.notifySupport!==false?"✓":"—",c.fields.length===1?t("fields_1"):t("fields_n",{n:c.fields.length}),
+        e("div",{style:{display:"flex",gap:8,alignItems:"center"}},e("span",{style:{fontSize:"1.3rem"}},c.icon),both(c.n)),e(TypeB,{type:c.type}),c.owner&&person(c.owner)?pname(c.owner):e("span",{style:{color:"#8A8583"}},t("triage")),c.approval?"✓":"—"].concat(CFG.supportEnabled?[c.notifySupport!==false?"✓":"—"]:[]).concat([c.fields.length===1?t("fields_1"):t("fields_n",{n:c.fields.length}),
         e(Switch,{on:c.active,label:t("shown"),disabled:busy,set:v=>call("admin-toggle-category",{id:c.id,active:v})}),
-        editBtns(()=>setEd({kind:"cat",item:c}),()=>askDel(t("confirm_delete",{x:L(c.n)}),"admin-delete-category",{id:c.id}))])}));
+        editBtns(()=>setEd({kind:"cat",item:c}),()=>askDel(t("confirm_delete",{x:L(c.n)}),"admin-delete-category",{id:c.id}))]))}));
   } else if(tab==="users"){
     const userRow=p=>({id:p.id,name:p.name,email:p.email||"",dept:p.dept||null,manager:p.manager||null,role:p.role,active:p.active!==false});
     body=e(Section,{title:t("a_users"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"user",item:{id:null,name:"",email:"",dept:null,manager:null,role:"requester",active:true}});},style:BP},t("add_user"))},
@@ -589,8 +590,10 @@ function Admin({setCfg,toast,onKB}){
     const rowS={display:"flex",gap:14,alignItems:"center",padding:"14px 0",borderTop:"1px solid #231F1E",flexWrap:"wrap"};
     body=e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
       e(Section,{title:t("a_general")},
-        e("div",{style:{...rowS,borderTop:"none"}},e("span",{style:{fontSize:"1.2rem"}},"📮"),e("div",{style:{flex:1,minWidth:200}},e("div",{style:{fontWeight:600}},t("g_support")+": ",e("span",{dir:"ltr",style:{color:"#F16A6F"}},CFG.supportEmail||"")),e("div",{style:{fontSize:"0.8rem",color:"#8A8583"}},t("g_support_d")))),
-        e("div",{style:rowS},e(Switch,{on:draft.supportCcUpdates,label:t("g_cc"),set:v=>dset("supportCcUpdates",v)}),e("div",{style:{fontWeight:600,flex:1,minWidth:200}},t("g_cc"))),
+        CFG.supportEnabled
+          ? e("div",{style:{...rowS,borderTop:"none"}},e("span",{style:{fontSize:"1.2rem"}},"📮"),e("div",{style:{flex:1,minWidth:200}},e("div",{style:{fontWeight:600}},t("g_support")+": ",e("span",{dir:"ltr",style:{color:"#F16A6F"}},CFG.supportEmail||"")),e("div",{style:{fontSize:"0.8rem",color:"#8A8583"}},t("g_support_d"))))
+          : e("div",{style:{...rowS,borderTop:"none"}},e("span",{style:{fontSize:"1.2rem"}},"📭"),e("div",{style:{flex:1,minWidth:200}},e("div",{style:{fontWeight:600}},t("g_support_off")),e("div",{style:{fontSize:"0.8rem",color:"#8A8583"}},t("g_support_off_d",{name:CFG.escalateTarget?pname(CFG.escalateTarget):"—"})))),
+        CFG.supportEnabled&&e("div",{style:rowS},e(Switch,{on:draft.supportCcUpdates,label:t("g_cc"),set:v=>dset("supportCcUpdates",v)}),e("div",{style:{fontWeight:600,flex:1,minWidth:200}},t("g_cc"))),
         e("div",{style:rowS},e(Switch,{on:draft.autoAssign,label:t("g_auto"),set:v=>dset("autoAssign",v)}),e("div",{style:{flex:1,minWidth:200}},e("div",{style:{fontWeight:600}},t("g_auto")),e("div",{style:{fontSize:"0.8rem",color:"#8A8583"}},t("g_auto_d")))),
         e("div",{style:rowS},e("div",{style:{flex:"1 1 260px"}},e("label",{style:LS,htmlFor:"g-mode"},t("g_approval")),e("select",{id:"g-mode",value:draft.approvalMode,onChange:ev=>dset("approvalMode",ev.target.value),style:IS},e("option",{value:"direct_manager"},t("g_mode_dm")),e("option",{value:"fixed"},t("g_mode_fixed")))),
           e("div",{style:{flex:"1 1 220px"}},e("label",{style:LS,htmlFor:"g-appr"},t("g_approver")),e("select",{id:"g-appr",value:draft.approverId||"",onChange:ev=>dset("approverId",ev.target.value||null),style:IS},e("option",{value:""},t("none_opt")),CFG.people.filter(p=>p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name))))),

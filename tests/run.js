@@ -300,6 +300,35 @@ async function tests() {
   ok((await call("sara@dar.test", "list-tickets")).body.every(x => x.history === undefined), "employees don't receive the internal history");
   const logged = (await pool.query("select count(*)::int n from email_log where kind='assigned' and recipient='karim@dar.test'")).rows[0].n;
   ok(logged === mails.filter(m => m.to === "karim@dar.test" && /assigned to you/.test(m.subject)).length, "every assignment email is recorded in email_log");
+
+  console.log("Running with no support mailbox (IT_SUPPORT_EMAIL empty)");
+  process.env.IT_SUPPORT_EMAIL = "";
+  await call("hany@dar.test", "admin-save-settings", { values: { supportCcUpdates: true } });
+  cfg = (await call("hany@dar.test", "bootstrap")).body;
+  ok(cfg.supportEnabled === false && cfg.supportEmail === null, "app reports that there is no support mailbox");
+  const noSupport0 = mails.length;
+  n0 = mails.length;
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "Strange beeping", description: "From the server room" } });
+  const un = r.body.ticket;
+  ok(un.status === "New" && !un.assignee, "ticket with no category owner stays unassigned");
+  ok(mails.slice(n0).some(m => m.to === "omar@dar.test" && /waiting to be assigned/.test(m.subject)), "…and the escalation contact (IT manager) is emailed instead of support");
+  n0 = mails.length;
+  await call("sara@dar.test", "reply", { id: un.id, text: "It's getting louder" });
+  ok(mails.slice(n0).some(m => m.to === "omar@dar.test" && /New reply from the employee/.test(m.subject)), "employee reply on an unassigned ticket goes to the IT manager");
+  n0 = mails.length;
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "hardware", title: "Monitor dead", description: "No power", fields: { device: 2, reason: 2 } } });
+  const hwT = r.body.ticket;
+  ok(mails.slice(n0).some(m => m.to === "karim@dar.test" && /assigned to you/.test(m.subject)) && !mails.slice(n0).some(m => m.to === "omar@dar.test"), "owned category: only the technician is emailed (manager not disturbed)");
+  await call("karim@dar.test", "resolve", { id: hwT.id, note: "Replaced power cable" });
+  await call("sara@dar.test", "reopen", { id: hwT.id });
+  ok(mails.slice(n0).some(m => m.to === "karim@dar.test" && /reopened/.test(m.subject)), "reopen goes to the assigned technician");
+  const after = mails.slice(noSupport0);
+  ok(after.length > 0 && !after.some(m => /support@|company\.com/i.test(m.to)), "nothing is sent to any support / company.com address once it's removed");
+  process.env.MAIL_FROM_ADDRESS = "it-support@dar.test";
+  n0 = mails.length;
+  await call("karim@dar.test", "reply", { id: hwT.id, text: "Checking again" });
+  ok(mails.slice(n0).length && mails.slice(n0).every(m => /it-support@dar\.test/.test(m.from)), "optional MAIL_FROM_ADDRESS is used as the sender address");
+  delete process.env.MAIL_FROM_ADDRESS;
 }
 
 (async () => {

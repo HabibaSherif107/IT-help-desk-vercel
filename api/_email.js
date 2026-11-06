@@ -40,7 +40,9 @@ async function sendEmail({ to, subject, headline, body, link, linkLabel, kind, t
   let ok = true;
   try {
     await getTransporter().sendMail({
-      from: `"${process.env.MAIL_FROM_NAME || "IT Help Desk"}" <${process.env.SMTP_USER}>`,
+      // MAIL_FROM_ADDRESS (optional) lets the emails show a shared/group address that the
+      // SMTP_USER account is allowed to "send as" in Zoho. Otherwise the SMTP_USER address is used.
+      from: `"${process.env.MAIL_FROM_NAME || "IT Help Desk"}" <${(process.env.MAIL_FROM_ADDRESS || "").trim() || process.env.SMTP_USER}>`,
       to, subject, text: body,
       html: emailHtml({ headline: headline || subject, body, link, linkLabel }),
     });

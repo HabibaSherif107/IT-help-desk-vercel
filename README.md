@@ -44,11 +44,11 @@ Admins can rename, reorder, hide, add or remove categories and change their ques
 ### Emails
 | When | Who gets an email |
 |---|---|
-| **Any new ticket** | The employee (confirmation) and the category's owner, or the approver. **Also the IT support mailbox (`support@company.com`)**, unless the admin turned that off for the category (**Categories & forms → "Email the support mailbox…"**). |
+| **Any new ticket** | The employee (confirmation) and the category's owner, or the approver. If **nobody is assigned**, the IT manager (escalation contact). An optional shared support inbox (`IT_SUPPORT_EMAIL`) can also get copies; by default there is none. |
 | **Assigned**: automatically by category, by a colleague, taken by the technician, or after approval | **The assigned person, every time.** The email says how it was assigned. |
 | Escalated | The IT manager receiving escalations, with the reason |
 | IT replies | The employee |
-| The employee replies | The assigned IT person (or support if nobody is assigned) |
+| The employee replies | The assigned IT person (or the IT manager if nobody is assigned) |
 | Assigned / approved / rejected / resolved / reopened | The people involved |
 
 Every email is in Arabic and English and is recorded in a log (`email_log`). IT staff also see a **History** on each ticket (created, assigned, status changes, escalations, approvals, resolution), so every step is documented both in the app and by email.
@@ -105,8 +105,8 @@ See `.env.example`. **Never commit real values.**
 | Database | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` |
 | Sign-in | `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_ACCOUNTS_URL` |
 | Site | `APP_URL` |
-| Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM_NAME` |
-| Help desk rules | `IT_SUPPORT_EMAIL`, `BOOTSTRAP_ADMIN_EMAILS`, `ALLOWED_EMAIL_DOMAINS` |
+| Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM_NAME`, `MAIL_FROM_ADDRESS` (optional "send as" address) |
+| Help desk rules | `IT_SUPPORT_EMAIL` (optional; empty = no support inbox), `BOOTSTRAP_ADMIN_EMAILS`, `ALLOWED_EMAIL_DOMAINS` |
 
 ### Tests
 ```bash
@@ -118,7 +118,7 @@ The tests create a throwaway database and run `schema.sql` twice, to prove it is
 - sign-in rules
 - permissions and visibility
 - internal notes never reaching employees
-- the support mailbox receiving exactly one email per ticket
+- the optional support inbox receiving exactly one email per ticket, and nothing at all when it's removed
 - approvals, resolve/confirm/reopen
 - admin validation
 - signing out turned-off users
