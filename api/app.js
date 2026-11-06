@@ -20,8 +20,17 @@ async function getMessages(ids) {
   if (!ids.length) return [];
   return check(await supabase.from("ticket_messages").select("*").in("ticket_id", ids)) || [];
 }
+// History entry; `detail` is {en, ar} so the history reads correctly in both languages.
 async function addEvent(ticketId, actorId, type, detail) {
-  await supabase.from("ticket_events").insert({ ticket_id: ticketId, actor_id: actorId, type, detail: str(detail, 500) });
+  const d = detail && typeof detail === "object" ? JSON.stringify({ en: str(detail.en, 400), ar: str(detail.ar, 400) }) : str(detail, 500);
+  await supabase.from("ticket_events").insert({ ticket_id: ticketId, actor_id: actorId, type, detail: d });
+}
+const ev = (en, ar) => ({ en, ar });
+const nameOf = (members, id) => (members.find(m => m.id === id) || {}).name || "—";
+const short = s => (s.length > 160 ? s.slice(0, 157) + "…" : s);
+async function getEvents(ids) {
+  if (!ids.length) return [];
+  return check(await supabase.from("ticket_events").select("*").in("ticket_id", ids)) || [];
 }
 async function addMessage(ticketId, authorId, body, internal) {
   check(await supabase.from("ticket_messages").insert({ ticket_id: ticketId, author_id: authorId, body: str(body, 5000), internal: !!internal }));
@@ -39,7 +48,7 @@ function access(viewer, role, t) {
 async function shapedOne(viewer, role, id) {
   const t = await getTicketRow(id);
   const a = access(viewer, role, t);
-  return IT.shapeTicket(t, await getMessages([t.id]), a.internal);
+  return IT.shapeTicket(t, await getMessages([t.id]), a.internal, a.internal ? await getEvents([t.id]) : []);
 }
 // Context for emails: category, people, department, settings.
 async function emailCtx(t) {
@@ -139,9 +148,12 @@ module.exports = async function handler(req, res) {
         const map = new Map(); [...own, ...toApprove].forEach(t => map.set(t.id, t));
         rows = [...map.values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       }
-      const msgs = await getMessages(rows.map(t => t.id));
-      const by = {}; msgs.forEach(m => (by[m.ticket_id] = by[m.ticket_id] || []).push(m));
-      return res.status(200).json(rows.map(t => IT.shapeTicket(t, by[t.id], access(viewer, role, t).internal)));
+      const ids = rows.map(t => t.id);
+      const [msgs, evs] = await Promise.all([getMessages(ids), isIT(role) ? getEvents(ids) : []]);
+      const by = {}, evBy = {};
+      msgs.forEach(m => (by[m.ticket_id] = by[m.ticket_id] || []).push(m));
+      evs.forEach(x => (evBy[x.ticket_id] = evBy[x.ticket_id] || []).push(x));
+      return res.status(200).json(rows.map(t => IT.shapeTicket(t, by[t.id], access(viewer, role, t).internal, evBy[t.id])));
     }
 
     if (action === "kb-view") {
@@ -186,9 +198,14 @@ module.exports = async function handler(req, res) {
         approval_state: needsApproval ? "pending" : null, approver_id: approver,
       };
       check(await supabase.from("tickets").insert(row));
-      await addEvent(id, viewer.id, "created", "Ticket created");
+      await addEvent(id, viewer.id, "created", ev("Ticket created", "تم فتح التذكرة"));
+      const ownerName = owner ? nameOf(members, owner) : "";
+      const catEn = cat.name.en || cat.name.ar, catAr = cat.name.ar || cat.name.en;
+      if (owner) await addEvent(id, null, "assigned", needsApproval
+        ? ev(`Will go to ${ownerName} (category: ${catEn}) after approval`, `ستُسند إلى ${ownerName} (الفئة: ${catAr}) بعد الموافقة`)
+        : ev(`Auto-assigned to ${ownerName} (category: ${catEn})`, `أُسندت تلقائيًا إلى ${ownerName} (الفئة: ${catAr})`));
 
-      // Emails. The support mailbox gets EVERY new ticket, no matter what.
+      // Emails: support mailbox (per category), the employee, and the assignee or approver.
       const created = await getTicketRow(id);
       const ctx = await emailCtx(created);
       await Promise.all([
@@ -197,7 +214,7 @@ module.exports = async function handler(req, res) {
         IT.notify("created_requester", created, ctx, me.email),
         needsApproval
           ? IT.notify("approval_request", created, ctx, ctx.approver && ctx.approver.email)
-          : IT.notify("assigned", created, ctx, ctx.assignee && ctx.assignee.email !== me.email ? ctx.assignee.email : null),
+          : IT.notify("assigned", created, ctx, ctx.assignee && ctx.assignee.email, { how: ev(`Assigned automatically (category: ${catEn}).`, `أُسندت تلقائيًا (الفئة: ${catAr}).`) }),
       ]);
       return res.status(201).json({ ticket: await shapedOne(viewer, role, id) });
     }
@@ -222,7 +239,12 @@ module.exports = async function handler(req, res) {
         if (isIT(role) && !internal && ["New", "Assigned"].includes(t.status)) patch.status = "In Progress";
         if (isIT(role) && !t.assignee_id && t.status !== "Pending Approval") { patch.assignee_id = viewer.id; if (t.status === "New") patch.status = internal ? "Assigned" : "In Progress"; }
         if (!isIT(role) && t.status === "Waiting on User") patch.status = "In Progress";
-        if (Object.keys(patch).length) await patchTicket(t.id, patch); else await patchTicket(t.id, {});
+        await patchTicket(t.id, patch);
+        if (patch.assignee_id) {
+          await addEvent(t.id, viewer.id, "assigned", ev(`${me.name} took the ticket by replying`, `استلم ${me.name} التذكرة بالرد`));
+          const took = await getTicketRow(t.id), tctx = await emailCtx(took);
+          await IT.notify("assigned", took, tctx, me.email, { how: ev("You took this ticket by replying to it.", "استلمت هذه التذكرة بالرد عليها.") });
+        }
         if (!internal) {
           const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
           if (isIT(role)) await IT.notify("reply_to_requester", fresh, ctx, ctx.requester && ctx.requester.email, { text });
@@ -235,34 +257,39 @@ module.exports = async function handler(req, res) {
         if (!isIT(role)) return fail(res, 403, "Only IT can change tickets.");
         if (!IT.OPEN_STATES.includes(t.status)) return fail(res, 400, "This ticket is no longer open.");
         const patch = {}, events = [];
-        const members = await IT.loadUsers();
+        const [members, settings] = await Promise.all([IT.loadUsers(), IT.loadSettings()]);
+        const stAr = v => ((settings.statuses[v] || {}).n || {}).ar || v;
         if ("assignee" in body) {
           const v = body.assignee || null;
           if (v && !members.some(m => m.id === v && m.active !== false && isIT(itRoleOf(m)))) return fail(res, 400, "Tickets can only be assigned to active IT team members.");
           patch.assignee_id = v;
           if (t.status === "New" && v) patch.status = "Assigned";
-          events.push(["assigned", v ? "Assigned to " + (members.find(m => m.id === v) || {}).name : "Unassigned"]);
+          if (v !== t.assignee_id) events.push(["assigned", !v ? ev("Unassigned", "أُلغي الإسناد")
+            : v === viewer.id ? ev(`${me.name} took the ticket`, `استلم ${me.name} التذكرة`)
+            : ev(`Assigned to ${nameOf(members, v)} by ${me.name}`, `أسندها ${me.name} إلى ${nameOf(members, v)}`)]);
         }
         if ("status" in body) {
           const v = body.status;
           if (t.status === "Pending Approval") return fail(res, 400, "Wait for the approval decision first.");
           if (!["New", "Assigned", "In Progress", "Waiting on User"].includes(v)) return fail(res, 400, "Use Resolve to close a ticket.");
-          patch.status = v; events.push(["status", "Status → " + v]);
+          patch.status = v; if (v !== t.status) events.push(["status", ev("Status → " + v, "الحالة ← " + stAr(v))]);
         }
         if ("priority" in body) {
           if (!IT.PRIOS.includes(body.priority)) return fail(res, 400, "Unknown priority.");
-          patch.priority = body.priority; events.push(["priority", "Priority → " + body.priority]);
+          patch.priority = body.priority; if (body.priority !== t.priority) events.push(["priority", ev("Priority → " + body.priority, "الأولوية ← " + body.priority)]);
         }
         if ("major" in body) {
           if (!isLead(role)) return fail(res, 403, "Only the IT manager can declare a major incident.");
           patch.is_major = !!body.major; if (patch.is_major) patch.priority = "P1";
-          events.push(["major", patch.is_major ? "Declared major incident" : "Major incident cleared"]);
+          events.push(["major", patch.is_major ? ev("Declared major incident", "تم إعلان عطل رئيسي") : ev("Major incident cleared", "أُلغي العطل الرئيسي")]);
         }
         await patchTicket(t.id, patch);
         for (const [type, d] of events) await addEvent(t.id, viewer.id, type, d);
-        if (patch.assignee_id && patch.assignee_id !== t.assignee_id && patch.assignee_id !== viewer.id) {
+        // Every new assignee gets an email, including someone taking a ticket themselves.
+        if (patch.assignee_id && patch.assignee_id !== t.assignee_id) {
           const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
-          await IT.notify("assigned", fresh, ctx, ctx.assignee && ctx.assignee.email);
+          const how = patch.assignee_id === viewer.id ? ev("You took this ticket.", "استلمت هذه التذكرة.") : ev(`Assigned by ${me.name}.`, `أسندها إليك ${me.name}.`);
+          await IT.notify("assigned", fresh, ctx, ctx.assignee && ctx.assignee.email, { how });
         }
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
       }
@@ -280,7 +307,7 @@ module.exports = async function handler(req, res) {
         if (t.assignee_id === target) return fail(res, 400, "This ticket is already with " + (members.find(m => m.id === target) || {}).name + ".");
         await addMessage(t.id, viewer.id, "⬆ " + reason, true);
         await patchTicket(t.id, { assignee_id: target, escalated_at: nowIso(), escalated_by: viewer.id, escalated_from: t.assignee_id || null, escalation_reason: reason, status: t.status === "New" ? "Assigned" : t.status });
-        await addEvent(t.id, viewer.id, "escalated", "Escalated to " + (members.find(m => m.id === target) || {}).name + ": " + reason);
+        await addEvent(t.id, viewer.id, "escalated", ev(`Escalated to ${nameOf(members, target)}: ${short(reason)}`, `صُعّدت إلى ${nameOf(members, target)}: ${short(reason)}`));
         const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
         await IT.notify("escalated", fresh, ctx, [ctx.assignee && ctx.assignee.email, ctx.supportCc], { text: reason, by: me.name }, "escalated");
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
@@ -293,7 +320,7 @@ module.exports = async function handler(req, res) {
         if (!note) return fail(res, 400, "Describe the fix first.");
         await addMessage(t.id, viewer.id, "✅ " + note, false);
         await patchTicket(t.id, { status: "Resolved", resolved_at: nowIso(), assignee_id: t.assignee_id || viewer.id });
-        await addEvent(t.id, viewer.id, "resolved", "Resolved");
+        await addEvent(t.id, viewer.id, "resolved", ev("Resolved: " + short(note), "حُلّت: " + short(note)));
         const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
         await IT.notify("resolved", fresh, ctx, [ctx.requester && ctx.requester.email, ctx.supportCc], { text: note });
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
@@ -304,7 +331,7 @@ module.exports = async function handler(req, res) {
         if (t.status !== "Resolved") return fail(res, 400, "This ticket isn't waiting for confirmation.");
         const csat = parseInt(body.csat, 10);
         await patchTicket(t.id, { status: "Closed", closed_at: nowIso(), csat: csat >= 1 && csat <= 5 ? csat : null });
-        await addEvent(t.id, viewer.id, "closed", "Confirmed fixed" + (csat ? ` (${csat}/5)` : ""));
+        await addEvent(t.id, viewer.id, "closed", ev("Employee confirmed the fix" + (csat ? ` (${csat}/5)` : ""), "أكد الموظف الحل" + (csat ? ` (${csat}/5)` : "")));
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
       }
 
@@ -313,7 +340,7 @@ module.exports = async function handler(req, res) {
         if (t.status !== "Resolved") return fail(res, 400, "Only a resolved ticket can be reopened.");
         await addMessage(t.id, viewer.id, "🔄 " + (str(body.text, 2000).trim() || "Reopened: the issue is still happening. / أُعيد الفتح: المشكلة ما زالت قائمة."), false);
         await patchTicket(t.id, { status: "In Progress", resolved_at: null });
-        await addEvent(t.id, viewer.id, "reopened", "Reopened");
+        await addEvent(t.id, viewer.id, "reopened", ev("Employee reopened the ticket", "أعاد الموظف فتح التذكرة"));
         const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
         await IT.notify("reopened", fresh, ctx, [(ctx.assignee && ctx.assignee.email) || IT.SUPPORT_EMAIL(), ctx.supportCc]);
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
@@ -326,13 +353,17 @@ module.exports = async function handler(req, res) {
         const reason = str(body.reason, 1000).trim();
         if (action === "approve") {
           await patchTicket(t.id, { approval_state: "approved", approver_id: viewer.id, approval_decided_at: nowIso(), status: t.assignee_id ? "Assigned" : "New" });
-          await addEvent(t.id, viewer.id, "approved", "Approved");
+          await addEvent(t.id, viewer.id, "approved", ev(`Approved by ${me.name}`, `وافق ${me.name}`));
         } else {
           await patchTicket(t.id, { approval_state: "rejected", approver_id: viewer.id, approval_reason: reason || null, approval_decided_at: nowIso(), status: "Rejected", closed_at: nowIso() });
-          await addEvent(t.id, viewer.id, "rejected", "Rejected" + (reason ? ": " + reason : ""));
+          await addEvent(t.id, viewer.id, "rejected", ev(`Rejected by ${me.name}` + (reason ? ": " + short(reason) : ""), `رفض ${me.name}` + (reason ? ": " + short(reason) : "")));
         }
         const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
-        if (action === "approve") await IT.notify("approved", fresh, ctx, [ctx.requester && ctx.requester.email, ctx.assignee && ctx.assignee.email, ctx.supportCc]);
+        if (action === "approve") {
+          await IT.notify("approved", fresh, ctx, [ctx.requester && ctx.requester.email, ctx.supportCc]);
+          // The category's technician now owns an approved request: tell them it's theirs.
+          if (ctx.assignee) await IT.notify("assigned", fresh, ctx, ctx.assignee.email, { how: ev(`Approved by ${me.name}. You can start now.`, `وافق ${me.name}. يمكنك البدء الآن.`) });
+        }
         else await IT.notify("rejected", fresh, ctx, [ctx.requester && ctx.requester.email, ctx.supportCc], { text: reason });
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
       }

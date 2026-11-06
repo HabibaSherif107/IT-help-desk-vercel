@@ -149,7 +149,7 @@ const S = {
   g_escalate:["Escalations go to","يُرسل التصعيد إلى"], g_escalate_d:["When a technician presses Escalate, the ticket is reassigned to this person, who gets an email.","عند ضغط الفني على «تصعيد» تُسند التذكرة لهذا الشخص ويصله بريد إلكتروني."],
   first_mgr:["— First IT manager —","— أول مدير تقنية —"], cat_support:["Email the support mailbox for new tickets in this category","إرسال نسخة لصندوق الدعم عند فتح تذكرة في هذه الفئة"],
   h_support:["Support mailbox","صندوق الدعم"], esc_to_line:["Escalations go to {name}","يُرسل التصعيد إلى {name}"], esc_none:["Nobody is set to receive escalations yet.","لم يُحدد بعد من يستقبل التصعيد."],
-  email_to:["Emailed to","يُرسل البريد إلى"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
+  email_to:["Emailed to","يُرسل البريد إلى"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
 };
 const t = (k,v) => { let s=(S[k]||[k,k])[AR()?1:0]; if(v) for(const x in v) s=s.split("{"+x+"}").join(v[x]); return s; };
 
@@ -173,6 +173,7 @@ const cat = id => CFG.cats.find(c=>c.id===id) || {id, icon:"❔", n:{en:id}, d:{
 const deptName = id => CFG.depts[id] ? CFG.depts[id].icon+" "+L(CFG.depts[id].n) : (id||"—");
 const prioLabel = p => p+" · "+L((CFG.prio[p]||{}).n);
 const stLabel = s => CFG.statuses[s] ? L(CFG.statuses[s].n) : s;
+const HIST_ICON = {created:"✦",assigned:"👤",status:"→",priority:"⚡",major:"🚨",escalated:"⬆",resolved:"✅",closed:"🔒",reopened:"🔄",approved:"✓",rejected:"✕"};
 const OPEN_STATES = ["New","Pending Approval","Assigned","In Progress","Waiting on User"];
 const isOpen = x => OPEN_STATES.includes(x.status);
 const STEP_KEYS = ["st_sub","st_asg","st_prog","st_res","st_closed"];
@@ -366,6 +367,12 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
           row(t("opened_on"),fmtDate(tk.created)),
           tk.link&&/^https?:\/\//i.test(tk.link)&&row(t("attachment"),e("a",{href:tk.link,target:"_blank",rel:"noopener noreferrer",style:{color:"#F16A6F"}},t("open_link"))),
           tk.csat&&row(t("satisfaction"),"★".repeat(tk.csat)+"☆".repeat(5-tk.csat))),
+        agent&&(tk.history||[]).length>0&&e("details",{style:{...card,padding:"10px 14px",marginBottom:14}},
+          e("summary",{style:{cursor:"pointer",fontSize:"0.85rem",fontWeight:700,color:"#C9C6C4"}},t("history",{n:tk.history.length})),
+          e("ol",{style:{listStyle:"none",marginTop:10}},tk.history.map((h,i)=>e("li",{key:i,style:{display:"flex",gap:10,padding:"6px 0",borderTop:i?"1px solid #231F1E":"none",fontSize:"0.82rem"}},
+            e("span",{"aria-hidden":"true",style:{width:18,textAlign:"center"}},HIST_ICON[h.type]||"•"),
+            e("span",{style:{flex:1,minWidth:0,overflowWrap:"anywhere"}},typeof h.d==="object"&&h.d?L(h.d):String(h.d||h.type)),
+            e("span",{style:{color:"#8A8583",whiteSpace:"nowrap"}},(h.by?pname(h.by):t("system"))+" · "+ago(h.ts)))))),
         e("div",{style:{fontSize:"0.88rem",fontWeight:700,color:"#C9C6C4",margin:"6px 0 10px"}},t("conversation")),
         e("div",{style:{display:"flex",gap:10,marginBottom:12}},e(Av,{id:tk.req,size:28}),e("div",{style:{flex:1,minWidth:0,background:"#1A1717",border:"1px solid #332C2B",borderRadius:10,padding:"10px 12px"}},e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginBottom:4}},t("opened_ticket",{name:rq.name})+" · "+ago(tk.created)),e("div",{style:{fontSize:"0.88rem",whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},tk.desc))),
         tk.thread.map((m,i)=>e("div",{key:i,style:{display:"flex",gap:10,marginBottom:12}},e(Av,{id:m.by,size:28}),e("div",{style:{flex:1,minWidth:0,background:m.internal?"#422006":"#1A1717",border:"1px solid "+(m.internal?"#A16207":"#332C2B"),borderRadius:10,padding:"10px 12px"}},e("div",{style:{fontSize:"0.72rem",color:m.internal?"#FCD34D":"#8A8583",marginBottom:4}},(m.internal?t("internal_note_lbl")+" · ":"")+pname(m.by)+" · "+ago(m.ts)),e("div",{style:{fontSize:"0.88rem",whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},m.text))))),

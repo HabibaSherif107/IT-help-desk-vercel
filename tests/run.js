@@ -271,6 +271,35 @@ async function tests() {
   r = await call("omar@dar.test", "update-ticket", { id: t5.id, assignee: P["karim@dar.test"].id });
   ok(r.body.ticket.assignee === P["karim@dar.test"].id && mails.some(m => m.to === "karim@dar.test" && m.subject.includes(t5.id) && /assigned/.test(m.subject)), "manager can hand it back; technician is emailed");
   ok((await call("omar@dar.test", "escalate", { id: t5.id, reason: "x" })).status === 400, "the escalation contact can't escalate to themselves");
+
+  console.log("Every assignment is emailed and recorded");
+  const karimMails = id => mails.filter(m => m.to === "karim@dar.test" && m.subject.includes(id) && /assigned to you/.test(m.subject));
+  ok(karimMails(t1.id).length >= 1 && karimMails(t1.id)[0].text.includes("Assigned automatically (category: Request Hardware)"), "auto-assignment email says it was automatic, and why");
+  r = await call("karim@dar.test", "create-ticket", { ticket: { category_id: "hardware", title: "My own headset", description: "Mic broken", fields: { device: 4, reason: 2 } } });
+  ok(r.body.ticket.assignee === P["karim@dar.test"].id && karimMails(r.body.ticket.id).length === 1, "technician raising a ticket in their own category still gets the assignment email");
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "Teams camera", description: "Not detected" } });
+  const u1 = r.body.ticket;
+  r = await call("karim@dar.test", "update-ticket", { id: u1.id, assignee: P["karim@dar.test"].id });
+  ok(r.body.ticket.assignee === P["karim@dar.test"].id && karimMails(u1.id).length === 1 && karimMails(u1.id)[0].text.includes("You took this ticket"), "taking a ticket ('Take it') sends the assignment email");
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "Printer offline", description: "2nd floor" } });
+  const u2 = r.body.ticket;
+  r = await call("karim@dar.test", "reply", { id: u2.id, text: "Looking at it now" });
+  ok(r.body.ticket.assignee === P["karim@dar.test"].id && karimMails(u2.id).length === 1, "replying to an unassigned ticket takes it and sends the assignment email");
+  cfg = (await call("hany@dar.test", "bootstrap")).body;
+  await call("hany@dar.test", "admin-save-category", { category: { ...cfg.cats.find(c => c.id === "newsoft"), owner: P["karim@dar.test"].id } });
+  await call("hany@dar.test", "admin-save-user", { user: { ...P["sara@dar.test"], manager: P["mona@dar.test"].id } });
+  await call("hany@dar.test", "admin-save-settings", { values: { approvalMode: "direct_manager" } });
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "newsoft", title: "Visio licence", description: "Org charts", fields: { app: "Visio", why: "HR org charts" } } });
+  const ap = r.body.ticket;
+  ok(ap.status === "Pending Approval" && karimMails(ap.id).length === 0, "approval request: technician isn't emailed before approval");
+  await call("mona@dar.test", "approve", { id: ap.id });
+  ok(karimMails(ap.id).length === 1 && karimMails(ap.id)[0].text.includes("Approved by mona"), "after approval the technician gets 'assigned to you'");
+  const hist = (await call("karim@dar.test", "list-tickets")).body.find(x => x.id === t1.id).history;
+  ok(hist && hist.some(h => h.type === "assigned" && h.d.en.includes("Auto-assigned to karim") && h.d.ar.includes("أُسندت تلقائيًا")), "ticket history records the automatic assignment in both languages");
+  ok(hist.some(h => h.type === "resolved") && hist.some(h => h.type === "closed"), "history records resolve and confirm");
+  ok((await call("sara@dar.test", "list-tickets")).body.every(x => x.history === undefined), "employees don't receive the internal history");
+  const logged = (await pool.query("select count(*)::int n from email_log where kind='assigned' and recipient='karim@dar.test'")).rows[0].n;
+  ok(logged === mails.filter(m => m.to === "karim@dar.test" && /assigned to you/.test(m.subject)).length, "every assignment email is recorded in email_log");
 }
 
 (async () => {

@@ -45,12 +45,13 @@ Admins can rename, reorder, hide, add or remove categories and change their ques
 | When | Who gets an email |
 |---|---|
 | **Any new ticket** | The employee (confirmation) and the category's owner, or the approver. **Also the IT support mailbox (`support@company.com`)**, unless the admin turned that off for the category (**Categories & forms → "Email the support mailbox…"**). |
+| **Assigned**: automatically by category, by a colleague, taken by the technician, or after approval | **The assigned person, every time.** The email says how it was assigned. |
 | Escalated | The IT manager receiving escalations, with the reason |
 | IT replies | The employee |
 | The employee replies | The assigned IT person (or support if nobody is assigned) |
 | Assigned / approved / rejected / resolved / reopened | The people involved |
 
-Every email is in Arabic and English and is recorded in a log.
+Every email is in Arabic and English and is recorded in a log (`email_log`). IT staff also see a **History** on each ticket (created, assigned, status changes, escalations, approvals, resolution), so every step is documented both in the app and by email.
 
 ### Signing in
 - People sign in with their **Zoho work account**.

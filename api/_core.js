@@ -178,7 +178,9 @@ async function loadConfig(viewer) {
 
 // ── Ticket shaping ────────────────────────────────────────────
 const ms = ts => (ts ? new Date(ts).getTime() : null);
-function shapeTicket(t, messages, includeInternal) {
+// History entries store their text as {"en","ar"} JSON (older entries may be plain text).
+const parseDetail = d => { try { const o = JSON.parse(d); return o && typeof o === "object" ? o : d; } catch (_) { return d; } };
+function shapeTicket(t, messages, includeInternal, events) {
   return {
     id: t.id, cat: t.category_id, title: t.title, desc: t.description, req: t.requester_id, dept: t.dept_id,
     impact: t.impact, urgency: t.urgency, priority: t.priority, status: t.status, assignee: t.assignee_id,
@@ -186,6 +188,8 @@ function shapeTicket(t, messages, includeInternal) {
     fields: t.fields || {}, link: t.attachment_url, major: !!t.is_major,
     approval: t.approval_state ? { by: t.approver_id, state: t.approval_state, reason: t.approval_reason } : null,
     escalated: t.escalated_at ? { at: ms(t.escalated_at), by: t.escalated_by, from: t.escalated_from, reason: t.escalation_reason } : null,
+    history: includeInternal ? (events || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      .map(ev => ({ by: ev.actor_id, ts: ms(ev.created_at), type: ev.type, d: parseDetail(ev.detail) })) : undefined,
     thread: (messages || []).filter(m => includeInternal || !m.internal)
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
       .map(m => ({ by: m.author_id, ts: ms(m.created_at), text: m.body, internal: !!m.internal })),
@@ -219,7 +223,7 @@ function buildEmail(kind, t, ctx, extra = {}) {
   const T = {
     created_support: ["تذكرة تقنية جديدة", "New IT ticket", `تم فتح تذكرة جديدة في مكتب دعم تقنية المعلومات.\n\n${sAr}\n\nالتفاصيل:\n${t.description}`, `A new ticket was raised in the IT Help Desk.\n\n${sEn}\n\nDetails:\n${t.description}`],
     created_requester: ["تم استلام طلبك", "We received your request", `شكرًا لك، تم استلام طلبك وسيتابعه فريق التقنية.\n\n${sAr}`, `Thank you, your request was received and IT will follow up.\n\n${sEn}`],
-    assigned: ["أُسندت إليك تذكرة", "A ticket was assigned to you", `أُسندت إليك هذه التذكرة.\n\n${sAr}\n\nالتفاصيل:\n${t.description}`, `This ticket was assigned to you.\n\n${sEn}\n\nDetails:\n${t.description}`],
+    assigned: ["أُسندت إليك تذكرة", "A ticket was assigned to you", `أُسندت إليك هذه التذكرة.${extra.how ? "\n" + extra.how.ar : ""}\n\n${sAr}\n\nالتفاصيل:\n${t.description}`, `This ticket was assigned to you.${extra.how ? "\n" + extra.how.en : ""}\n\n${sEn}\n\nDetails:\n${t.description}`],
     approval_request: ["مطلوب موافقتك", "Your approval is needed", `هذا الطلب يحتاج موافقتك قبل أن يبدأ فريق التقنية العمل. افتح مكتب الدعم ثم «الموافقات».\n\n${sAr}\n\nالتفاصيل:\n${t.description}`, `This request needs your approval before IT starts work. Open the Help Desk, then Approvals.\n\n${sEn}\n\nDetails:\n${t.description}`],
     approved: ["تمت الموافقة على الطلب", "Request approved", `تمت الموافقة على الطلب وبدأ فريق التقنية العمل عليه.\n\n${sAr}`, `The request was approved and IT can start work.\n\n${sEn}`],
     rejected: ["تم رفض الطلب", "Request rejected", `تم رفض الطلب.${note ? "\nالسبب: " + note : ""}\n\n${sAr}`, `The request was rejected.${note ? "\nReason: " + note : ""}\n\n${sEn}`],
