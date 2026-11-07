@@ -13,7 +13,7 @@ module.exports = function handler(req, res) {
     redirect_uri: `${process.env.APP_URL}/api/auth-callback`,
     scope: "AaaServer.profile.Read",
     access_type: "online",
-    prompt: "select_account",
+    prompt: "consent",            // Zoho only supports "consent" here (same as Taskflow)
     state,
   });
   res.setHeader("Set-Cookie", cookie("ithd_oauth_state", state, 600));
