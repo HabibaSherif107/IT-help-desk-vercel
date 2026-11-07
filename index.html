@@ -25,7 +25,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .sidebar.open{transform:translateX(0) !important;}
   .overlay{position:fixed;inset:0;background:#00000088;z-index:700;}
   .hamb{display:flex !important;} .drawer{width:100vw !important;}
-  .g2,.g3,.g4{grid-template-columns:1fr !important;} .main-pad{padding:18px 16px !important;}
+  .g2,.g3,.g4{grid-template-columns:1fr !important;}
+  .tiles{grid-template-columns:repeat(2,1fr) !important;} .main-pad{padding:18px 16px !important;}
 }
 @media (min-width:861px){.hamb{display:none !important;}}
 </style>
@@ -150,7 +151,19 @@ const S = {
   g_escalate:["Escalations go to","يُرسل التصعيد إلى"], g_escalate_d:["When a technician presses Escalate, the ticket is reassigned to this person, who gets an email.","عند ضغط الفني على «تصعيد» تُسند التذكرة لهذا الشخص ويصله بريد إلكتروني."],
   first_mgr:["— First IT manager —","— أول مدير تقنية —"], cat_support:["Email the support mailbox for new tickets in this category","إرسال نسخة لصندوق الدعم عند فتح تذكرة في هذه الفئة"],
   h_support:["Support mailbox","صندوق الدعم"], esc_to_line:["Escalations go to {name}","يُرسل التصعيد إلى {name}"], esc_none:["Nobody is set to receive escalations yet.","لم يُحدد بعد من يستقبل التصعيد."],
-  email_to:["Emailed to","يُرسل البريد إلى"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
+  email_to:["Emailed to","يُرسل البريد إلى"],
+  nav_assets:["Assets","الأجهزة والأصول"], title_assets:["Asset Inventory","سجل الأجهزة والأصول"],
+  total_devices:["Devices in service","الأجهزة في الخدمة"], in_use_kpi:["In use","قيد الاستخدام"], in_stock_kpi:["In stock, ready to hand out","في المخزن وجاهزة للتسليم"],
+  repair_kpi:["Needs repair","تحتاج إصلاح"], warranty_kpi:["Warranty ends within 90 days or expired","ينتهي ضمانها خلال 90 يومًا أو منتهي"],
+  search_assets:["Search tag, model, serial, person…","ابحث بالرقم أو الطراز أو الرقم التسلسلي أو الشخص…"], all_types:["All types","كل الأنواع"], all_statuses:["All statuses","كل الحالات"],
+  h_tag:["Tag","الرقم"], h_device:["Device","الجهاز"], h_holder:["Assigned to","مُسلّم إلى"], h_warranty:["Warranty","الضمان"], h_tickets:["Open / all tickets","مفتوحة / كل التذاكر"],
+  bought:["bought {d}","شُري {d}"], expired:["expired","منتهي"], add_device:["+ Add device","+ إضافة جهاز"], new_device:["New device","جهاز جديد"],
+  asset_tag:["Asset tag","رقم الأصل"], asset_tag_ph:["e.g. LT-0142","مثال: LT-0142"], a_type:["Type","النوع"], a_model:["Make & model","الشركة والطراز"], a_model_ph:["e.g. Dell Latitude 5440","مثال: Dell Latitude 5440"],
+  a_serial:["Serial number","الرقم التسلسلي"], a_owner:["Assigned to (person)","مُسلّم إلى (شخص)"], a_location:["Location (if not with a person)","الموقع (إن لم يكن مع شخص)"], a_location_ph:["e.g. HQ 2nd floor, IT store room","مثال: المقر الدور الثاني، مخزن التقنية"],
+  a_purchased:["Purchase date","تاريخ الشراء"], a_warranty:["Warranty ends","نهاية الضمان"], a_notes:["Notes","ملاحظات"],
+  no_assets:["No devices yet. Add the first one with + Add device.","لا توجد أجهزة بعد. أضف أول جهاز من «+ إضافة جهاز»."], device_tickets:["Tickets about this device","التذاكر الخاصة بهذا الجهاز"], no_device_tickets:["No tickets for this device yet.","لا توجد تذاكر لهذا الجهاز بعد."],
+  related_device:["Related device (optional)","الجهاز المرتبط (اختياري)"], device:["Device","الجهاز"], out_warranty:["out of warranty","خارج الضمان"],
+  toast_device_saved:["Device saved","تم حفظ الجهاز"], toast_device_deleted:["Device deleted","تم حذف الجهاز"], confirm_delete_device:["Delete device {id}?","حذف الجهاز {id}؟"], none_dash:["— None —","— لا يوجد —"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
 };
 const t = (k,v) => { let s=(S[k]||[k,k])[AR()?1:0]; if(v) for(const x in v) s=s.split("{"+x+"}").join(v[x]); return s; };
 
@@ -174,7 +187,13 @@ const cat = id => CFG.cats.find(c=>c.id===id) || {id, icon:"❔", n:{en:id}, d:{
 const deptName = id => CFG.depts[id] ? CFG.depts[id].icon+" "+L(CFG.depts[id].n) : (id||"—");
 const prioLabel = p => p+" · "+L((CFG.prio[p]||{}).n);
 const stLabel = s => CFG.statuses[s] ? L(CFG.statuses[s].n) : s;
-const HIST_ICON = {created:"✦",assigned:"👤",status:"→",priority:"⚡",major:"🚨",escalated:"⬆",resolved:"✅",closed:"🔒",reopened:"🔄",approved:"✓",rejected:"✕"};
+let ASSETS = [];   /* IT: full inventory. Others: only their own devices (CFG.myAssets). */
+const assetOf = id => id ? (ASSETS.find(a=>a.id===id) || (CFG.myAssets||[]).find(a=>a.id===id) || {id,type:"other",model:""}) : null;
+const assetLabel = a => a ? [a.id, L((CFG.assetTypes||{})[a.type]), a.model].filter(Boolean).join(" · ") : "";
+const todayStr = () => new Date().toISOString().slice(0,10);
+const soonStr = () => new Date(Date.now()+90*DAY).toISOString().slice(0,10);
+function AssetStatus({s}){ const x=(CFG.assetStatuses||{})[s]||{n:{en:s},c:"#64748B"}; return e(Pill,{c:x.c},L(x.n)); }
+const HIST_ICON = {asset:"💻",created:"✦",assigned:"👤",status:"→",priority:"⚡",major:"🚨",escalated:"⬆",resolved:"✅",closed:"🔒",reopened:"🔄",approved:"✓",rejected:"✕"};
 const OPEN_STATES = ["New","Pending Approval","Assigned","In Progress","Waiting on User"];
 const isOpen = x => OPEN_STATES.includes(x.status);
 const STEP_KEYS = ["st_sub","st_asg","st_prog","st_res","st_closed"];
@@ -252,7 +271,7 @@ function HelpHome({me,tickets,onNew,onOpen,onKB,go}){
 /* ═════════ New ticket ═════════ */
 function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
   const [step,setStep]=useState(initialCat?2:1);
-  const [f,setF]=useState({cat:initialCat||"",title:initialText||"",desc:"",impact:1,urgency:2,fields:{},link:""});
+  const [f,setF]=useState({cat:initialCat||"",title:initialText||"",desc:"",impact:1,urgency:2,fields:{},link:"",asset:""});
   const [err,setErr]=useState(""), [busy,setBusy]=useState(false);
   const set=(k,v)=>setF(x=>({...x,[k]:v}));
   const c=cat(f.cat), incident=c.type==="incident";
@@ -262,7 +281,7 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
   const submit=async()=>{ if(!f.title.trim())return setErr(t("err_title")); if(!f.desc.trim())return setErr(t("err_desc"));
     for(const fd of c.fields){ const v=f.fields[fd.k]; if(v==null||String(v).trim()==="") return setErr(t("err_field",{f:L(fd.label)})); }
     setBusy(true); setErr("");
-    try{ const r=await api("create-ticket",{ticket:{category_id:f.cat,title:f.title,description:f.desc,impact:f.impact,urgency:f.urgency,fields:f.fields,link:f.link}}); onCreated(r.ticket); }
+    try{ const r=await api("create-ticket",{ticket:{asset_id:f.asset||null,category_id:f.cat,title:f.title,description:f.desc,impact:f.impact,urgency:f.urgency,fields:f.fields,link:f.link}}); onCreated(r.ticket); }
     catch(x){ setErr(x.message); setBusy(false); } };
   const Opt=({sel,onClick,children})=>e("button",{onClick,"aria-pressed":sel,style:{flex:"1 1 120px",padding:"10px 8px",borderRadius:8,fontSize:"0.82rem",background:sel?"#E11A2222":"#1A1717",border:"1px solid "+(sel?"#E11A22":"#332C2B"),color:sel?"#F16A6F":"#C9C6C4",fontWeight:sel?700:500}},children);
   const route=c.approval?t("route_approval"):(CFG.autoAssign&&c.owner&&person(c.owner)?t("route_to",{name:pname(c.owner)}):t("route_triage"));
@@ -278,6 +297,7 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
         e("input",{id,type:fd.kind==="date"?"date":"text",value:v||"",placeholder:L(fd.ph),onChange:ev=>setV(ev.target.value),style:IS})); })),
       incident&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("who_affected")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.impacts.map((x,i)=>e(Opt,{key:i,sel:f.impact===i+1,onClick:()=>set("impact",i+1)},L(x))))),
       e("div",{style:{marginBottom:14}},e("div",{style:LS},t("how_urgent")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.urgencies.map((x,i)=>e(Opt,{key:i,sel:f.urgency===i+1,onClick:()=>set("urgency",i+1)},L(x))))),
+      (CFG.myAssets||[]).length>0&&e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-asset"},t("related_device")),e("select",{id:"nt-asset",value:f.asset,onChange:ev=>set("asset",ev.target.value),style:IS},e("option",{value:""},t("none_dash")),CFG.myAssets.map(a=>e("option",{key:a.id,value:a.id},assetLabel(a))))),
       e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-link"},t("file_link")),e("input",{id:"nt-link",value:f.link,onChange:ev=>set("link",ev.target.value),placeholder:t("file_link_ph"),dir:"ltr",style:IS})),
       e("div",{style:{background:"#151211",border:"1px solid #231F1E",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:"0.82rem",color:"#C9C6C4"}},e("span",null,t("calc_prio")),e(PrioB,{p}),e("span",{style:{color:"#8A8583"}},"· "+route+(CFG.supportEnabled&&c.notifySupport!==false?" · "+t("support_note"):""))),
       e(ErrBox,{text:err}),
@@ -365,6 +385,12 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
           e("div",{style:{fontSize:"0.88rem",lineHeight:1.6,color:"#D6D3D1",marginBottom:10,whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},tk.desc),
           row(t("requester"),e("span",{style:{display:"inline-flex",gap:6,alignItems:"center"}},e(Av,{id:tk.req,size:20}),rq.name+" · "+deptName(tk.dept))),
           c.fields.map(fd=>{const v=fieldVal(fd,(tk.fields||{})[fd.k]);return v?e("div",{key:fd.k},row(L(fd.label),v)):null;}),
+          (agent||tk.asset)&&row(t("device"),(()=>{ const a=assetOf(tk.asset); const warn=a&&a.warranty&&a.warranty<todayStr()?" ⚠ "+t("out_warranty"):"";
+            if(!agent) return assetLabel(a)+warn;
+            return e("span",{style:{display:"inline-flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}},
+              e("select",{id:"d-asset","aria-label":t("device"),disabled:busy,value:tk.asset||"",onChange:ev=>run("update-ticket",{asset:ev.target.value||null},t("toast_saved_t")),style:{...IS,width:"auto",maxWidth:300,padding:"5px 8px",fontSize:"0.8rem"}},
+                e("option",{value:""},t("none_dash")),ASSETS.filter(x=>x.status!=="retired"||x.id===tk.asset).sort((x,y)=>(y.owner===tk.req)-(x.owner===tk.req)).map(x=>e("option",{key:x.id,value:x.id},(x.owner===tk.req?"★ ":"")+assetLabel(x)))),
+              warn&&e("span",{style:{color:"#F59E0B",fontSize:"0.78rem"}},warn)); })()),
           row(t("opened_on"),fmtDate(tk.created)),
           tk.link&&/^https?:\/\//i.test(tk.link)&&row(t("attachment"),e("a",{href:tk.link,target:"_blank",rel:"noopener noreferrer",style:{color:"#F16A6F"}},t("open_link"))),
           tk.csat&&row(t("satisfaction"),"★".repeat(tk.csat)+"☆".repeat(5-tk.csat))),
@@ -408,6 +434,74 @@ function Approvals({me,role,tickets,onOpen,onChanged,toast}){
 }
 
 /* ═════════ Knowledge base ═════════ */
+/* ═════════ Assets (device inventory) ═════════ */
+function Assets({assets,tickets,onOpenAsset,onAdd}){
+  const [q,setQ]=useState(""), [ft,setFt]=useState(""), [fs,setFs]=useState("");
+  const today=todayStr(), soon=soonStr(), live=assets.filter(a=>a.status!=="retired");
+  const ql=q.toLowerCase();
+  const rows=assets.filter(a=>(!ft||a.type===ft)&&(!fs||a.status===fs)&&(!q||[a.id,a.model,a.serial,a.location,a.owner?pname(a.owner):""].join(" ").toLowerCase().includes(ql)));
+  const tile=(l,v,tone)=>e("div",{key:l,style:{...card,padding:14}},e("div",{style:{fontSize:"1.6rem",fontWeight:800,fontVariantNumeric:"tabular-nums",color:tone||"#EDEBEA"}},v),e("div",{style:{fontSize:"0.75rem",color:"#8A8583"}},l));
+  const cols="100px minmax(0,1.4fr) minmax(0,1fr) 140px 150px 110px";
+  const warnN=live.filter(a=>a.warranty&&a.warranty<soon).length;
+  return e("div",null,
+    e("div",{className:"tiles",style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:16}},
+      tile(t("total_devices"),live.length),tile(t("in_use_kpi"),live.filter(a=>a.status==="in_use").length),tile(t("in_stock_kpi"),live.filter(a=>a.status==="in_stock").length),
+      tile(t("repair_kpi"),live.filter(a=>a.status==="repair").length,live.some(a=>a.status==="repair")?"#F59E0B":null),tile(t("warranty_kpi"),warnN,warnN?"#F59E0B":null)),
+    e("div",{style:{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}},
+      e("input",{id:"as-search","aria-label":t("search_assets"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("search_assets"),style:{...IS,flex:"1 1 220px",maxWidth:340}}),
+      e("select",{"aria-label":t("all_types"),value:ft,onChange:ev=>setFt(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_types")),Object.keys(CFG.assetTypes).map(k=>e("option",{key:k,value:k},L(CFG.assetTypes[k])))),
+      e("select",{"aria-label":t("all_statuses"),value:fs,onChange:ev=>setFs(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_statuses")),Object.keys(CFG.assetStatuses).map(k=>e("option",{key:k,value:k},L(CFG.assetStatuses[k].n)))),
+      e("button",{id:"add-device",onClick:onAdd,style:{...BP,marginInlineStart:"auto"}},t("add_device"))),
+    !assets.length?e(Empty,{text:t("no_assets")}):
+    e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:860}},
+      e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:12,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_tag"),t("h_device"),t("h_holder"),t("status"),t("h_warranty"),t("h_tickets")].map((h,i)=>e("span",{key:i},h))),
+      rows.map((a,i)=>{ const mine=tickets.filter(x=>x.asset===a.id), open=mine.filter(isOpen).length;
+        const w=a.warranty&&a.warranty<today?"#EF4444":a.warranty&&a.warranty<soon?"#F59E0B":"#8A8583";
+        return e("button",{key:a.id,className:"hov",onClick:()=>onOpenAsset(a.id),style:{display:"grid",width:"100%",textAlign:"start",color:"inherit",border:"none",gridTemplateColumns:cols,gap:12,padding:"12px 14px",alignItems:"center",background:i%2?"#181514":"#1A1717",fontSize:"0.85rem",opacity:a.status==="retired"?.55:1}},
+          e("span",{style:{fontFamily:"monospace",fontSize:"0.8rem"}},a.id),
+          e("div",{style:{minWidth:0}},e("div",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},a.model),e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},L(CFG.assetTypes[a.type])+(a.purchased?" · "+t("bought",{d:a.purchased}):""))),
+          e("div",{style:{display:"flex",gap:6,alignItems:"center",minWidth:0}},a.owner?[e(Av,{key:"a",id:a.owner,size:22}),e("span",{key:"n",style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},pname(a.owner))]:e("span",{style:{color:"#8A8583"}},a.location||"—")),
+          e(AssetStatus,{s:a.status}),
+          e("span",{style:{color:w,fontVariantNumeric:"tabular-nums"}},a.warranty?a.warranty+(a.warranty<today?" ("+t("expired")+")":""):"—"),
+          e("span",{style:{fontVariantNumeric:"tabular-nums",color:open?"#F59E0B":mine.length?"#EDEBEA":"#6B6563"}},open+" / "+mine.length)); }),
+      rows.length===0&&e("div",{style:{padding:30,textAlign:"center",color:"#6B6563"}},t("no_match")))));
+}
+function AssetModal({a,role,tickets,onClose,onEdit,onDelete,onOpenTicket}){
+  const mine=tickets.filter(x=>x.asset===a.id).sort((x,y)=>y.created-x.created), today=todayStr();
+  const row=(k,v)=>e("div",{style:{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:"1px solid #231F1E",fontSize:"0.86rem"}},e("span",{style:{color:"#8A8583"}},k),e("span",{style:{textAlign:"end",overflowWrap:"anywhere"}},v));
+  return e(Modal,{title:"💻 "+a.id+" · "+a.model,onClose,w:620},
+    row(t("a_type"),L(CFG.assetTypes[a.type])),row(t("status"),e(AssetStatus,{s:a.status})),
+    row(t("h_holder"),a.owner?pname(a.owner):(a.location||"—")),a.owner&&a.location?row(t("a_location"),a.location):null,
+    row(t("a_serial"),a.serial||"—"),row(t("a_purchased"),a.purchased||"—"),
+    row(t("a_warranty"),a.warranty?e("span",{style:{color:a.warranty<today?"#EF4444":a.warranty<soonStr()?"#F59E0B":"inherit"}},a.warranty+(a.warranty<today?" ("+t("expired")+")":"")):"—"),
+    a.notes?row(t("a_notes"),a.notes):null,
+    e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"18px 0 8px"}},t("device_tickets")),
+    mine.length?mine.map(x=>e("button",{key:x.id,className:"hov",onClick:()=>onOpenTicket(x.id),style:{display:"flex",gap:10,alignItems:"center",width:"100%",textAlign:"start",background:"none",border:"none",color:"inherit",padding:"8px 6px",borderRadius:6,fontSize:"0.85rem"}},
+      e("span",{style:{fontFamily:"monospace",color:"#8A8583"}},x.id),e("span",{style:{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},x.title),e("span",{style:{color:"#8A8583",fontSize:"0.75rem"}},fmtDate(x.created)),e(StatB,{s:x.status}))):e(Empty,{text:t("no_device_tickets")}),
+    e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}},
+      isLeadRole(role)&&e("button",{onClick:onDelete,style:{...BS,color:"#FCA5A5"}},"🗑 "+t("delete")),
+      e("button",{id:"asset-edit",onClick:onEdit,style:BP},t("edit"))));
+}
+function AssetEditor({a0,isNew,onSave,onClose,busy,err}){
+  const [a,setA]=useState(()=>clone(a0)); const set=(k,v)=>setA(x=>({...x,[k]:v}));
+  const field=(id,label,el)=>e("div",{style:{marginBottom:12}},e("label",{style:LS,htmlFor:id},label),el);
+  return e(Modal,{title:isNew?t("new_device"):t("edit")+": "+a0.id,onClose,w:620},
+    e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+      field("ae-tag",t("asset_tag")+" *",e("input",{id:"ae-tag",dir:"ltr",disabled:!isNew,value:a.id,placeholder:t("asset_tag_ph"),onChange:ev=>set("id",ev.target.value.toUpperCase()),style:{...IS,opacity:isNew?1:.6}})),
+      field("ae-type",t("a_type")+" *",e("select",{id:"ae-type",value:a.type,onChange:ev=>set("type",ev.target.value),style:IS},Object.keys(CFG.assetTypes).map(k=>e("option",{key:k,value:k},L(CFG.assetTypes[k]))))),
+      field("ae-model",t("a_model")+" *",e("input",{id:"ae-model",dir:"ltr",value:a.model,placeholder:t("a_model_ph"),onChange:ev=>set("model",ev.target.value),style:IS})),
+      field("ae-serial",t("a_serial"),e("input",{id:"ae-serial",dir:"ltr",value:a.serial,onChange:ev=>set("serial",ev.target.value),style:IS})),
+      field("ae-owner",t("a_owner"),e("select",{id:"ae-owner",value:a.owner||"",onChange:ev=>{const v=ev.target.value||null;setA(x=>({...x,owner:v,status:v&&x.status==="in_stock"?"in_use":x.status}));},style:IS},e("option",{value:""},t("none_dash")),CFG.people.filter(p=>p.active!==false||p.id===a.owner).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
+      field("ae-status",t("status")+" *",e("select",{id:"ae-status",value:a.status,onChange:ev=>set("status",ev.target.value),style:IS},Object.keys(CFG.assetStatuses).map(k=>e("option",{key:k,value:k},L(CFG.assetStatuses[k].n))))),
+      field("ae-loc",t("a_location"),e("input",{id:"ae-loc",value:a.location,placeholder:t("a_location_ph"),onChange:ev=>set("location",ev.target.value),style:IS})),
+      e("div",null),
+      field("ae-bought",t("a_purchased"),e("input",{id:"ae-bought",type:"date",value:a.purchased||"",onChange:ev=>set("purchased",ev.target.value),style:IS})),
+      field("ae-warr",t("a_warranty"),e("input",{id:"ae-warr",type:"date",value:a.warranty||"",onChange:ev=>set("warranty",ev.target.value),style:IS}))),
+    field("ae-notes",t("a_notes"),e("textarea",{id:"ae-notes",rows:2,value:a.notes,onChange:ev=>set("notes",ev.target.value),style:{...IS,resize:"vertical"}})),
+    e(ErrBox,{text:err}),
+    e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{id:"ae-save",disabled:busy,onClick:()=>onSave(a),style:BP},busy?t("saving"):t("save"))));
+}
+
 function KBView({onKB,admin,onEdit,onAdd,onDelete}){
   const [q,setQ]=useState("");
   const list=CFG.kb.filter(a=>!q||[a.t.en,a.t.ar,...(a.body.en||[]),...(a.body.ar||[])].join(" ").toLowerCase().includes(q.toLowerCase()));
@@ -620,11 +714,11 @@ function Admin({setCfg,toast,onKB}){
 /* ═════════ App shell ═════════ */
 const NAV = {
   requester:[["home","🏠","nav_home"],["mine","📨","nav_mine"],["kb","📘","nav_kb"]],
-  agent:[["queue","📥","nav_queue"],["mine","📨","nav_mine"],["kb","📘","nav_kb"]],
-  manager:[["dash","📊","nav_dash"],["queue","📥","nav_queue"],["approvals","✅","nav_approvals"],["mine","📨","nav_mine"],["kb","📘","nav_kb"],["rules","🔀","nav_rules"]],
-  admin:[["admin","🛡️","nav_admin"],["dash","📊","nav_dash"],["queue","📥","nav_queue"],["approvals","✅","nav_approvals"],["mine","📨","nav_mine"],["kb","📘","nav_kb"]],
+  agent:[["queue","📥","nav_queue"],["assets","💻","nav_assets"],["mine","📨","nav_mine"],["kb","📘","nav_kb"]],
+  manager:[["dash","📊","nav_dash"],["queue","📥","nav_queue"],["approvals","✅","nav_approvals"],["assets","💻","nav_assets"],["mine","📨","nav_mine"],["kb","📘","nav_kb"],["rules","🔀","nav_rules"]],
+  admin:[["admin","🛡️","nav_admin"],["dash","📊","nav_dash"],["queue","📥","nav_queue"],["approvals","✅","nav_approvals"],["assets","💻","nav_assets"],["mine","📨","nav_mine"],["kb","📘","nav_kb"]],
 };
-const TITLE = {home:"title_home",mine:"nav_mine",kb:"nav_kb",queue:"nav_queue",dash:"title_dash",approvals:"nav_approvals",rules:"nav_rules",admin:"nav_admin"};
+const TITLE = {home:"title_home",mine:"nav_mine",kb:"nav_kb",queue:"nav_queue",dash:"title_dash",approvals:"nav_approvals",rules:"nav_rules",admin:"nav_admin",assets:"title_assets"};
 
 function Center({children}){ return e("div",{style:{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24}},e("div",{style:{...card,padding:32,maxWidth:460,textAlign:"center"}},e("div",{style:{fontSize:"1.4rem",fontWeight:800,marginBottom:14}},e("span",{style:{color:"#E11A22"}},"◆")," IT ",e("span",{style:{color:"#F16A6F"}},"Help Desk")),children)); }
 
@@ -633,22 +727,27 @@ function App(){
   const [loadErr,setLoadErr]=useState("");
   const [cfg,setCfgS]=useState(null);
   const [tickets,setTickets]=useState([]);
+  const [assets,setAssets]=useState([]), [assetSel,setAssetSel]=useState(null), [assetEd,setAssetEd]=useState(null), [assetDel,setAssetDel]=useState(null);
+  const [aBusy,setABusy]=useState(false), [aErr,setAErr]=useState("");
   const [view,setView]=useState(null);
   const [sel,setSel]=useState(null), [newT,setNewT]=useState(null), [kb,setKb]=useState(null);
   const [toastS,setToastS]=useState(null), [nav,setNav]=useState(false), [lang,setLangS]=useState(LANG);
   const [,tick]=useState(0);
   const setCfg=c=>{ CFG=c; setCfgS(c); };
   if(cfg) CFG=cfg;
+  ASSETS=assets;
   const toast=(text,kind)=>{ setToastS({text,kind}); clearTimeout(window.__tt); window.__tt=setTimeout(()=>setToastS(null),kind==="error"?5000:2800); };
   const load=useCallback(async()=>{
     setPhase("loading");
-    try{ const [c,ts]=await Promise.all([api("bootstrap"),api("list-tickets")]); setCfg(c); setTickets(ts); setPhase("ready"); }
+    try{ const [c,ts]=await Promise.all([api("bootstrap"),api("list-tickets")]); setCfg(c); setTickets(ts);
+      if(isITRole(c.me.role)) setAssets(await api("list-assets").catch(()=>[]));
+      setPhase("ready"); }
     catch(x){ if(x.status===401) setPhase("login"); else if(x.status===503) setPhase("setup"); else { setLoadErr(x.message); setPhase("error"); } }
   },[]);
   useEffect(()=>{ load(); },[load]);
   /* Refresh the ticket list every minute while the tab is visible. */
   useEffect(()=>{ if(phase!=="ready") return; const i=setInterval(()=>{ if(document.visibilityState==="visible") api("list-tickets").then(setTickets).catch(()=>{}); tick(x=>x+1); },60000); return()=>clearInterval(i); },[phase]);
-  useEffect(()=>{ const k=ev=>{ if(ev.key!=="Escape") return; if(kb) setKb(null); else if(newT) setNewT(null); else setSel(null); }; window.addEventListener("keydown",k); return()=>window.removeEventListener("keydown",k); },[kb,newT]);
+  useEffect(()=>{ const k=ev=>{ if(ev.key!=="Escape") return; if(kb) setKb(null); else if(newT) setNewT(null); else if(assetEd) setAssetEd(null); else if(assetSel) setAssetSel(null); else setSel(null); }; window.addEventListener("keydown",k); return()=>window.removeEventListener("keydown",k); },[kb,newT,assetEd,assetSel]);
   const toggleLang=()=>{ LANG=LANG==="ar"?"en":"ar"; try{localStorage.setItem("ithd_lang",LANG);}catch(_){} applyDir(); setLangS(LANG); };
   const langBtn=e("button",{id:"lang-btn",onClick:toggleLang,style:{...BSm,display:"inline-flex",gap:6,alignItems:"center",whiteSpace:"nowrap"}},"🌐 "+t("lang_btn"));
 
@@ -687,6 +786,7 @@ function App(){
   else if(cur==="kb") body=e(KBView,{onKB:setKb});
   else if(cur==="dash") body=e(Dashboard,{tickets});
   else if(cur==="rules") body=e(Rules);
+  else if(cur==="assets") body=e(Assets,{assets,tickets,onOpenAsset:setAssetSel,onAdd:()=>{setAErr("");setAssetEd({isNew:true,item:{id:"",type:"laptop",model:"",serial:"",owner:null,location:"",status:"in_stock",purchased:"",warranty:"",notes:""}});}});
   else if(cur==="admin") body=e(Admin,{setCfg,toast,onKB:setKb});
 
   return e("div",{"data-lang":lang,style:{display:"flex",minHeight:"100vh"}},
@@ -698,6 +798,14 @@ function App(){
         e("h2",{style:{fontSize:"1.15rem",fontWeight:700,flex:1,minWidth:0}},t(TITLE[cur])),langBtn),
       e("div",{className:"main-pad",style:{padding:"22px 26px",maxWidth:1260}},body)),
     selT&&e(Drawer,{tk:selT,me,role,onClose:()=>setSel(null),onChanged,toast}),
+    assetSel&&!assetEd&&assets.find(a=>a.id===assetSel)&&e(AssetModal,{a:assets.find(a=>a.id===assetSel),role,tickets,onClose:()=>setAssetSel(null),
+      onOpenTicket:id=>{setAssetSel(null);setSel(id);},onEdit:()=>{setAErr("");setAssetEd({isNew:false,item:assets.find(a=>a.id===assetSel)});},onDelete:()=>setAssetDel(assetSel)}),
+    assetEd&&e(AssetEditor,{a0:assetEd.item,isNew:assetEd.isNew,busy:aBusy,err:aErr,onClose:()=>setAssetEd(null),onSave:async a=>{
+      setABusy(true); setAErr("");
+      try{ setAssets(await api("save-asset",{asset:a,isNew:assetEd.isNew})); setAssetEd(null); setAssetSel(a.id.trim().toUpperCase()); toast(t("toast_device_saved")); api("bootstrap").then(setCfg).catch(()=>{}); }
+      catch(x){ setAErr(x.message); } finally{ setABusy(false); } }}),
+    assetDel&&e(Confirm,{text:t("confirm_delete_device",{id:assetDel}),busy:aBusy,onClose:()=>setAssetDel(null),onYes:async()=>{
+      setABusy(true); try{ setAssets(await api("delete-asset",{id:assetDel})); setAssetSel(null); toast(t("toast_device_deleted")); }catch(x){ toast(x.message,"error"); } finally{ setABusy(false); setAssetDel(null); } }}),
     newT&&e(NewTicket,{me,initialCat:newT.cat,initialText:newT.text,onClose:()=>setNewT(null),onKB:setKb,onCreated:tk=>{ onChanged(tk); setNewT(null); go("mine"); toast(t("toast_created",{id:tk.id})); }}),
     kb&&e(KBModal,{a:kb,onClose:()=>setKb(null)}),
     e(Toast,{toast:toastS}));

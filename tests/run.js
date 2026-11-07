@@ -10,7 +10,8 @@
 //   Add --serve to keep the app running on http://localhost:4321 afterwards
 //   (sign in as anyone with: http://localhost:4321/api/auth-login?as=email).
 const http = require("http"), fs = require("fs"), path = require("path"), Module = require("module"), { URL } = require("url");
-const { Client, Pool } = require("pg");
+const { Client, Pool, types } = require("pg");
+types.setTypeParser(1082, v => v); // return DATE columns as "YYYY-MM-DD" text, like Supabase does
 const ROOT = path.join(__dirname, "..");
 const DB = "ithd_test_" + process.pid;
 const SERVE = process.argv.includes("--serve");
@@ -329,6 +330,35 @@ async function tests() {
   await call("karim@dar.test", "reply", { id: hwT.id, text: "Checking again" });
   ok(mails.slice(n0).length && mails.slice(n0).every(m => /it-support@dar\.test/.test(m.from)), "optional MAIL_FROM_ADDRESS is used as the sender address");
   delete process.env.MAIL_FROM_ADDRESS;
+
+  console.log("Assets (device inventory)");
+  ok((await call("sara@dar.test", "list-assets")).status === 403, "employees can't see the inventory");
+  ok((await call("sara@dar.test", "save-asset", { isNew: true, asset: { id: "LT-1", type: "laptop", model: "X", status: "in_stock" } })).status === 403, "employees can't add devices");
+  r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { id: "lt-0142", type: "laptop", model: "Dell Latitude 5440", serial: "SN123", owner: P["sara@dar.test"].id, status: "in_use", purchased: "2024-03-14", warranty: "2025-03-14", notes: "Charger replaced" } });
+  ok(r.status === 200 && r.body.some(a => a.id === "LT-0142" && a.owner === P["sara@dar.test"].id && a.warranty === "2025-03-14"), "IT agent adds a device (tag stored in capitals, dates kept as entered)", r.body);
+  ok((await call("karim@dar.test", "save-asset", { isNew: true, asset: { id: "LT-0142", type: "laptop", model: "Dup", status: "in_stock" } })).status === 400, "duplicate asset tag refused");
+  ok((await call("karim@dar.test", "save-asset", { isNew: true, asset: { id: "MN-1", type: "monitor", model: "Dell P24", status: "in_stock", warranty: "2026-02-30" } })).status === 400, "invalid date refused");
+  ok((await call("karim@dar.test", "save-asset", { isNew: true, asset: { id: "bad tag!", type: "monitor", model: "x", status: "in_stock" } })).status === 400, "invalid tag refused");
+  ok((await call("karim@dar.test", "save-asset", { isNew: true, asset: { id: "MN-1", type: "spaceship", model: "x", status: "in_stock" } })).status === 400, "unknown device type refused");
+  await call("karim@dar.test", "save-asset", { isNew: true, asset: { id: "LT-0160", type: "laptop", model: "Dell Latitude 5440", status: "in_stock", location: "IT store room" } });
+  cfg = (await call("sara@dar.test", "bootstrap")).body;
+  ok(cfg.myAssets.length === 1 && cfg.myAssets[0].id === "LT-0142" && cfg.assetTypes.laptop.ar === "لابتوب", "employee sees only their own device (for the ticket form)");
+  n0 = mails.length;
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "hardware", title: "Laptop overheating", description: "Fan loud", fields: { device: 0, reason: 2 }, asset_id: "LT-0142" } });
+  const at = r.body.ticket;
+  ok(r.status === 201 && at.asset === "LT-0142", "employee links a ticket to their own device");
+  ok(mails.slice(n0).some(m => m.to === "karim@dar.test" && m.text.includes("Device: LT-0142 · Laptop · Dell Latitude 5440") && m.text.includes("الجهاز: LT-0142")), "assignment email names the device in both languages");
+  ok((await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "x", description: "y", asset_id: "LT-0160" } })).status === 400, "employee can't link someone else's / a stock device");
+  r = await call("karim@dar.test", "update-ticket", { id: at.id, asset: "LT-0160" });
+  ok(r.body.ticket.asset === "LT-0160" && r.body.ticket.history.some(h => h.type === "asset" && h.d.en === "Device → LT-0160"), "IT can change the ticket's device; it's recorded in History");
+  ok((await call("karim@dar.test", "update-ticket", { id: at.id, asset: "NOPE-1" })).status === 400, "unknown device refused");
+  await call("karim@dar.test", "update-ticket", { id: at.id, asset: "LT-0142" });
+  r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { id: "LT-0142", type: "laptop", model: "Dell Latitude 5440", owner: null, status: "repair", location: "IT bench" } });
+  ok(r.body.find(a => a.id === "LT-0142").status === "repair" && r.body.find(a => a.id === "LT-0142").owner === null, "IT edits a device (taken in for repair)");
+  ok((await call("karim@dar.test", "delete-asset", { id: "LT-0160" })).status === 403, "agents can't delete devices");
+  ok((await call("omar@dar.test", "delete-asset", { id: "LT-0142" })).status === 400, "a device with tickets can't be deleted (retire it instead)");
+  r = await call("omar@dar.test", "delete-asset", { id: "LT-0160" });
+  ok(r.status === 200 && !r.body.some(a => a.id === "LT-0160"), "IT manager deletes an unused device");
 }
 
 (async () => {

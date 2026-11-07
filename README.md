@@ -22,10 +22,17 @@ Nothing is shared, so changes in one can never affect the other.
 | Role | Sees | Can do |
 |---|---|---|
 | 👤 **Employee** | Help Center, My Requests, Knowledge Base | Search quick fixes, raise tickets, chat with IT, confirm and rate a fix, reopen if still broken |
-| 🛠️ **IT Agent** | Ticket Queue, My Requests, Knowledge Base | Take tickets, reply, write private notes, change status/priority, resolve, **escalate to the IT manager** |
+| 🛠️ **IT Agent** | Ticket Queue, Assets, My Requests, Knowledge Base | Take tickets, reply, write private notes, change status/priority, resolve, **escalate to the IT manager**, add and update devices |
 | 👑 **IT Manager** | Everything an agent sees, plus Dashboard, Approvals, Auto-assignment | Approve or reject requests, declare a major incident |
 | 🛡️ **Admin** | Admin Console, plus everything above | Manage people, departments, categories, questions, priorities, statuses, replies, articles and settings |
 | *Any manager* | Approvals (when someone they manage asks for something) | Approve or reject that person's requests |
+
+### Assets (device inventory)
+IT keeps a list of company devices: tag, type, make/model, serial, who has it (or where it is), status (*In use, In stock, Needs repair, Retired*), purchase date and warranty end.
+- The **Assets** page shows totals, devices in repair, and warranties ending within 90 days or already expired. You can search and filter it.
+- Clicking a device shows its details and **every ticket about it**.
+- When raising a ticket, employees can pick **their own device**. IT can link or change the device on any ticket, and the device appears in the ticket emails.
+- IT agents and managers can add and edit devices. Only the IT manager or an admin can delete one, and a device with tickets can only be *Retired*, so its history is kept.
 
 ### Help categories
 Request Hardware · Internet & Connectivity · Email & Accounts · New Software / License Purchase *(needs approval)* · New Joiner / Leaver *(needs approval)* · Something Else.
@@ -81,6 +88,7 @@ Files starting with `_` are helpers, not endpoints. The app uses **4 serverless 
 
 ### API actions
 - **Read:** `bootstrap`, `list-tickets`, `kb-view`
+- **Assets:** `list-assets`, `save-asset`, `delete-asset` (`update-ticket` also accepts `asset`)
 - **Tickets:** `create-ticket`, `reply`, `update-ticket` (assignee / status / priority / major), `escalate`, `resolve`, `confirm`, `reopen`, `approve`, `reject`
 - **Admin:** `admin-save-user`, `admin-save-dept`, `admin-delete-dept`, `admin-save-settings`, `admin-save-category`, `admin-toggle-category`, `admin-reorder-categories`, `admin-delete-category`, `admin-save-canned`, `admin-delete-canned`, `admin-save-kb`, `admin-delete-kb`
 
@@ -93,7 +101,7 @@ Files starting with `_` are helpers, not endpoints. The app uses **4 serverless 
 - Every input is validated and length-limited. Attachment links must be `http(s)`.
 
 ### Data model
-`departments`, `users`, `sessions`, `settings`, `categories`, `canned_replies`, `kb_articles`, `tickets`, `ticket_messages`, `ticket_events`, `email_log`. Ticket numbers come from the `ticket_seq` sequence: `IT-1001`, `IT-1002`, …
+`departments`, `users`, `sessions`, `settings`, `categories`, `canned_replies`, `kb_articles`, `tickets`, `ticket_messages`, `ticket_events`, `email_log`, `assets`. Ticket numbers come from the `ticket_seq` sequence: `IT-1001`, `IT-1002`, …
 
 Bilingual texts are stored as JSON: `{"en": "…", "ar": "…"}`.
 

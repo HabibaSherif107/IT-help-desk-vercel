@@ -42,6 +42,22 @@ const DEFAULT_SETTINGS = {
   },
 };
 
+// Device inventory: types and statuses (fixed lists, bilingual labels).
+const ASSET_TYPES = {
+  laptop: B("Laptop", "لابتوب"), desktop: B("Desktop", "كمبيوتر مكتبي"), monitor: B("Monitor", "شاشة"),
+  printer: B("Printer / Scanner", "طابعة / ماسح ضوئي"), mobile: B("Mobile phone", "هاتف محمول"),
+  network: B("Network device", "جهاز شبكة"), accessory: B("Accessory", "ملحق"), other: B("Other", "أخرى"),
+};
+const ASSET_STATUSES = {
+  in_use: { n: B("In use", "قيد الاستخدام"), c: "#34D399" }, in_stock: { n: B("In stock", "في المخزن"), c: "#38BDF8" },
+  repair: { n: B("Needs repair", "يحتاج إصلاح"), c: "#F59E0B" }, retired: { n: B("Retired", "خارج الخدمة"), c: "#64748B" },
+};
+const dateStr = v => (v ? (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10)) : null);
+function shapeAsset(a) {
+  return { id: a.id, type: a.type, model: a.model || "", serial: a.serial || "", owner: a.owner_id || null, location: a.location || "",
+    status: a.status, purchased: dateStr(a.purchased_on), warranty: dateStr(a.warranty_end), notes: a.notes || "" };
+}
+
 const opt = (en, ar) => B(en, ar);
 const DEFAULT_CATEGORIES = [
   { id: "hardware", icon: "💻", type: "request", needs_approval: false, name: B("Request Hardware", "طلب أجهزة"),
@@ -151,12 +167,13 @@ async function seedIfEmpty() {
 // Everything the page needs to draw itself, in the shape the front end uses.
 async function loadConfig(viewer) {
   await seedIfEmpty();
-  const [settings, users, deptRows, catRows, cannedRows, kbRows] = await Promise.all([
+  const [settings, users, deptRows, catRows, cannedRows, kbRows, myAssetRows] = await Promise.all([
     loadSettings(), loadUsers(),
     supabase.from("departments").select("id, name, icon, sort").order("sort").then(check),
     supabase.from("categories").select("*").order("sort").then(check),
     supabase.from("canned_replies").select("*").order("sort").then(check),
     supabase.from("kb_articles").select("*").order("id").then(check),
+    supabase.from("assets").select("*").eq("owner_id", viewer.id).order("id").then(check),
   ]);
   const role = itRoleOf(viewer);
   const depts = {};
@@ -168,6 +185,8 @@ async function loadConfig(viewer) {
     autoAssign: settings.autoAssign, approvalMode: settings.approvalMode, approver: settings.approverId,
     kbSuggest: settings.kbSuggest, csat: settings.csat, supportCcUpdates: settings.supportCcUpdates,
     escalateTo: settings.escalateTo, escalateTarget: pickEscalationTarget(settings, users),
+    assetTypes: ASSET_TYPES, assetStatuses: ASSET_STATUSES,
+    myAssets: (myAssetRows || []).filter(a => a.status !== "retired").map(shapeAsset),
     greeting: settings.greeting, heroSub: settings.heroSub,
     prio: settings.prio, impacts: settings.impacts, urgencies: settings.urgencies, matrix: settings.matrix, statuses: settings.statuses,
     depts,
@@ -190,7 +209,7 @@ function shapeTicket(t, messages, includeInternal, events) {
     id: t.id, cat: t.category_id, title: t.title, desc: t.description, req: t.requester_id, dept: t.dept_id,
     impact: t.impact, urgency: t.urgency, priority: t.priority, status: t.status, assignee: t.assignee_id,
     created: ms(t.created_at), updated: ms(t.updated_at), resolved: ms(t.resolved_at), csat: t.csat,
-    fields: t.fields || {}, link: t.attachment_url, major: !!t.is_major,
+    fields: t.fields || {}, link: t.attachment_url, major: !!t.is_major, asset: t.asset_id || null,
     approval: t.approval_state ? { by: t.approver_id, state: t.approval_state, reason: t.approval_reason } : null,
     escalated: t.escalated_at ? { at: ms(t.escalated_at), by: t.escalated_by, from: t.escalated_from, reason: t.escalation_reason } : null,
     history: includeInternal ? (events || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
@@ -216,6 +235,10 @@ function ticketSummary(t, ctx, lang) {
   const lines = lang === "ar"
     ? [`التذكرة: ${t.id} - ${t.title}`, `الفئة: ${L(cat && cat.name)}`, `الأولوية: ${t.priority} · ${L(prio)}`, `مقدم الطلب: ${requester ? requester.name : "-"}${dept ? " (" + (L(dept)) + ")" : ""}`, `المسؤول: ${assignee ? assignee.name : "غير مُسندة"}`]
     : [`Ticket: ${t.id} - ${t.title}`, `Category: ${L(cat && cat.name)}`, `Priority: ${t.priority} · ${L(prio)}`, `Requester: ${requester ? requester.name : "-"}${dept ? " (" + L(dept) + ")" : ""}`, `Assigned to: ${assignee ? assignee.name : "Unassigned"}`];
+  if (ctx.asset) {
+    const a = ctx.asset, ty = L(ASSET_TYPES[a.type]);
+    lines.push((lang === "ar" ? "الجهاز: " : "Device: ") + [a.id, ty, a.model].filter(Boolean).join(" · "));
+  }
   const extra = fieldLines(cat, t.fields, lang);
   return lines.join("\n") + (extra ? "\n" + extra : "");
 }
@@ -261,6 +284,6 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 
 module.exports = {
   supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS,
-  itRoleOf, isIT, isLead, pickEscalationTarget, str, bi, isColor, check, SetupRequired,
+  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, shapeAsset, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };

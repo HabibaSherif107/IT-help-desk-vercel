@@ -43,8 +43,8 @@ Keep a **private note** open and paste each value into it as you go. Never put t
    - Click **Create new project** and wait about 2 minutes.
 2. Left menu → **SQL Editor** → **New query**.
 3. Open **`schema.sql`** from the GitHub repo (click the file → **Raw** → select all → copy). Paste it into the editor and click **Run**. You should see *Success. No rows returned*.
-4. Check: left menu → **Table Editor**. You should see **11 tables**:
-   - `departments`, `users`, `sessions`, `settings`, `categories`, `canned_replies`, `kb_articles`, `tickets`, `ticket_messages`, `ticket_events`, `email_log`
+4. Check: left menu → **Table Editor**. You should see **12 tables**:
+   - `departments`, `users`, `sessions`, `settings`, `categories`, `canned_replies`, `kb_articles`, `tickets`, `ticket_messages`, `ticket_events`, `email_log`, `assets`
 
    `departments` should contain 5 rows (IT, Finance, HR, Sales, Operations).
 5. Left menu → **Project Settings** → **API Keys** (on some dashboards: **API**). Copy:
@@ -205,6 +205,7 @@ Do these in order. Each Admin Console page has its own **Save** button.
    - **Suggest articles** and **Ask employees to rate:** on (recommended)
 6. **Texts** (same page): adjust the Help Center greeting in both languages if you like.
 7. **Canned replies** and **Knowledge base:** add your own ready-made replies and how-to articles.
+8. **Assets** (left menu → *Assets* → **+ Add device**): enter company devices (tag, type, model, who has it, warranty end). Employees can then pick their device when raising a ticket.
 
 ---
 
@@ -223,6 +224,7 @@ Use one employee account, one technician account and the IT Manager.
 | 8 | Open any ticket as IT → **History** | Shows created, assigned (and how), escalated, resolved… with names and times |
 | 9 | Supabase → **Table Editor** → `email_log` | One row per email sent, each with `ok = true` |
 | 10 | Open the site on a phone, switch to Arabic (🌐) | The page fits the screen and reads right-to-left |
+| 11 | IT: **Assets → + Add device**, assign it to the test employee. Employee: raise a ticket and choose that device under **Related device**. | The device appears on the ticket and in the assignment email. Clicking the device on the Assets page lists the ticket. |
 
 When everything matches, share **`https://helpdesk.your-company.com`** with staff.
 

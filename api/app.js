@@ -53,16 +53,17 @@ async function shapedOne(viewer, role, id) {
 }
 // Context for emails: category, people, department, settings.
 async function emailCtx(t) {
-  const [settings, members, catRow, deptRow] = await Promise.all([
+  const [settings, members, catRow, deptRow, assetRow] = await Promise.all([
     IT.loadSettings(), IT.loadUsers(),
     supabase.from("categories").select("*").eq("id", t.category_id).maybeSingle().then(check),
     supabase.from("departments").select("id, name").eq("id", t.dept_id || "-").maybeSingle().then(r => r.data),
+    t.asset_id ? supabase.from("assets").select("*").eq("id", t.asset_id).maybeSingle().then(r => r.data) : null,
   ]);
   const byId = id => members.find(m => m.id === id);
   return {
     settings, members, byId, cat: catRow,
     requester: byId(t.requester_id), assignee: byId(t.assignee_id), approver: byId(t.approver_id),
-    dept: deptRow ? deptRow.name : null,
+    dept: deptRow ? deptRow.name : null, asset: assetRow || null,
     supportCc: settings.supportCcUpdates && IT.SUPPORT_EMAIL() ? IT.SUPPORT_EMAIL() : null,
     // Who hears about a ticket when nobody is assigned: the support mailbox if there is one,
     // otherwise the escalation contact (normally the IT manager).
@@ -160,6 +161,48 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(rows.map(t => IT.shapeTicket(t, by[t.id], access(viewer, role, t).internal, evBy[t.id])));
     }
 
+    // ── Assets (device inventory) ────────────────────────────
+    if (action === "list-assets") {
+      if (!isIT(role)) return fail(res, 403, "Only IT can see the device inventory.");
+      const rows = check(await supabase.from("assets").select("*").order("id")) || [];
+      return res.status(200).json(rows.map(IT.shapeAsset));
+    }
+    if (action === "save-asset") {
+      if (!isIT(role)) return fail(res, 403, "Only IT can change the device inventory.");
+      const a = body.asset || {};
+      const tag = str(a.id, 40).trim().toUpperCase();
+      if (!/^[A-Z0-9][A-Z0-9._-]{0,39}$/.test(tag)) return fail(res, 400, "The asset tag may use letters, numbers, - . _ (e.g. LT-0142).");
+      if (!IT.ASSET_TYPES[a.type]) return fail(res, 400, "Choose a device type.");
+      if (!IT.ASSET_STATUSES[a.status]) return fail(res, 400, "Choose a status.");
+      const day = v => { const s = str(v, 10).trim(); if (!s) return null; const d = new Date(s + "T00:00:00Z"); if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(d) || d.toISOString().slice(0, 10) !== s) throw new Error("Dates must be valid (YYYY-MM-DD)."); return s; };
+      const members = await IT.loadUsers();
+      const owner = a.owner ? (members.some(m => m.id === a.owner && m.active !== false) ? a.owner : null) : null;
+      if (a.owner && !owner) return fail(res, 400, "That person isn't an active user.");
+      const row = { type: a.type, model: str(a.model, 120).trim(), serial: str(a.serial, 80).trim() || null, owner_id: owner,
+        location: str(a.location, 100).trim() || null, status: a.status, purchased_on: day(a.purchased), warranty_end: day(a.warranty),
+        notes: str(a.notes, 500).trim() || null, updated_at: nowIso() };
+      if (!row.model) return fail(res, 400, "Enter the make and model.");
+      const existing = check(await supabase.from("assets").select("id").eq("id", tag).maybeSingle());
+      if (body.isNew) {
+        if (existing) return fail(res, 400, "That asset tag is already used.");
+        check(await supabase.from("assets").insert({ ...row, id: tag }));
+      } else {
+        if (!existing) return fail(res, 404, "Device not found.");
+        check(await supabase.from("assets").update(row).eq("id", tag));
+      }
+      const rows = check(await supabase.from("assets").select("*").order("id")) || [];
+      return res.status(200).json(rows.map(IT.shapeAsset));
+    }
+    if (action === "delete-asset") {
+      if (!isLead(role)) return fail(res, 403, "Only the IT manager or an admin can delete devices.");
+      const tag = str(body.id, 40);
+      const used = check(await supabase.from("tickets").select("id").eq("asset_id", tag).limit(1)) || [];
+      if (used.length) return fail(res, 400, "This device has tickets. Set its status to Retired instead.");
+      check(await supabase.from("assets").delete().eq("id", tag));
+      const rows = check(await supabase.from("assets").select("*").order("id")) || [];
+      return res.status(200).json(rows.map(IT.shapeAsset));
+    }
+
     if (action === "kb-view") {
       const a = check(await supabase.from("kb_articles").select("id, views").eq("id", str(body.id, 40)).maybeSingle());
       if (a) await supabase.from("kb_articles").update({ views: (a.views || 0) + 1 }).eq("id", a.id);
@@ -184,6 +227,12 @@ module.exports = async function handler(req, res) {
       const clamp = n => Math.min(3, Math.max(1, parseInt(n, 10) || 1));
       const impact = cat.type === "incident" ? clamp(t.impact) : 1, urgency = clamp(t.urgency || 2);
       const link = str(t.link, 500).trim();
+      let assetId = null;
+      if (t.asset_id) {
+        const a = check(await supabase.from("assets").select("id, owner_id").eq("id", str(t.asset_id, 40)).maybeSingle());
+        if (!a || (a.owner_id !== viewer.id && !isIT(role))) return fail(res, 400, "Choose one of your own devices.");
+        assetId = a.id;
+      }
       if (link && !/^https?:\/\//i.test(link)) return fail(res, 400, "The file link must start with http:// or https://");
 
       const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
@@ -198,7 +247,7 @@ module.exports = async function handler(req, res) {
         id, category_id: cat.id, title, description, requester_id: viewer.id, dept_id: me.dept_id || null,
         impact, urgency, priority: settings.matrix[impact - 1][urgency - 1],
         status: needsApproval ? "Pending Approval" : owner ? "Assigned" : "New",
-        assignee_id: owner, fields, attachment_url: link || null,
+        assignee_id: owner, fields, attachment_url: link || null, asset_id: assetId,
         approval_state: needsApproval ? "pending" : null, approver_id: approver,
       };
       check(await supabase.from("tickets").insert(row));
@@ -283,6 +332,12 @@ module.exports = async function handler(req, res) {
         if ("priority" in body) {
           if (!IT.PRIOS.includes(body.priority)) return fail(res, 400, "Unknown priority.");
           patch.priority = body.priority; if (body.priority !== t.priority) events.push(["priority", ev("Priority → " + body.priority, "الأولوية ← " + body.priority)]);
+        }
+        if ("asset" in body) {
+          const v = body.asset ? str(body.asset, 40) : null;
+          if (v && !check(await supabase.from("assets").select("id").eq("id", v).maybeSingle())) return fail(res, 400, "Device not found.");
+          patch.asset_id = v;
+          if (v !== t.asset_id) events.push(["asset", v ? ev("Device → " + v, "الجهاز ← " + v) : ev("Device removed", "أُزيل الجهاز")]);
         }
         if ("major" in body) {
           if (!isLead(role)) return fail(res, 403, "Only the IT manager can declare a major incident.");

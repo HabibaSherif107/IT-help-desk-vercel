@@ -173,3 +173,24 @@ alter table tickets add column if not exists escalated_at      timestamptz;
 alter table tickets add column if not exists escalated_by      uuid references users(id);
 alter table tickets add column if not exists escalated_from    uuid references users(id);
 alter table tickets add column if not exists escalation_reason text;
+
+-- 13. Assets (device inventory) — safe to re-run
+create table if not exists assets (
+  id           text primary key,                 -- asset tag, e.g. LT-0142
+  type         text not null default 'laptop',
+  model        text not null default '',
+  serial       text,
+  owner_id     uuid references users(id) on delete set null,   -- who has it
+  location     text,                             -- where it is, if not with a person
+  status       text not null default 'in_stock' check (status in ('in_use','in_stock','repair','retired')),
+  purchased_on date,
+  warranty_end date,
+  notes        text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+alter table assets enable row level security;
+create index if not exists assets_owner on assets (owner_id);
+--     A ticket can be linked to the device it is about.
+alter table tickets add column if not exists asset_id text references assets(id) on delete set null;
+create index if not exists tickets_asset on tickets (asset_id);
