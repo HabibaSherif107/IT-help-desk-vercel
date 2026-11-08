@@ -30,6 +30,7 @@ Nothing is shared, so changes in one can never affect the other.
 ### Assets (device inventory)
 IT keeps a list of company devices: type, make/model, serial number, who has it, status (*In use, In stock, Needs repair, Retired*), purchase date and warranty. Tick **Under warranty** to enter the warranty end date. Devices are numbered automatically, so there's no tag to type in.
 - The **Assets** page shows totals, devices in repair, and warranties ending within 90 days or already expired. You can search and filter it.
+- **Laptops have a Specs section:** processor, RAM, storage, Windows 11 compatibility (Compatible / Not compatible / Not checked yet), expected lifetime and a recommendation. It only appears when the type is *Laptop*. The main specs and a Win 11 ✓/✕ show under the laptop in the list, and you can search by them.
 - Clicking a device shows its details and **every ticket about it**.
 - When raising a ticket, employees can pick **their own device**. IT can link or change the device on any ticket, and the device appears in the ticket emails.
 - IT agents and managers can add and edit devices. Only the IT manager or an admin can delete one, and a device with tickets can only be *Retired*, so its history is kept.

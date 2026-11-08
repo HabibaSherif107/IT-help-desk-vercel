@@ -69,7 +69,17 @@ const dateStr = v => (v ? (v instanceof Date ? v.toISOString().slice(0, 10) : St
 function shapeAsset(a) {
   const hasWarranty = !!a.has_warranty;
   return { id: a.id, type: a.type, model: a.model || "", serial: a.serial || "", owner: a.owner_id || null,
-    status: a.status, purchased: dateStr(a.purchased_on), hasWarranty, warranty: hasWarranty ? dateStr(a.warranty_end) : null, notes: a.notes || "" };
+    status: a.status, purchased: dateStr(a.purchased_on), hasWarranty, warranty: hasWarranty ? dateStr(a.warranty_end) : null, notes: a.notes || "",
+    specs: a.type === "laptop" ? cleanSpecs(a.specs) : null };
+}
+// Laptop specs: processor, RAM, storage, Windows 11 compatibility, expected lifetime, recommendation.
+const SPEC_KEYS = { cpu: 120, ram: 60, storage: 80, lifetime: 80, recommendation: 500 };
+function cleanSpecs(v) {
+  const o = v && typeof v === "object" ? v : {};
+  const out = {};
+  for (const k in SPEC_KEYS) out[k] = String(o[k] == null ? "" : o[k]).slice(0, SPEC_KEYS[k]).trim();
+  out.win11 = ["yes", "no"].includes(o.win11) ? o.win11 : "";
+  return out;
 }
 
 const opt = (en, ar) => B(en, ar);
@@ -299,6 +309,6 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 
 module.exports = {
   supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS,
-  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, shapeAsset, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
+  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, shapeAsset, cleanSpecs, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };

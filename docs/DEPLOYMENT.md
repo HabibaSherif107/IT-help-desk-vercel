@@ -53,7 +53,7 @@ Keep a **private note** open and paste each value into it as you go. Never put t
 
    ⚠ This key has full access to the database. Only ever paste it into Vercel.
 
-> **Already ran `schema.sql` before?** Run the **latest** `schema.sql` again. It's safe to re-run: it adds anything new (for example the escalation fields, assets, and the stock and purchase-request tables) and keeps all existing data.
+> **Already ran `schema.sql` before?** Run the **latest** `schema.sql` again. It's safe to re-run: it adds anything new (for example the escalation fields, assets, laptop specs, and the stock and purchase-request tables) and keeps all existing data.
 
 You don't need to set up anything under Authentication or Storage.
 
@@ -205,7 +205,7 @@ Do these in order. Each Admin Console page has its own **Save** button.
    - **Suggest articles** and **Ask employees to rate:** on (recommended)
 6. **Texts** (same page): adjust the Help Center greeting in both languages if you like.
 7. **Canned replies** and **Knowledge base:** add your own ready-made replies and how-to articles.
-8. **Assets** (left menu → *Assets* → **+ Add device**): enter company devices (type, model, serial, who has it, and tick **Under warranty** to add the end date). Employees can then pick their device when raising a ticket.
+8. **Assets** (left menu → *Assets* → **+ Add device**): enter company devices (type, model, serial, who has it, and tick **Under warranty** to add the end date). For laptops, also fill in the **Laptop specs** box. Employees can then pick their device when raising a ticket.
 9. **Stock** (left menu → *Stock* → **+ Add item**): type in what's on the current IT Stock sheet, with the quantity on hand and the minimum level. After that, change quantities only with **Adjust quantity**, so every change is logged.
 
 ---

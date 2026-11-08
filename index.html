@@ -167,6 +167,11 @@ const S = {
   no_assets:["No devices yet. Add the first one with + Add device.","لا توجد أجهزة بعد. أضف أول جهاز من «+ إضافة جهاز»."], device_tickets:["Tickets about this device","التذاكر الخاصة بهذا الجهاز"], no_device_tickets:["No tickets for this device yet.","لا توجد تذاكر لهذا الجهاز بعد."],
   related_device:["Related device (optional)","الجهاز المرتبط (اختياري)"], under_warranty:["Under warranty","تحت الضمان"], no_warranty:["No warranty","بدون ضمان"],
   warranty_need:["Tick “Under warranty” to enter when it ends.","ضع علامة على «تحت الضمان» لإدخال تاريخ انتهائه."], in_it_stock:["IT stock","مخزن التقنية"], device:["Device","الجهاز"], out_warranty:["out of warranty","خارج الضمان"],
+  specs:["Laptop specs","مواصفات اللابتوب"], sp_cpu:["Processor","المعالج"], sp_cpu_ph:["e.g. Intel Core i5-1135G7","مثال: Intel Core i5-1135G7"],
+  sp_ram:["RAM","الذاكرة (RAM)"], sp_ram_ph:["e.g. 8 GB","مثال: 8 جيجابايت"], sp_storage:["Storage","التخزين"], sp_storage_ph:["e.g. 256 GB SSD","مثال: 256 جيجابايت SSD"],
+  sp_win11:["Windows 11 compatibility","التوافق مع ويندوز 11"], sp_win11_yes:["Compatible","متوافق"], sp_win11_no:["Not compatible","غير متوافق"], sp_win11_unk:["Not checked yet","لم يُفحص بعد"],
+  sp_life:["Expected lifetime","العمر المتوقع"], sp_life_ph:["e.g. 2 more years / until 2028","مثال: سنتان إضافيتان / حتى 2028"],
+  sp_rec:["Recommendation","التوصية"], sp_rec_ph:["e.g. Upgrade RAM to 16 GB / replace next year","مثال: ترقية الذاكرة إلى 16 جيجابايت / الاستبدال العام القادم"],
   toast_device_saved:["Device saved","تم حفظ الجهاز"], toast_device_deleted:["Device deleted","تم حذف الجهاز"], confirm_delete_device:["Delete device {id}?","حذف الجهاز {id}؟"], none_dash:["— None —","— لا يوجد —"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
   nav_stock:["Stock","المخزون"], title_stock:["IT Stock Register","سجل مخزون تقنية المعلومات"], nav_pr:["Purchase Requests","طلبات الشراء"],
   st_items:["Items","الأصناف"], st_units:["Units in stock","إجمالي الوحدات"], st_low:["Low stock","مخزون منخفض"], st_out:["Out of stock","نفد المخزون"],
@@ -474,7 +479,7 @@ function Assets({assets,tickets,onOpenAsset,onAdd}){
   const [q,setQ]=useState(""), [ft,setFt]=useState(""), [fs,setFs]=useState("");
   const today=todayStr(), soon=soonStr(), live=assets.filter(a=>a.status!=="retired");
   const ql=q.toLowerCase();
-  const rows=assets.filter(a=>(!ft||a.type===ft)&&(!fs||a.status===fs)&&(!q||[a.model,a.serial,L(CFG.assetTypes[a.type]),a.owner?pname(a.owner):""].join(" ").toLowerCase().includes(ql)));
+  const rows=assets.filter(a=>(!ft||a.type===ft)&&(!fs||a.status===fs)&&(!q||[a.model,a.serial,L(CFG.assetTypes[a.type]),a.owner?pname(a.owner):"",...(a.specs?[a.specs.cpu,a.specs.ram,a.specs.storage]:[])].join(" ").toLowerCase().includes(ql)));
   const tile=(l,v,tone)=>e("div",{key:l,style:{...card,padding:14}},e("div",{style:{fontSize:"1.6rem",fontWeight:800,fontVariantNumeric:"tabular-nums",color:tone||"#EDEBEA"}},v),e("div",{style:{fontSize:"0.75rem",color:"#8A8583",lineHeight:1.35}},l));
   /* Every column can shrink and wrap, so long values never run into the next column. */
   const cols="minmax(180px,2fr) minmax(130px,1.3fr) minmax(110px,1fr) minmax(110px,1fr) minmax(70px,.6fr)";
@@ -494,7 +499,9 @@ function Assets({assets,tickets,onOpenAsset,onAdd}){
       e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:14,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_device"),t("h_holder"),t("status"),t("h_warranty"),t("h_tickets")].map((h,i)=>e("span",{key:i,style:cell},h))),
       rows.map((a,i)=>{ const mine=tickets.filter(x=>x.asset===a.id), open=mine.filter(isOpen).length; const exp=a.hasWarranty&&a.warranty&&a.warranty<today;
         return e("button",{key:a.id,className:"hov",onClick:()=>onOpenAsset(a.id),style:{display:"grid",width:"100%",textAlign:"start",color:"inherit",border:"none",gridTemplateColumns:cols,gap:14,padding:"12px 14px",alignItems:"center",background:i%2?"#181514":"#1A1717",fontSize:"0.85rem",opacity:a.status==="retired"?.55:1}},
-          e("div",{style:cell},e("div",{style:{fontWeight:600}},a.model),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},[L(CFG.assetTypes[a.type]),a.serial?"SN "+a.serial:"",a.purchased?t("bought",{d:a.purchased}):""].filter(Boolean).join(" · "))),
+          e("div",{style:cell},e("div",{style:{fontWeight:600}},a.model),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},[L(CFG.assetTypes[a.type]),a.serial?"SN "+a.serial:"",a.purchased?t("bought",{d:a.purchased}):""].filter(Boolean).join(" · ")),
+            a.specs&&(a.specs.cpu||a.specs.ram||a.specs.storage||a.specs.win11)&&e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginTop:2}},
+              [a.specs.cpu,a.specs.ram,a.specs.storage].filter(Boolean).join(" · "),a.specs.win11&&e("span",{style:{marginInlineStart:6,color:a.specs.win11==="yes"?"#34D399":"#EF4444"}},"Win 11 "+(a.specs.win11==="yes"?"✓":"✕")))),
           e("div",{style:{...cell,display:"flex",gap:6,alignItems:"center"}},a.owner?[e(Av,{key:"a",id:a.owner,size:22}),e("span",{key:"n",style:cell},pname(a.owner))]:e("span",{style:{color:"#8A8583"}},a.status==="in_stock"?t("in_it_stock"):"—")),
           e("div",{style:cell},e(AssetStatus,{s:a.status})),
           e("div",{style:{...cell,color:warrantyColor(a),fontVariantNumeric:"tabular-nums",lineHeight:1.35}},warrantyText(a),exp&&e("div",{style:{fontSize:"0.72rem"}},"("+t("expired")+")")),
@@ -510,6 +517,11 @@ function AssetModal({a,role,tickets,onClose,onEdit,onDelete,onOpenTicket}){
     row(t("a_serial"),a.serial||"—"),row(t("a_purchased"),a.purchased||"—"),
     row(t("h_warranty"),e("span",{style:{color:warrantyColor(a)}},warrantyText(a)+(exp?" ("+t("expired")+")":""))),
     a.notes?row(t("a_notes"),a.notes):null,
+    a.type==="laptop"&&a.specs&&e("div",{id:"asset-specs"},
+      e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"18px 0 4px"}},t("specs")),
+      row(t("sp_cpu"),a.specs.cpu||"—"),row(t("sp_ram"),a.specs.ram||"—"),row(t("sp_storage"),a.specs.storage||"—"),
+      row(t("sp_win11"),a.specs.win11==="yes"?e(Pill,{c:"#34D399"},t("sp_win11_yes")):a.specs.win11==="no"?e(Pill,{c:"#EF4444"},t("sp_win11_no")):e("span",{style:{color:"#8A8583"}},t("sp_win11_unk"))),
+      row(t("sp_life"),a.specs.lifetime||"—"),row(t("sp_rec"),a.specs.recommendation||"—")),
     e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"18px 0 8px"}},t("device_tickets")),
     mine.length?mine.map(x=>e("button",{key:x.id,className:"hov",onClick:()=>onOpenTicket(x.id),style:{display:"flex",gap:10,alignItems:"center",width:"100%",textAlign:"start",background:"none",border:"none",color:"inherit",padding:"8px 6px",borderRadius:6,fontSize:"0.85rem",flexWrap:"wrap"}},
       e("span",{style:{fontFamily:"monospace",color:"#8A8583"}},x.id),e("span",{style:{flex:"1 1 160px",minWidth:0,overflowWrap:"anywhere"}},x.title),e("span",{style:{color:"#8A8583",fontSize:"0.75rem"}},fmtDate(x.created)),e(StatB,{s:x.status}))):e(Empty,{text:t("no_device_tickets")}),
@@ -519,6 +531,8 @@ function AssetModal({a,role,tickets,onClose,onEdit,onDelete,onOpenTicket}){
 }
 function AssetEditor({a0,isNew,onSave,onClose,busy,err}){
   const [a,setA]=useState(()=>clone(a0)); const set=(k,v)=>setA(x=>({...x,[k]:v}));
+  const sp={cpu:"",ram:"",storage:"",win11:"",lifetime:"",recommendation:"",...(a.specs||{})};
+  const setSp=(k,v)=>setA(x=>({...x,specs:{...sp,...(x.specs||{}),[k]:v}}));
   const field=(id,label,el)=>e("div",{style:{minWidth:0}},e("label",{style:LS,htmlFor:id},label),el);
   const grid={display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:14,marginBottom:14};
   return e(Modal,{title:isNew?t("new_device"):t("edit")+": "+a0.model,onClose,w:620},
@@ -537,9 +551,20 @@ function AssetEditor({a0,isNew,onSave,onClose,busy,err}){
       a.hasWarranty
         ? field("ae-warr",t("a_warranty")+" *",e("input",{id:"ae-warr",type:"date",value:a.warranty||"",onChange:ev=>set("warranty",ev.target.value),style:IS}))
         : e("div",{style:{fontSize:"0.78rem",color:"#8A8583",alignSelf:"center"}},t("warranty_need"))),
+    /* Laptop specs: only shown (and only saved) when the type is Laptop. */
+    a.type==="laptop"&&e("fieldset",{id:"ae-specs",style:{...card,background:"#151211",padding:"12px 14px 14px",marginBottom:14,minWidth:0}},
+      e("legend",{style:{fontSize:"0.85rem",fontWeight:700,padding:"0 6px"}},"💻 "+t("specs")),
+      e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:14}},
+        field("sp-cpu",t("sp_cpu"),e("input",{id:"sp-cpu",dir:"ltr",value:sp.cpu,placeholder:t("sp_cpu_ph"),onChange:ev=>setSp("cpu",ev.target.value),style:IS})),
+        field("sp-ram",t("sp_ram"),e("input",{id:"sp-ram",dir:"ltr",value:sp.ram,placeholder:t("sp_ram_ph"),onChange:ev=>setSp("ram",ev.target.value),style:IS})),
+        field("sp-storage",t("sp_storage"),e("input",{id:"sp-storage",dir:"ltr",value:sp.storage,placeholder:t("sp_storage_ph"),onChange:ev=>setSp("storage",ev.target.value),style:IS})),
+        field("sp-win11",t("sp_win11"),e("select",{id:"sp-win11",value:sp.win11,onChange:ev=>setSp("win11",ev.target.value),style:IS},
+          e("option",{value:""},t("sp_win11_unk")),e("option",{value:"yes"},t("sp_win11_yes")),e("option",{value:"no"},t("sp_win11_no")))),
+        field("sp-life",t("sp_life"),e("input",{id:"sp-life",value:sp.lifetime,placeholder:t("sp_life_ph"),onChange:ev=>setSp("lifetime",ev.target.value),style:IS}))),
+      e("div",{style:{marginTop:14}},field("sp-rec",t("sp_rec"),e("textarea",{id:"sp-rec",rows:2,value:sp.recommendation,placeholder:t("sp_rec_ph"),onChange:ev=>setSp("recommendation",ev.target.value),style:{...IS,resize:"vertical"}})))),
     e("div",{style:{marginBottom:14}},field("ae-notes",t("a_notes"),e("textarea",{id:"ae-notes",rows:2,value:a.notes,onChange:ev=>set("notes",ev.target.value),style:{...IS,resize:"vertical"}}))),
     e(ErrBox,{text:err}),
-    e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{id:"ae-save",disabled:busy,onClick:()=>onSave(a),style:BP},busy?t("saving"):t("save"))));
+    e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{id:"ae-save",disabled:busy,onClick:()=>onSave({...a,specs:a.type==="laptop"?sp:null}),style:BP},busy?t("saving"):t("save"))));
 }
 
 function KBView({onKB,admin,onEdit,onAdd,onDelete}){

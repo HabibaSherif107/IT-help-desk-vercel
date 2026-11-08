@@ -259,3 +259,9 @@ alter table purchase_request_lines enable row level security;
 create index if not exists stock_movements_item on stock_movements (item_id);
 create index if not exists pr_lines_pr on purchase_request_lines (pr_id);
 create index if not exists pr_status on purchase_requests (status);
+
+-- ════════════════════════════════════════════════════════════
+-- 16. Laptop specs (upgrade-safe). Only filled in for devices of type "laptop":
+--     { cpu, ram, storage, win11: "yes" | "no" | "", lifetime, recommendation }
+-- ════════════════════════════════════════════════════════════
+alter table assets add column if not exists specs jsonb;
