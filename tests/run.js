@@ -369,12 +369,16 @@ async function tests() {
   ok(r.status === 200 && !r.body.some(a => a.id === mon.id), "IT manager deletes an unused device");
 
   // ── Laptop specs ─────────────────────────────────────────────
-  const specs = { cpu: "Intel Core i5-1135G7", ram: "8 GB", storage: "256 GB SSD", win11: "yes", lifetime: "until 2028", recommendation: "Upgrade RAM to 16 GB", junk: "x" };
+  const specs = { cpu: "Intel Core i5-1135G7", ram: "8 GB", storage: "256 GB SSD", win11: "yes", lifetime: "until 2028", recommendation: "replace_1y", junk: "x" };
   r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "HP ProBook 450", status: "in_stock", specs } });
   const hp = r.body.find(a => a.model === "HP ProBook 450");
-  ok(hp.specs.cpu === "Intel Core i5-1135G7" && hp.specs.ram === "8 GB" && hp.specs.storage === "256 GB SSD" && hp.specs.win11 === "yes" && hp.specs.lifetime === "until 2028" && hp.specs.recommendation === "Upgrade RAM to 16 GB" && !("junk" in hp.specs), "laptop specs saved (processor, RAM, storage, Windows 11, lifetime, recommendation)");
+  ok(hp.specs.cpu === "Intel Core i5-1135G7" && hp.specs.ram === "8 GB" && hp.specs.storage === "256 GB SSD" && hp.specs.win11 === "yes" && hp.specs.lifetime === "until 2028" && hp.specs.recommendation === "replace_1y" && !("junk" in hp.specs), "laptop specs saved (processor, RAM, storage, Windows 11, lifetime, recommendation)");
   r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...hp, specs: { ...hp.specs, win11: "maybe" } } });
   ok(r.body.find(a => a.id === hp.id).specs.win11 === "", "Windows 11 must be yes / no / not checked");
+  r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...hp, specs: { ...hp.specs, recommendation: "Buy a Mac" } } });
+  ok(r.body.find(a => a.id === hp.id).specs.recommendation === "", "recommendation must be one of: keep / replace within 1 year / retire immediately");
+  r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...hp, specs: { ...hp.specs, recommendation: "retire" } } });
+  ok(r.body.find(a => a.id === hp.id).specs.recommendation === "retire", "“Retire immediately” saved");
   r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "printer", model: "HP LaserJet", status: "in_use", specs } });
   ok(r.body.find(a => a.model === "HP LaserJet").specs === null, "specs are only kept for laptops");
   r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...hp, type: "desktop" } });

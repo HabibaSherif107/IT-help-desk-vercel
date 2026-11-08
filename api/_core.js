@@ -73,12 +73,14 @@ function shapeAsset(a) {
     specs: a.type === "laptop" ? cleanSpecs(a.specs) : null };
 }
 // Laptop specs: processor, RAM, storage, Windows 11 compatibility, expected lifetime, recommendation.
-const SPEC_KEYS = { cpu: 120, ram: 60, storage: 80, lifetime: 80, recommendation: 500 };
+const SPEC_KEYS = { cpu: 120, ram: 60, storage: 80, lifetime: 80 };
+const SPEC_RECS = ["keep", "replace_1y", "retire"];   // Keep (upgrade SSD/RAM if needed) · Replace within 1 year · Retire immediately
 function cleanSpecs(v) {
   const o = v && typeof v === "object" ? v : {};
   const out = {};
   for (const k in SPEC_KEYS) out[k] = String(o[k] == null ? "" : o[k]).slice(0, SPEC_KEYS[k]).trim();
   out.win11 = ["yes", "no"].includes(o.win11) ? o.win11 : "";
+  out.recommendation = SPEC_RECS.includes(o.recommendation) ? o.recommendation : "";
   return out;
 }
 
