@@ -205,7 +205,7 @@ Do these in order. Each Admin Console page has its own **Save** button.
    - **Suggest articles** and **Ask employees to rate:** on (recommended)
 6. **Texts** (same page): adjust the Help Center greeting in both languages if you like.
 7. **Canned replies** and **Knowledge base:** add your own ready-made replies and how-to articles.
-8. **Assets** (left menu → *Assets* → **+ Add device**): enter company devices (tag, type, model, who has it, warranty end). Employees can then pick their device when raising a ticket.
+8. **Assets** (left menu → *Assets* → **+ Add device**): enter company devices (type, model, serial, who has it, and tick **Under warranty** to add the end date). Employees can then pick their device when raising a ticket.
 
 ---
 

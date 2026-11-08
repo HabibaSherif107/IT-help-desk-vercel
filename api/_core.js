@@ -54,8 +54,9 @@ const ASSET_STATUSES = {
 };
 const dateStr = v => (v ? (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10)) : null);
 function shapeAsset(a) {
-  return { id: a.id, type: a.type, model: a.model || "", serial: a.serial || "", owner: a.owner_id || null, location: a.location || "",
-    status: a.status, purchased: dateStr(a.purchased_on), warranty: dateStr(a.warranty_end), notes: a.notes || "" };
+  const hasWarranty = !!a.has_warranty;
+  return { id: a.id, type: a.type, model: a.model || "", serial: a.serial || "", owner: a.owner_id || null,
+    status: a.status, purchased: dateStr(a.purchased_on), hasWarranty, warranty: hasWarranty ? dateStr(a.warranty_end) : null, notes: a.notes || "" };
 }
 
 const opt = (en, ar) => B(en, ar);
@@ -237,7 +238,7 @@ function ticketSummary(t, ctx, lang) {
     : [`Ticket: ${t.id} - ${t.title}`, `Category: ${L(cat && cat.name)}`, `Priority: ${t.priority} · ${L(prio)}`, `Requester: ${requester ? requester.name : "-"}${dept ? " (" + L(dept) + ")" : ""}`, `Assigned to: ${assignee ? assignee.name : "Unassigned"}`];
   if (ctx.asset) {
     const a = ctx.asset, ty = L(ASSET_TYPES[a.type]);
-    lines.push((lang === "ar" ? "الجهاز: " : "Device: ") + [a.id, ty, a.model].filter(Boolean).join(" · "));
+    lines.push((lang === "ar" ? "الجهاز: " : "Device: ") + [ty, a.model, a.serial ? "SN " + a.serial : ""].filter(Boolean).join(" · "));
   }
   const extra = fieldLines(cat, t.fields, lang);
   return lines.join("\n") + (extra ? "\n" + extra : "");

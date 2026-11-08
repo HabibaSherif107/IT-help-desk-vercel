@@ -28,7 +28,7 @@ Nothing is shared, so changes in one can never affect the other.
 | *Any manager* | Approvals (when someone they manage asks for something) | Approve or reject that person's requests |
 
 ### Assets (device inventory)
-IT keeps a list of company devices: tag, type, make/model, serial, who has it (or where it is), status (*In use, In stock, Needs repair, Retired*), purchase date and warranty end.
+IT keeps a list of company devices: type, make/model, serial number, who has it, status (*In use, In stock, Needs repair, Retired*), purchase date and warranty. Tick **Under warranty** to enter the warranty end date. Devices are numbered automatically, so there's no tag to type in.
 - The **Assets** page shows totals, devices in repair, and warranties ending within 90 days or already expired. You can search and filter it.
 - Clicking a device shows its details and **every ticket about it**.
 - When raising a ticket, employees can pick **their own device**. IT can link or change the device on any ticket, and the device appears in the ticket emails.

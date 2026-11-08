@@ -194,3 +194,12 @@ create index if not exists assets_owner on assets (owner_id);
 --     A ticket can be linked to the device it is about.
 alter table tickets add column if not exists asset_id text references assets(id) on delete set null;
 create index if not exists tickets_asset on tickets (asset_id);
+
+-- 14. Assets v2 — safe to re-run
+--     Devices are numbered automatically (no asset tag to type in).
+create sequence if not exists asset_seq start 1001;
+create or replace function next_asset_id() returns text
+  language sql volatile as $$ select 'AS-' || nextval('asset_seq')::text $$;
+--     "Under warranty" checkbox; the end date only applies when it's ticked.
+alter table assets add column if not exists has_warranty boolean not null default false;
+update assets set has_warranty = true where warranty_end is not null and has_warranty = false;

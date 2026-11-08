@@ -170,25 +170,25 @@ module.exports = async function handler(req, res) {
     if (action === "save-asset") {
       if (!isIT(role)) return fail(res, 403, "Only IT can change the device inventory.");
       const a = body.asset || {};
-      const tag = str(a.id, 40).trim().toUpperCase();
-      if (!/^[A-Z0-9][A-Z0-9._-]{0,39}$/.test(tag)) return fail(res, 400, "The asset tag may use letters, numbers, - . _ (e.g. LT-0142).");
       if (!IT.ASSET_TYPES[a.type]) return fail(res, 400, "Choose a device type.");
       if (!IT.ASSET_STATUSES[a.status]) return fail(res, 400, "Choose a status.");
       const day = v => { const s = str(v, 10).trim(); if (!s) return null; const d = new Date(s + "T00:00:00Z"); if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(d) || d.toISOString().slice(0, 10) !== s) throw new Error("Dates must be valid (YYYY-MM-DD)."); return s; };
       const members = await IT.loadUsers();
       const owner = a.owner ? (members.some(m => m.id === a.owner && m.active !== false) ? a.owner : null) : null;
       if (a.owner && !owner) return fail(res, 400, "That person isn't an active user.");
+      const hasWarranty = !!a.hasWarranty;
       const row = { type: a.type, model: str(a.model, 120).trim(), serial: str(a.serial, 80).trim() || null, owner_id: owner,
-        location: str(a.location, 100).trim() || null, status: a.status, purchased_on: day(a.purchased), warranty_end: day(a.warranty),
+        status: a.status, purchased_on: day(a.purchased), has_warranty: hasWarranty, warranty_end: hasWarranty ? day(a.warranty) : null,
         notes: str(a.notes, 500).trim() || null, updated_at: nowIso() };
       if (!row.model) return fail(res, 400, "Enter the make and model.");
-      const existing = check(await supabase.from("assets").select("id").eq("id", tag).maybeSingle());
+      if (hasWarranty && !row.warranty_end) return fail(res, 400, "Enter when the warranty ends, or untick “Under warranty”.");
       if (body.isNew) {
-        if (existing) return fail(res, 400, "That asset tag is already used.");
-        check(await supabase.from("assets").insert({ ...row, id: tag }));
+        const newId = check(await supabase.rpc("next_asset_id"));   // devices are numbered automatically
+        check(await supabase.from("assets").insert({ ...row, id: newId }));
       } else {
+        const existing = check(await supabase.from("assets").select("id").eq("id", str(a.id, 40)).maybeSingle());
         if (!existing) return fail(res, 404, "Device not found.");
-        check(await supabase.from("assets").update(row).eq("id", tag));
+        check(await supabase.from("assets").update(row).eq("id", existing.id));
       }
       const rows = check(await supabase.from("assets").select("*").order("id")) || [];
       return res.status(200).json(rows.map(IT.shapeAsset));
@@ -335,9 +335,11 @@ module.exports = async function handler(req, res) {
         }
         if ("asset" in body) {
           const v = body.asset ? str(body.asset, 40) : null;
-          if (v && !check(await supabase.from("assets").select("id").eq("id", v).maybeSingle())) return fail(res, 400, "Device not found.");
+          const dev = v ? check(await supabase.from("assets").select("id, model, serial").eq("id", v).maybeSingle()) : null;
+          if (v && !dev) return fail(res, 400, "Device not found.");
           patch.asset_id = v;
-          if (v !== t.asset_id) events.push(["asset", v ? ev("Device → " + v, "الجهاز ← " + v) : ev("Device removed", "أُزيل الجهاز")]);
+          const devName = dev ? dev.model + (dev.serial ? " (SN " + dev.serial + ")" : "") : "";
+          if (v !== t.asset_id) events.push(["asset", v ? ev("Device → " + devName, "الجهاز ← " + devName) : ev("Device removed", "أُزيل الجهاز")]);
         }
         if ("major" in body) {
           if (!isLead(role)) return fail(res, 403, "Only the IT manager can declare a major incident.");
