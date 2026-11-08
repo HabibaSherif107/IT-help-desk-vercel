@@ -345,7 +345,7 @@ async function tests() {
   ok(r.status === 200 && mon.hasWarranty === false && mon.warranty === null, "no warranty: any end date is ignored");
   ok((await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "monitor", model: "Bad date", status: "in_stock", hasWarranty: true, warranty: "2026-02-30" } })).status === 400, "impossible date refused");
   ok((await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "spaceship", model: "x", status: "in_stock" } })).status === 400, "unknown device type refused");
-  ok(!("location" in dell), "devices no longer have a location field");
+  ok(dell.location === "" && dell.received === null, "a new device starts with no location and no received date");
   await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "Spare ThinkPad", status: "in_stock" } });
   const spare = (await call("karim@dar.test", "list-assets")).body.find(a => a.model === "Spare ThinkPad");
   cfg = (await call("sara@dar.test", "bootstrap")).body;
@@ -367,6 +367,18 @@ async function tests() {
   ok((await call("omar@dar.test", "delete-asset", { id: dell.id })).status === 400, "a device with tickets can't be deleted (retire it instead)");
   r = await call("omar@dar.test", "delete-asset", { id: mon.id });
   ok(r.status === 200 && !r.body.some(a => a.id === mon.id), "IT manager deletes an unused device");
+
+  // ── Location & received date ─────────────────────────────────
+  ok(cfg.assetLocations.kafr_el_sheikh.en === "Kafr El Sheikh" && cfg.assetLocations.beheira.ar === "البحيرة / دمنهور" && Object.keys(cfg.assetLocations).length === 4, "the four sites come with the app config (English & Arabic)");
+  const dl = (await call("karim@dar.test", "list-assets")).body.find(a => a.id === dell.id);
+  ok((await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...dl, location: "Cairo" } })).status === 400, "only listed locations are accepted");
+  ok((await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...dl, owner: P["sara@dar.test"].id, purchased: "2025-03-01", received: "2025-02-01" } })).status === 400, "received date can't be before the purchase date");
+  r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...dl, owner: P["sara@dar.test"].id, location: "khorshid", purchased: "2025-03-01", received: "2025-03-10" } });
+  let dl2 = r.body.find(a => a.id === dell.id);
+  ok(dl2.location === "khorshid" && dl2.received === "2025-03-10" && dl2.purchased === "2025-03-01", "location and received date saved alongside the purchase date");
+  r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...dl2, owner: null, status: "in_stock" } });
+  dl2 = r.body.find(a => a.id === dell.id);
+  ok(dl2.received === null && dl2.location === "khorshid", "returning the device to IT clears the received date (location stays)");
 
   // ── Laptop specs ─────────────────────────────────────────────
   const specs = { cpu: "Intel Core i5-1135G7", ram: "8 GB", storage: "256 GB SSD", win11: "yes", lifetime: "until 2028", recommendation: "replace_1y", junk: "x" };

@@ -177,15 +177,18 @@ module.exports = async function handler(req, res) {
       const a = body.asset || {};
       if (!IT.ASSET_TYPES[a.type]) return fail(res, 400, "Choose a device type.");
       if (!IT.ASSET_STATUSES[a.status]) return fail(res, 400, "Choose a status.");
+      if (a.location && !IT.ASSET_LOCATIONS[a.location]) return fail(res, 400, "Choose a location from the list.");
       const day = v => { const s = str(v, 10).trim(); if (!s) return null; const d = new Date(s + "T00:00:00Z"); if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(d) || d.toISOString().slice(0, 10) !== s) throw new Error("Dates must be valid (YYYY-MM-DD)."); return s; };
       const members = await IT.loadUsers();
       const owner = a.owner ? (members.some(m => m.id === a.owner && m.active !== false) ? a.owner : null) : null;
       if (a.owner && !owner) return fail(res, 400, "That person isn't an active user.");
       const hasWarranty = !!a.hasWarranty;
       const row = { type: a.type, model: str(a.model, 120).trim(), serial: str(a.serial, 80).trim() || null, owner_id: owner,
+        location: a.location || null, received_on: owner ? day(a.received) : null,
         status: a.status, purchased_on: day(a.purchased), has_warranty: hasWarranty, warranty_end: hasWarranty ? day(a.warranty) : null,
         notes: str(a.notes, 500).trim() || null, specs: a.type === "laptop" ? IT.cleanSpecs(a.specs) : null, updated_at: nowIso() };
       if (!row.model) return fail(res, 400, "Enter the make and model.");
+      if (row.received_on && row.purchased_on && row.received_on < row.purchased_on) return fail(res, 400, "The received date can't be before the purchase date.");
       if (hasWarranty && !row.warranty_end) return fail(res, 400, "Enter when the warranty ends, or untick “Under warranty”.");
       if (body.isNew) {
         const newId = check(await supabase.rpc("next_asset_id"));   // devices are numbered automatically

@@ -48,6 +48,8 @@ const ASSET_TYPES = {
   printer: B("Printer / Scanner", "طابعة / ماسح ضوئي"), mobile: B("Mobile phone", "هاتف محمول"),
   network: B("Network device", "جهاز شبكة"), accessory: B("Accessory", "ملحق"), other: B("Other", "أخرى"),
 };
+// Company sites (fixed list) where the device's holder is based.
+const ASSET_LOCATIONS = { abis: B("Abis", "أبيس"), khorshid: B("Khorshid", "خورشيد"), kafr_el_sheikh: B("Kafr El Sheikh", "كفر الشيخ"), beheira: B("Beheira / Damanhour", "البحيرة / دمنهور") };
 const ASSET_STATUSES = {
   in_use: { n: B("In use", "قيد الاستخدام"), c: "#34D399" }, in_stock: { n: B("In stock", "في المخزن"), c: "#38BDF8" },
   repair: { n: B("Needs repair", "يحتاج إصلاح"), c: "#F59E0B" }, retired: { n: B("Retired", "خارج الخدمة"), c: "#64748B" },
@@ -69,6 +71,7 @@ const dateStr = v => (v ? (v instanceof Date ? v.toISOString().slice(0, 10) : St
 function shapeAsset(a) {
   const hasWarranty = !!a.has_warranty;
   return { id: a.id, type: a.type, model: a.model || "", serial: a.serial || "", owner: a.owner_id || null,
+    location: ASSET_LOCATIONS[a.location] ? a.location : "", received: a.owner_id ? dateStr(a.received_on) : null,
     status: a.status, purchased: dateStr(a.purchased_on), hasWarranty, warranty: hasWarranty ? dateStr(a.warranty_end) : null, notes: a.notes || "",
     specs: a.type === "laptop" ? cleanSpecs(a.specs) : null };
 }
@@ -211,7 +214,7 @@ async function loadConfig(viewer) {
     autoAssign: settings.autoAssign, approvalMode: settings.approvalMode, approver: settings.approverId,
     kbSuggest: settings.kbSuggest, csat: settings.csat, supportCcUpdates: settings.supportCcUpdates,
     escalateTo: settings.escalateTo, escalateTarget: pickEscalationTarget(settings, users),
-    assetTypes: ASSET_TYPES, assetStatuses: ASSET_STATUSES,
+    assetTypes: ASSET_TYPES, assetStatuses: ASSET_STATUSES, assetLocations: ASSET_LOCATIONS,
     stockCategories: STOCK_CATEGORIES, stockStatuses: STOCK_STATUSES, prStatuses: PR_STATUSES,
     myAssets: (myAssetRows || []).filter(a => a.status !== "retired").map(shapeAsset),
     greeting: settings.greeting, heroSub: settings.heroSub,
@@ -311,6 +314,6 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 
 module.exports = {
   supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS,
-  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, shapeAsset, cleanSpecs, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
+  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, shapeAsset, cleanSpecs, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };

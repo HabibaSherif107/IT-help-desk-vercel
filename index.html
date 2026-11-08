@@ -173,6 +173,8 @@ const S = {
   sp_life:["Expected lifetime","العمر المتوقع"], sp_life_ph:["e.g. 2 more years / until 2028","مثال: سنتان إضافيتان / حتى 2028"],
   sp_rec:["Recommendation","التوصية"], sp_rec_none:["— Not decided yet —","— لم يُحدد بعد —"],
   sp_rec_keep:["Keep and upgrade SSD/RAM if needed","الإبقاء عليه وترقية SSD/الذاكرة عند الحاجة"], sp_rec_replace_1y:["Replace within 1 year","الاستبدال خلال سنة"], sp_rec_retire:["Retire immediately","إخراجه من الخدمة فورًا"],
+  a_loc:["Location","الموقع"], a_loc_none:["— Choose location —","— اختر الموقع —"], all_locations:["All locations","كل المواقع"],
+  a_received:["Received by holder on","تاريخ استلام الموظف للجهاز"], a_received_need:["Choose who it's assigned to first.","اختر المُسلَّم إليه أولًا."], since:["since {d}","منذ {d}"],
   toast_device_saved:["Device saved","تم حفظ الجهاز"], toast_device_deleted:["Device deleted","تم حذف الجهاز"], confirm_delete_device:["Delete device {id}?","حذف الجهاز {id}؟"], none_dash:["— None —","— لا يوجد —"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
   nav_stock:["Stock","المخزون"], title_stock:["IT Stock Register","سجل مخزون تقنية المعلومات"], nav_pr:["Purchase Requests","طلبات الشراء"],
   st_items:["Items","الأصناف"], st_units:["Units in stock","إجمالي الوحدات"], st_low:["Low stock","مخزون منخفض"], st_out:["Out of stock","نفد المخزون"],
@@ -479,10 +481,10 @@ function RecPill({r}){ const x=SPEC_RECS.find(([k])=>k===r); return x?e(Pill,{c:
 const warrantyText = a => !a.hasWarranty ? t("no_warranty") : (a.warranty||"—");
 const warrantyColor = a => !a.hasWarranty||!a.warranty ? "#6B6563" : a.warranty<todayStr() ? "#EF4444" : a.warranty<soonStr() ? "#F59E0B" : "#C9C6C4";
 function Assets({assets,tickets,onOpenAsset,onAdd}){
-  const [q,setQ]=useState(""), [ft,setFt]=useState(""), [fs,setFs]=useState("");
+  const [q,setQ]=useState(""), [ft,setFt]=useState(""), [fs,setFs]=useState(""), [fl,setFl]=useState("");
   const today=todayStr(), soon=soonStr(), live=assets.filter(a=>a.status!=="retired");
   const ql=q.toLowerCase();
-  const rows=assets.filter(a=>(!ft||a.type===ft)&&(!fs||a.status===fs)&&(!q||[a.model,a.serial,L(CFG.assetTypes[a.type]),a.owner?pname(a.owner):"",...(a.specs?[a.specs.cpu,a.specs.ram,a.specs.storage]:[])].join(" ").toLowerCase().includes(ql)));
+  const rows=assets.filter(a=>(!ft||a.type===ft)&&(!fs||a.status===fs)&&(!fl||a.location===fl)&&(!q||[a.model,a.serial,L(CFG.assetTypes[a.type]),a.owner?pname(a.owner):"",...(a.specs?[a.specs.cpu,a.specs.ram,a.specs.storage]:[])].join(" ").toLowerCase().includes(ql)));
   const tile=(l,v,tone)=>e("div",{key:l,style:{...card,padding:14}},e("div",{style:{fontSize:"1.6rem",fontWeight:800,fontVariantNumeric:"tabular-nums",color:tone||"#EDEBEA"}},v),e("div",{style:{fontSize:"0.75rem",color:"#8A8583",lineHeight:1.35}},l));
   /* Every column can shrink and wrap, so long values never run into the next column. */
   const cols="minmax(180px,2fr) minmax(130px,1.3fr) minmax(110px,1fr) minmax(110px,1fr) minmax(70px,.6fr)";
@@ -496,6 +498,7 @@ function Assets({assets,tickets,onOpenAsset,onAdd}){
       e("input",{id:"as-search","aria-label":t("search_assets"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("search_assets"),style:{...IS,flex:"1 1 220px",maxWidth:340}}),
       e("select",{"aria-label":t("all_types"),value:ft,onChange:ev=>setFt(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_types")),Object.keys(CFG.assetTypes).map(k=>e("option",{key:k,value:k},L(CFG.assetTypes[k])))),
       e("select",{"aria-label":t("all_statuses"),value:fs,onChange:ev=>setFs(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_statuses")),Object.keys(CFG.assetStatuses).map(k=>e("option",{key:k,value:k},L(CFG.assetStatuses[k].n)))),
+      e("select",{id:"as-loc","aria-label":t("all_locations"),value:fl,onChange:ev=>setFl(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_locations")),Object.keys(CFG.assetLocations||{}).map(k=>e("option",{key:k,value:k},L(CFG.assetLocations[k])))),
       e("button",{id:"add-device",onClick:onAdd,style:{...BP,marginInlineStart:"auto"}},t("add_device"))),
     !assets.length?e(Empty,{text:t("no_assets")}):
     e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:640}},
@@ -506,7 +509,9 @@ function Assets({assets,tickets,onOpenAsset,onAdd}){
             a.specs&&(a.specs.cpu||a.specs.ram||a.specs.storage||a.specs.win11)&&e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginTop:2}},
               [a.specs.cpu,a.specs.ram,a.specs.storage].filter(Boolean).join(" · "),a.specs.win11&&e("span",{style:{marginInlineStart:6,color:a.specs.win11==="yes"?"#34D399":"#EF4444"}},"Win 11 "+(a.specs.win11==="yes"?"✓":"✕"))),
             a.specs&&a.specs.recommendation&&a.specs.recommendation!=="keep"&&e("div",{style:{marginTop:4}},e(RecPill,{r:a.specs.recommendation}))),
-          e("div",{style:{...cell,display:"flex",gap:6,alignItems:"center"}},a.owner?[e(Av,{key:"a",id:a.owner,size:22}),e("span",{key:"n",style:cell},pname(a.owner))]:e("span",{style:{color:"#8A8583"}},a.status==="in_stock"?t("in_it_stock"):"—")),
+          e("div",{style:cell},
+            e("div",{style:{display:"flex",gap:6,alignItems:"center"}},a.owner?[e(Av,{key:"a",id:a.owner,size:22}),e("span",{key:"n",style:cell},pname(a.owner))]:e("span",{style:{color:"#8A8583"}},a.status==="in_stock"?t("in_it_stock"):"—")),
+            (a.location||a.received)&&e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginTop:3}},[a.location?"📍 "+L(CFG.assetLocations[a.location]):"",a.received?t("since",{d:a.received}):""].filter(Boolean).join(" · "))),
           e("div",{style:cell},e(AssetStatus,{s:a.status})),
           e("div",{style:{...cell,color:warrantyColor(a),fontVariantNumeric:"tabular-nums",lineHeight:1.35}},warrantyText(a),exp&&e("div",{style:{fontSize:"0.72rem"}},"("+t("expired")+")")),
           e("span",{style:{...cell,fontVariantNumeric:"tabular-nums",color:open?"#F59E0B":mine.length?"#EDEBEA":"#6B6563"}},open+" / "+mine.length)); }),
@@ -518,7 +523,9 @@ function AssetModal({a,role,tickets,onClose,onEdit,onDelete,onOpenTicket}){
   return e(Modal,{title:"💻 "+a.model,onClose,w:620},
     row(t("a_type"),L(CFG.assetTypes[a.type])),row(t("status"),e(AssetStatus,{s:a.status})),
     row(t("h_holder"),a.owner?pname(a.owner):(a.status==="in_stock"?t("in_it_stock"):"—")),
+    row(t("a_loc"),a.location?L(CFG.assetLocations[a.location]):"—"),
     row(t("a_serial"),a.serial||"—"),row(t("a_purchased"),a.purchased||"—"),
+    a.owner?row(t("a_received"),a.received||"—"):null,
     row(t("h_warranty"),e("span",{style:{color:warrantyColor(a)}},warrantyText(a)+(exp?" ("+t("expired")+")":""))),
     a.notes?row(t("a_notes"),a.notes):null,
     a.type==="laptop"&&a.specs&&e("div",{id:"asset-specs"},
@@ -545,8 +552,12 @@ function AssetEditor({a0,isNew,onSave,onClose,busy,err}){
       field("ae-model",t("a_model")+" *",e("input",{id:"ae-model",dir:"ltr",value:a.model,placeholder:t("a_model_ph"),onChange:ev=>set("model",ev.target.value),style:IS})),
       field("ae-serial",t("a_serial"),e("input",{id:"ae-serial",dir:"ltr",value:a.serial,onChange:ev=>set("serial",ev.target.value),style:IS})),
       field("ae-status",t("status")+" *",e("select",{id:"ae-status",value:a.status,onChange:ev=>set("status",ev.target.value),style:IS},Object.keys(CFG.assetStatuses).map(k=>e("option",{key:k,value:k},L(CFG.assetStatuses[k].n))))),
-      field("ae-owner",t("a_owner"),e("select",{id:"ae-owner",value:a.owner||"",onChange:ev=>{const v=ev.target.value||null;setA(x=>({...x,owner:v,status:v&&x.status==="in_stock"?"in_use":x.status}));},style:IS},e("option",{value:""},t("none_dash")),CFG.people.filter(p=>p.active!==false||p.id===a.owner).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
-      field("ae-bought",t("a_purchased"),e("input",{id:"ae-bought",type:"date",value:a.purchased||"",onChange:ev=>set("purchased",ev.target.value),style:IS}))),
+      field("ae-owner",t("a_owner"),e("select",{id:"ae-owner",value:a.owner||"",onChange:ev=>{const v=ev.target.value||null;setA(x=>({...x,owner:v,received:!v?"":v!==x.owner?todayStr():x.received,status:v&&x.status==="in_stock"?"in_use":x.status}));},style:IS},e("option",{value:""},t("none_dash")),CFG.people.filter(p=>p.active!==false||p.id===a.owner).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
+      field("ae-loc",t("a_loc"),e("select",{id:"ae-loc",value:a.location||"",onChange:ev=>set("location",ev.target.value),style:IS},e("option",{value:""},t("a_loc_none")),Object.keys(CFG.assetLocations||{}).map(k=>e("option",{key:k,value:k},L(CFG.assetLocations[k]))))),
+      field("ae-bought",t("a_purchased"),e("input",{id:"ae-bought",type:"date",value:a.purchased||"",onChange:ev=>set("purchased",ev.target.value),style:IS})),
+      a.owner
+        ? field("ae-received",t("a_received"),e("input",{id:"ae-received",type:"date",value:a.received||"",onChange:ev=>set("received",ev.target.value),style:IS}))
+        : field("ae-received",t("a_received"),e("div",{id:"ae-received",style:{...IS,color:"#6B6563",fontSize:"0.82rem",minHeight:42,display:"flex",alignItems:"center"}},t("a_received_need")))),
     /* Warranty: checkbox first; the end date appears (and is required) only when ticked. */
     e("div",{style:{...card,background:"#151211",padding:"12px 14px",marginBottom:14,display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:14,alignItems:"end"},className:"g2"},
       e("label",{htmlFor:"ae-haswarr",style:{display:"flex",gap:10,alignItems:"center",cursor:"pointer",fontSize:"0.9rem",fontWeight:600,minHeight:42}},
@@ -1077,7 +1088,7 @@ function App(){
   else if(cur==="kb") body=e(KBView,{onKB:setKb});
   else if(cur==="dash") body=e(Dashboard,{tickets});
   else if(cur==="rules") body=e(Rules);
-  else if(cur==="assets") body=e(Assets,{assets,tickets,onOpenAsset:setAssetSel,onAdd:()=>{setAErr("");setAssetEd({isNew:true,item:{id:"",type:"laptop",model:"",serial:"",owner:null,status:"in_stock",purchased:"",hasWarranty:false,warranty:"",notes:""}});}});
+  else if(cur==="assets") body=e(Assets,{assets,tickets,onOpenAsset:setAssetSel,onAdd:()=>{setAErr("");setAssetEd({isNew:true,item:{id:"",type:"laptop",model:"",serial:"",owner:null,location:"",received:"",status:"in_stock",purchased:"",hasWarranty:false,warranty:"",notes:""}});}});
   else if(cur==="stock") body=e(StockView,{items:stock,onOpen:setStockSel,onAdd:()=>{setAErr("");setStockEd({isNew:true,item:{id:null,name:"",category:"hardware",model:"",quantity:0,min:"",notes:""}});}});
   else if(cur==="purchases") body=e(PRView,{prs,me,role,onOpen:setPrSel,onNew:()=>{setAErr("");setPrEd({item:{id:null,notes:"",lines:[]}});}});
   else if(cur==="admin") body=e(Admin,{setCfg,toast,onKB:setKb});

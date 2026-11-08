@@ -265,3 +265,11 @@ create index if not exists pr_status on purchase_requests (status);
 --     { cpu, ram, storage, win11: "yes" | "no" | "", lifetime, recommendation }
 -- ════════════════════════════════════════════════════════════
 alter table assets add column if not exists specs jsonb;
+
+-- ════════════════════════════════════════════════════════════
+-- 17. Device location (fixed list of sites) and the date the holder received it (upgrade-safe).
+--     assets.location now holds a site key: abis | khorshid | kafr_el_sheikh | beheira.
+--     Old free-text values (from before the field was removed) are cleared.
+-- ════════════════════════════════════════════════════════════
+update assets set location = null where location is not null and location not in ('abis','khorshid','kafr_el_sheikh','beheira');
+alter table assets add column if not exists received_on date;
