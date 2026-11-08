@@ -44,7 +44,7 @@ Keep a **private note** open and paste each value into it as you go. Never put t
 2. Left menu → **SQL Editor** → **New query**.
 3. Open **`schema.sql`** from the GitHub repo (click the file → **Raw** → select all → copy). Paste it into the editor and click **Run**. You should see *Success. No rows returned*.
 4. Check: left menu → **Table Editor**. You should see **12 tables**:
-   - `departments`, `users`, `sessions`, `settings`, `categories`, `canned_replies`, `kb_articles`, `tickets`, `ticket_messages`, `ticket_events`, `email_log`, `assets`
+   - `departments`, `users`, `sessions`, `settings`, `categories`, `canned_replies`, `kb_articles`, `tickets`, `ticket_messages`, `ticket_events`, `email_log`, `assets`, `stock_items`, `stock_movements`, `purchase_requests`, `purchase_request_lines`
 
    `departments` should contain 5 rows (IT, Finance, HR, Sales, Operations).
 5. Left menu → **Project Settings** → **API Keys** (on some dashboards: **API**). Copy:
@@ -53,7 +53,7 @@ Keep a **private note** open and paste each value into it as you go. Never put t
 
    ⚠ This key has full access to the database. Only ever paste it into Vercel.
 
-> **Already ran `schema.sql` before?** Run the **latest** `schema.sql` again. It's safe to re-run: it adds anything new (for example the per-category support switch and the escalation fields) and keeps all existing data.
+> **Already ran `schema.sql` before?** Run the **latest** `schema.sql` again. It's safe to re-run: it adds anything new (for example the escalation fields, assets, and the stock and purchase-request tables) and keeps all existing data.
 
 You don't need to set up anything under Authentication or Storage.
 
@@ -206,6 +206,7 @@ Do these in order. Each Admin Console page has its own **Save** button.
 6. **Texts** (same page): adjust the Help Center greeting in both languages if you like.
 7. **Canned replies** and **Knowledge base:** add your own ready-made replies and how-to articles.
 8. **Assets** (left menu → *Assets* → **+ Add device**): enter company devices (type, model, serial, who has it, and tick **Under warranty** to add the end date). Employees can then pick their device when raising a ticket.
+9. **Stock** (left menu → *Stock* → **+ Add item**): type in what's on the current IT Stock sheet, with the quantity on hand and the minimum level. After that, change quantities only with **Adjust quantity**, so every change is logged.
 
 ---
 
@@ -225,6 +226,8 @@ Use one employee account, one technician account and the IT Manager.
 | 9 | Supabase → **Table Editor** → `email_log` | One row per email sent, each with `ok = true` |
 | 10 | Open the site on a phone, switch to Arabic (🌐) | The page fits the screen and reads right-to-left |
 | 11 | IT: **Assets → + Add device**, assign it to the test employee. Employee: raise a ticket and choose that device under **Related device**. | The device appears on the ticket and in the assignment email. Clicking the device on the Assets page lists the ticket. |
+| 12 | IT agent: **Stock → + Add item** (quantity 2, minimum 2) → open it → **Request more** → add a price → **Save & submit for approval** | The item shows *Low Stock*. The IT manager gets a purchase-request email with the total. |
+| 13 | IT manager: **Purchase Requests** → open it → **Approve**, then **Mark as received** | The agent is emailed the approval. The stock quantity goes up, and the item's history says *Received from PR-…*. |
 
 When everything matches, share **`https://helpdesk.your-company.com`** with staff.
 

@@ -22,8 +22,8 @@ Nothing is shared, so changes in one can never affect the other.
 | Role | Sees | Can do |
 |---|---|---|
 | 👤 **Employee** | Help Center, My Requests, Knowledge Base | Search quick fixes, raise tickets, chat with IT, confirm and rate a fix, reopen if still broken |
-| 🛠️ **IT Agent** | Ticket Queue, Assets, My Requests, Knowledge Base | Take tickets, reply, write private notes, change status/priority, resolve, **escalate to the IT manager**, add and update devices |
-| 👑 **IT Manager** | Everything an agent sees, plus Dashboard, Approvals, Auto-assignment | Approve or reject requests, declare a major incident |
+| 🛠️ **IT Agent** | Ticket Queue, Assets, Stock, Purchase Requests, My Requests, Knowledge Base | Take tickets, reply, write private notes, change status/priority, resolve, **escalate to the IT manager**, add and update devices, update stock, raise purchase requests |
+| 👑 **IT Manager** | Everything an agent sees, plus Dashboard, Approvals, Auto-assignment | Approve or reject requests and purchase requests, declare a major incident, delete stock items |
 | 🛡️ **Admin** | Admin Console, plus everything above | Manage people, departments, categories, questions, priorities, statuses, replies, articles and settings |
 | *Any manager* | Approvals (when someone they manage asks for something) | Approve or reject that person's requests |
 
@@ -33,6 +33,20 @@ IT keeps a list of company devices: type, make/model, serial number, who has it,
 - Clicking a device shows its details and **every ticket about it**.
 - When raising a ticket, employees can pick **their own device**. IT can link or change the device on any ticket, and the device appears in the ticket emails.
 - IT agents and managers can add and edit devices. Only the IT manager or an admin can delete one, and a device with tickets can only be *Retired*, so its history is kept.
+
+### Stock (replaces the "IT Stock" sheet)
+Same columns as the sheet: **Category · Item name · Brand / Model · Quantity in stock · Minimum level · Status · Notes**, with the same categories (Hardware, Handhelds, Laptops, Cables & Adapters, Networking, Accessories, Spare Parts, Others).
+- **Status works like the sheet's formula.** Quantity 0 shows *Out of Stock*. At or below the minimum level it shows *Low Stock*. Otherwise it shows *In Stock*. The top of the page counts items, units, low stock and out of stock.
+- **Quantities only change through "Adjust quantity"** (add or take out, plus a reason such as "Given to Sara"). Every change is saved in the item's **Quantity history** with who made it and when.
+- **Request more** opens a new purchase request with that item already filled in.
+
+### Purchase Requests (replaces the "IT Purchase Request" sheet)
+Same layout as the sheet: **# · Item name · Product link · Quantity · Unit price (EGP) · Total price (EGP)**, with the **Grand total** worked out automatically. Requests are numbered the way the sheet's tabs were: `PR-1126` for November 2026, then `PR-1126-2` and so on.
+- The paper signatures are now steps in the app: **Draft → Submit for approval → Approved / Rejected → Ordered → Received.** The *Submitted by* and *Approved by* boxes fill in automatically with names and dates.
+- When a request is submitted, the IT managers and admins get a bilingual email listing the items and the total. The person who submitted it is emailed the decision; a rejection includes the reason. A manager can't approve their own request.
+- A rejected request can be fixed and submitted again. Drafts and rejected requests can be deleted.
+- Each line can be linked to a stock item. When the request is marked **Received**, those quantities are added to stock automatically, and the stock history notes which request they came from.
+- **Print** gives a printable page with the same look as the sheet, including signature lines.
 
 ### Help categories
 Request Hardware · Internet & Connectivity · Email & Accounts · New Software / License Purchase *(needs approval)* · New Joiner / Leaver *(needs approval)* · Something Else.
@@ -89,6 +103,8 @@ Files starting with `_` are helpers, not endpoints. The app uses **4 serverless 
 ### API actions
 - **Read:** `bootstrap`, `list-tickets`, `kb-view`
 - **Assets:** `list-assets`, `save-asset`, `delete-asset` (`update-ticket` also accepts `asset`)
+- **Stock:** `list-stock`, `stock-history`, `save-stock-item`, `adjust-stock`, `delete-stock-item` (in `api/_stock.js`)
+- **Purchase requests:** `list-prs`, `save-pr`, `submit-pr`, `decide-pr`, `order-pr`, `receive-pr`, `delete-pr` (in `api/_stock.js`)
 - **Tickets:** `create-ticket`, `reply`, `update-ticket` (assignee / status / priority / major), `escalate`, `resolve`, `confirm`, `reopen`, `approve`, `reject`
 - **Admin:** `admin-save-user`, `admin-save-dept`, `admin-delete-dept`, `admin-save-settings`, `admin-save-category`, `admin-toggle-category`, `admin-reorder-categories`, `admin-delete-category`, `admin-save-canned`, `admin-delete-canned`, `admin-save-kb`, `admin-delete-kb`
 
@@ -101,7 +117,7 @@ Files starting with `_` are helpers, not endpoints. The app uses **4 serverless 
 - Every input is validated and length-limited. Attachment links must be `http(s)`.
 
 ### Data model
-`departments`, `users`, `sessions`, `settings`, `categories`, `canned_replies`, `kb_articles`, `tickets`, `ticket_messages`, `ticket_events`, `email_log`, `assets`. Ticket numbers come from the `ticket_seq` sequence: `IT-1001`, `IT-1002`, …
+`departments`, `users`, `sessions`, `settings`, `categories`, `canned_replies`, `kb_articles`, `tickets`, `ticket_messages`, `ticket_events`, `email_log`, `assets`, `stock_items`, `stock_movements`, `purchase_requests`, `purchase_request_lines`. Ticket numbers come from the `ticket_seq` sequence: `IT-1001`, `IT-1002`, …
 
 Bilingual texts are stored as JSON: `{"en": "…", "ar": "…"}`.
 
@@ -130,5 +146,7 @@ The tests create a throwaway database and run `schema.sql` twice, to prove it is
 - approvals, resolve/confirm/reopen
 - admin validation
 - signing out turned-off users
+- stock status rules and the quantity log
+- the purchase-request flow (totals, numbering, approval emails, receiving into stock)
 
 The `?as=` sign-in shortcut exists **only** inside the test server, never in the deployed app.

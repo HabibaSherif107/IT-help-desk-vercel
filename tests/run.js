@@ -31,7 +31,7 @@ const JSONB = { settings: ["value"], departments: ["name"], categories: ["name",
 const val = (t, c, v) => ((JSONB[t] || []).includes(c) || (v !== null && typeof v === "object" && !(v instanceof Date))) ? JSON.stringify(v) : v;
 class Q {
   constructor(t) { this.t = t; this.op = null; this.f = []; this.o = []; this.lim = null; this.one = null; }
-  select(cols) { if (!this.op) { this.op = "select"; this.cols = cols || "*"; } return this; }
+  select(cols) { if (!this.op) { this.op = "select"; this.cols = cols || "*"; } else this.ret = cols || "*"; return this; }
   insert(v) { this.op = "insert"; this.rows = [].concat(v); return this; }
   upsert(v, o) { this.op = "upsert"; this.rows = [].concat(v); this.conf = (o && o.onConflict) || "id"; return this; }
   update(v) { this.op = "update"; this.vals = v; return this; }
@@ -61,6 +61,7 @@ class Q {
       const vals = this.rows.map(r => "(" + cols.map(c => { p.push(c in r ? val(this.t, c, r[c]) : null); return `$${p.length}`; }).join(", ") + ")");
       sql = `insert into ${this.t} (${cols.map(c => `"${c}"`).join(", ")}) values ${vals.join(", ")}`;
       if (this.op === "upsert") sql += ` on conflict ("${this.conf}") do update set ` + cols.filter(c => c !== this.conf).map(c => `"${c}" = excluded."${c}"`).join(", ");
+      if (this.ret) sql += " returning " + (this.ret === "*" ? "*" : this.ret.split(",").map(s => `"${s.trim()}"`).join(", "));
     } else if (this.op === "update") {
       const sets = Object.entries(this.vals).map(([c, v]) => { p.push(val(this.t, c, v)); return `"${c}" = $${p.length}`; });
       if (!sets.length) return { data: null, error: null };
@@ -68,7 +69,7 @@ class Q {
     } else sql = `delete from ${this.t}` + this.where(p);
     try {
       const r = await pool.query(sql, p);
-      let data = this.op === "select" ? r.rows : null;
+      let data = this.op === "select" || this.ret ? r.rows : null;
       if (this.one) {
         if (data.length > 1 || (this.one === "single" && !data.length)) return { data: null, error: { message: "JSON object requested, multiple (or no) rows returned" } };
         data = data[0] || null;
@@ -366,6 +367,86 @@ async function tests() {
   ok((await call("omar@dar.test", "delete-asset", { id: dell.id })).status === 400, "a device with tickets can't be deleted (retire it instead)");
   r = await call("omar@dar.test", "delete-asset", { id: mon.id });
   ok(r.status === 200 && !r.body.some(a => a.id === mon.id), "IT manager deletes an unused device");
+
+  // ── Stock register ───────────────────────────────────────────
+  ok((await call("sara@dar.test", "list-stock")).status === 403, "employees can't see stock");
+  cfg = (await call("karim@dar.test", "bootstrap")).body;
+  ok(cfg.stockCategories.cables.en === "Cables & Adapters" && cfg.stockCategories.handhelds.ar === "أجهزة محمولة باليد" && cfg.prStatuses.submitted, "stock categories (from the sheet) and request statuses come with the app config");
+  ok((await call("karim@dar.test", "save-stock-item", { isNew: true, item: { name: "", category: "cables" } })).status === 400, "item name required");
+  ok((await call("karim@dar.test", "save-stock-item", { isNew: true, item: { name: "X", category: "nope" } })).status === 400, "unknown category refused");
+  ok((await call("karim@dar.test", "save-stock-item", { isNew: true, item: { name: "X", category: "cables", quantity: -2 } })).status === 400, "negative quantity refused");
+  r = await call("karim@dar.test", "save-stock-item", { isNew: true, item: { name: "HDMI cable 2m", category: "cables", model: "Ugreen", quantity: 10, min: 3, notes: "Store room" } });
+  let hdmi = r.body.find(i => i.name === "HDMI cable 2m");
+  ok(r.status === 200 && hdmi.quantity === 10 && hdmi.min === 3 && hdmi.status === "in", "add a stock item → In Stock");
+  await call("karim@dar.test", "save-stock-item", { isNew: true, item: { name: "Toner 85A", category: "spare_parts", quantity: 0 } });
+  await call("karim@dar.test", "save-stock-item", { isNew: true, item: { name: "Mouse", category: "accessories", quantity: 2, min: 2 } });
+  let list = (await call("karim@dar.test", "list-stock")).body;
+  ok(list.find(i => i.name === "Toner 85A").status === "out" && list.find(i => i.name === "Mouse").status === "low", "status rule matches the sheet: 0 → Out of Stock, at/below minimum → Low Stock");
+  ok((await call("karim@dar.test", "adjust-stock", { id: hdmi.id, change: -3, reason: "" })).status === 400, "a reason is required for a quantity change");
+  ok((await call("karim@dar.test", "adjust-stock", { id: hdmi.id, change: -11, reason: "x" })).status === 400, "can't take out more than is in stock");
+  r = await call("karim@dar.test", "adjust-stock", { id: hdmi.id, change: -7, reason: "Given to Sara (Finance)" });
+  hdmi = r.body.find(i => i.id === hdmi.id);
+  ok(hdmi.quantity === 3 && hdmi.status === "low", "taking 7 out leaves 3 → Low Stock");
+  r = await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...hdmi, quantity: 999, notes: "Shelf B" } });
+  ok(r.body.find(i => i.id === hdmi.id).quantity === 3 && r.body.find(i => i.id === hdmi.id).notes === "Shelf B", "editing details never changes the quantity (only Adjust does)");
+  r = await call("karim@dar.test", "stock-history", { id: hdmi.id });
+  ok(r.body.length === 2 && r.body[0].change === -7 && r.body[0].after === 3 && r.body[0].reason === "Given to Sara (Finance)" && r.body[1].reason === "Opening stock", "every quantity change is logged with who, how many and why");
+  const toner = list.find(i => i.name === "Toner 85A");
+  ok((await call("karim@dar.test", "delete-stock-item", { id: toner.id })).status === 403, "agents can't delete stock items");
+
+  // ── Purchase requests ────────────────────────────────────────
+  ok((await call("karim@dar.test", "save-pr", { pr: { lines: [] } })).status === 400, "a request needs at least one item");
+  ok((await call("karim@dar.test", "save-pr", { pr: { lines: [{ name: "Cable", qty: 0, price: 5 }] } })).status === 400, "quantity must be at least 1");
+  ok((await call("karim@dar.test", "save-pr", { pr: { lines: [{ name: "Cable", qty: 1, price: 5, link: "javascript:alert(1)" }] } })).status === 400, "product links must be web links");
+  r = await call("karim@dar.test", "save-pr", { pr: { notes: "Running low", lines: [
+    { name: "HDMI cable 2m", link: "https://example.com/hdmi", qty: 10, price: "150.5", stock: hdmi.id },
+    { name: "", link: "", qty: "", price: "" },
+    { name: "Toner 85A", qty: 4, price: 1200, stock: toner.id },
+    { name: "Laptop stand", qty: 1, price: 0 } ] } });
+  const prId = r.body.id;
+  let pr = r.body.prs.find(p => p.id === prId);
+  ok(/^PR-\d{4}$/.test(prId) && pr.status === "draft", "draft saved with a sheet-style number (PR-MMYY)");
+  ok(pr.lines.length === 3 && pr.lines[0].total === 1505 && pr.total === 6305, "empty rows skipped; line totals and grand total computed (10×150.50 + 4×1,200 + 0 = 6,305)");
+  r = await call("karim@dar.test", "save-pr", { pr: { lines: [{ name: "Spare keyboard", qty: 2, price: 300 }] } });
+  ok(r.body.id === prId + "-2", "second request in the same month gets -2");
+  const pr2 = r.body.id;
+  ok((await call("mona@dar.test", "save-pr", { pr: { id: prId, lines: [{ name: "x", qty: 1, price: 1 }] } })).status === 403, "non-IT can't touch requests");
+  ok((await call("karim@dar.test", "decide-pr", { id: prId, approve: true })).status === 403, "an agent can't approve");
+  ok((await call("omar@dar.test", "decide-pr", { id: prId, approve: true })).status === 400, "a draft can't be approved before it is submitted");
+  n0 = mails.length;
+  r = await call("karim@dar.test", "submit-pr", { id: prId });
+  pr = r.body.find(p => p.id === prId);
+  const prMails = mails.slice(n0);
+  ok(pr.status === "submitted" && pr.submittedBy && pr.submitted, "submitted: records who and when (the sheet's “Submitted By / Date”)");
+  ok(prMails.some(m => m.to === "omar@dar.test" && m.subject.includes(prId) && m.text.includes("Grand total: 6,305.00 EGP") && m.text.includes("الإجمالي: 6,305.00 جنيه")) && !prMails.some(m => m.to === "karim@dar.test"), "the IT manager(s) get a bilingual approval email with the items and total");
+  ok((await call("karim@dar.test", "save-pr", { pr: { id: prId, lines: [{ name: "x", qty: 1, price: 1 }] } })).status === 400, "a submitted request is locked for editing");
+  ok((await call("omar@dar.test", "decide-pr", { id: prId, approve: false })).status === 400, "rejecting needs a reason");
+  n0 = mails.length;
+  r = await call("omar@dar.test", "decide-pr", { id: prId, approve: true, note: "OK, buy from the usual supplier" });
+  pr = r.body.find(p => p.id === prId);
+  ok(pr.status === "approved" && pr.decidedBy && pr.decided && pr.decisionNote.startsWith("OK"), "approved: records who and when (the sheet's “Approved By / Date”)");
+  ok(mails.slice(n0).some(m => m.to === "karim@dar.test" && m.subject.includes("approved")), "the submitter is emailed the decision");
+  ok((await call("karim@dar.test", "delete-pr", { id: prId })).status === 400, "an approved request can't be deleted");
+  r = await call("karim@dar.test", "order-pr", { id: prId });
+  ok(r.body.find(p => p.id === prId).status === "ordered", "marked as ordered");
+  r = await call("karim@dar.test", "receive-pr", { id: prId });
+  ok(r.body.prs.find(p => p.id === prId).status === "received", "marked as received");
+  ok(r.body.items.find(i => i.id === hdmi.id).quantity === 13 && r.body.items.find(i => i.id === toner.id).quantity === 4 && r.body.items.find(i => i.id === toner.id).status === "in", "receiving adds linked lines to stock (HDMI 3+10, toner 0+4)");
+  r = await call("karim@dar.test", "stock-history", { id: hdmi.id });
+  ok(r.body[0].change === 10 && r.body[0].reason === "Received from " + prId && r.body[0].pr === prId, "the stock history says which request it came from");
+  ok((await call("karim@dar.test", "receive-pr", { id: prId })).status === 400, "can't receive twice");
+  await call("omar@dar.test", "submit-pr", { id: pr2 });
+  ok((await call("omar@dar.test", "decide-pr", { id: pr2, approve: true })).status === 403, "a manager can't approve a request they submitted");
+  n0 = mails.length;
+  r = await call("hany@dar.test", "decide-pr", { id: pr2, approve: false, note: "Too expensive" });
+  ok(r.body.find(p => p.id === pr2).status === "rejected" && mails.slice(n0).some(m => m.to === "omar@dar.test" && m.text.includes("Reason: Too expensive")), "admin rejects with a reason; the submitter is emailed it");
+  r = await call("karim@dar.test", "save-pr", { pr: { id: pr2, lines: [{ name: "Spare keyboard", qty: 1, price: 250 }] } });
+  ok(r.status === 200 && r.body.prs.find(p => p.id === pr2).status === "draft" && r.body.prs.find(p => p.id === pr2).total === 250, "a rejected request can be fixed and goes back to draft");
+  r = await call("karim@dar.test", "delete-pr", { id: pr2 });
+  ok(r.status === 200 && !r.body.some(p => p.id === pr2), "drafts can be deleted");
+  r = await call("omar@dar.test", "delete-stock-item", { id: toner.id });
+  ok(r.status === 200 && !r.body.some(i => i.id === toner.id), "IT manager deletes a stock item");
+  ok((await call("karim@dar.test", "list-prs")).body.find(p => p.id === prId).lines[1].stock === null, "a deleted stock item is simply unlinked from old requests");
 }
 
 (async () => {

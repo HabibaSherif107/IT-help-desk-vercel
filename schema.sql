@@ -203,3 +203,59 @@ create or replace function next_asset_id() returns text
 --     "Under warranty" checkbox; the end date only applies when it's ticked.
 alter table assets add column if not exists has_warranty boolean not null default false;
 update assets set has_warranty = true where warranty_end is not null and has_warranty = false;
+
+-- 15. Stock register and purchase requests — safe to re-run
+create table if not exists stock_items (
+  id         uuid primary key default gen_random_uuid(),
+  category   text not null default 'others',
+  name       text not null,
+  model      text,
+  quantity   int  not null default 0 check (quantity >= 0),
+  min_level  int  check (min_level >= 0),          -- at or below this = "Low Stock"
+  notes      text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists stock_movements (       -- every change to a quantity, with who and why
+  id             uuid primary key default gen_random_uuid(),
+  item_id        uuid not null references stock_items(id) on delete cascade,
+  change         int  not null,
+  quantity_after int  not null,
+  reason         text,
+  actor_id       uuid references users(id),
+  pr_id          text,
+  created_at     timestamptz not null default now()
+);
+create table if not exists purchase_requests (
+  id            text primary key,                  -- e.g. PR-1126 (month + year), PR-1126-2 …
+  status        text not null default 'draft' check (status in ('draft','submitted','approved','rejected','ordered','received')),
+  notes         text,
+  created_by    uuid references users(id),
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  submitted_by  uuid references users(id),
+  submitted_at  timestamptz,
+  decided_by    uuid references users(id),
+  decided_at    timestamptz,
+  decision_note text,
+  ordered_at    timestamptz,
+  received_by   uuid references users(id),
+  received_at   timestamptz
+);
+create table if not exists purchase_request_lines (
+  id            uuid primary key default gen_random_uuid(),
+  pr_id         text not null references purchase_requests(id) on delete cascade,
+  line_no       int  not null,
+  item_name     text not null,
+  product_link  text,
+  quantity      int  not null check (quantity > 0),
+  unit_price    numeric(12,2) not null default 0 check (unit_price >= 0),
+  stock_item_id uuid references stock_items(id) on delete set null   -- received quantities are added to this item
+);
+alter table stock_items            enable row level security;
+alter table stock_movements        enable row level security;
+alter table purchase_requests      enable row level security;
+alter table purchase_request_lines enable row level security;
+create index if not exists stock_movements_item on stock_movements (item_id);
+create index if not exists pr_lines_pr on purchase_request_lines (pr_id);
+create index if not exists pr_status on purchase_requests (status);

@@ -7,6 +7,7 @@
 // "support" and notices that had no owner go to the escalation contact instead.
 const { getUser } = require("./_session");
 const IT = require("./_core");
+const STOCK = require("./_stock");
 const { supabase, check, str, bi, isColor, itRoleOf, isIT, isLead, SetupRequired } = IT;
 
 const nowIso = () => new Date().toISOString();
@@ -139,6 +140,10 @@ module.exports = async function handler(req, res) {
   try {
     const role = itRoleOf(viewer);
     const me = viewer;
+
+    // Stock register & purchase requests live in _stock.js
+    const stockRes = await STOCK.handle(action, { body, viewer, role, me });
+    if (stockRes) return res.status(stockRes.status || 200).json(stockRes.body);
 
     // ── Read ──────────────────────────────────────────────────
     if (action === "bootstrap") return res.status(200).json(await IT.loadConfig(viewer));

@@ -52,6 +52,19 @@ const ASSET_STATUSES = {
   in_use: { n: B("In use", "قيد الاستخدام"), c: "#34D399" }, in_stock: { n: B("In stock", "في المخزن"), c: "#38BDF8" },
   repair: { n: B("Needs repair", "يحتاج إصلاح"), c: "#F59E0B" }, retired: { n: B("Retired", "خارج الخدمة"), c: "#64748B" },
 };
+// Stock register categories (from the "Lists" tab of the IT Stock sheet) and purchase-request statuses.
+const STOCK_CATEGORIES = {
+  hardware: B("Hardware", "أجهزة"), handhelds: B("Handhelds", "أجهزة محمولة باليد"), laptops: B("Laptops", "لابتوبات"),
+  cables: B("Cables & Adapters", "كابلات ومحولات"), networking: B("Networking", "شبكات"), accessories: B("Accessories", "ملحقات"),
+  spare_parts: B("Spare Parts", "قطع غيار"), others: B("Others", "أخرى"),
+};
+const STOCK_STATUSES = { in: { n: B("In Stock", "متوفر"), c: "#34D399" }, low: { n: B("Low Stock", "مخزون منخفض"), c: "#F59E0B" }, out: { n: B("Out of Stock", "نفد المخزون"), c: "#EF4444" } };
+const PR_STATUSES = {
+  draft: { n: B("Draft", "مسودة"), c: "#94A3B8" }, submitted: { n: B("Waiting approval", "بانتظار الموافقة"), c: "#A78BFA" },
+  approved: { n: B("Approved", "تمت الموافقة"), c: "#34D399" }, rejected: { n: B("Rejected", "مرفوض"), c: "#EF4444" },
+  ordered: { n: B("Ordered", "تم الطلب"), c: "#38BDF8" }, received: { n: B("Received", "تم الاستلام"), c: "#64748B" },
+};
+
 const dateStr = v => (v ? (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10)) : null);
 function shapeAsset(a) {
   const hasWarranty = !!a.has_warranty;
@@ -187,6 +200,7 @@ async function loadConfig(viewer) {
     kbSuggest: settings.kbSuggest, csat: settings.csat, supportCcUpdates: settings.supportCcUpdates,
     escalateTo: settings.escalateTo, escalateTarget: pickEscalationTarget(settings, users),
     assetTypes: ASSET_TYPES, assetStatuses: ASSET_STATUSES,
+    stockCategories: STOCK_CATEGORIES, stockStatuses: STOCK_STATUSES, prStatuses: PR_STATUSES,
     myAssets: (myAssetRows || []).filter(a => a.status !== "retired").map(shapeAsset),
     greeting: settings.greeting, heroSub: settings.heroSub,
     prio: settings.prio, impacts: settings.impacts, urgencies: settings.urgencies, matrix: settings.matrix, statuses: settings.statuses,
@@ -285,6 +299,6 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 
 module.exports = {
   supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS,
-  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, shapeAsset, str, bi, isColor, check, SetupRequired,
+  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, shapeAsset, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };
