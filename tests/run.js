@@ -414,6 +414,9 @@ async function tests() {
   la = r.body.find(a => a.id === lenA.id);
   ok(la.owner === null && la.status === "in_stock" && la.received === null, "return to IT stock: back in stock, received date cleared");
 
+  r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "pc", model: "HP ProDesk 400", status: "in_stock" } });
+  ok(r.status === 200 && r.body.find(a => a.model === "HP ProDesk 400").type === "pc" && cfg.assetTypes.pc.en === "PC", "PC is a device type");
+
   // ── Laptop specs ─────────────────────────────────────────────
   const specs = { cpu: "Intel Core i5-1135G7", ram: "8 GB", storage: "256 GB SSD", win11: "yes", lifetime: "until 2028", recommendation: "replace_1y", junk: "x" };
   r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "HP ProBook 450", status: "in_stock", specs } });

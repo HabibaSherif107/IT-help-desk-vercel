@@ -28,7 +28,7 @@ Nothing is shared, so changes in one can never affect the other.
 | *Any manager* | Approvals (when someone they manage asks for something) | Approve or reject that person's requests |
 
 ### Assets (device inventory)
-IT keeps a list of company devices: type, make/model, serial number, who has it, status (*In use, In stock, Needs repair, Retired*), purchase date and warranty. Tick **Under warranty** to enter the warranty end date. Devices are numbered automatically, so there's no tag to type in.
+IT keeps a list of company devices: type (Laptop, Desktop, PC, Monitor, Printer / Scanner, Mobile phone, Network device, Accessory, Other), make/model, serial number, who has it, status (*In use, In stock, Needs repair, Retired*), purchase date and warranty. Tick **Under warranty** to enter the warranty end date. Devices are numbered automatically, so there's no tag to type in.
 - The **Assets** page shows totals, devices in repair, and warranties ending within 90 days or already expired. You can search and filter it.
 - **Filter by department and company sector:** the list can be filtered by the department and/or the company sector (Shell, Chipsy, Jammy) of the person holding the device, or by *No department* / *No sector*. Each holder's department and sector are shown under their name.
 - **Location** is picked from a fixed list: *Abis, Khorshid, Kafr El Sheikh, Beheira / Damanhour*. The list can be filtered by location.

@@ -44,7 +44,7 @@ const DEFAULT_SETTINGS = {
 
 // Device inventory: types and statuses (fixed lists, bilingual labels).
 const ASSET_TYPES = {
-  laptop: B("Laptop", "لابتوب"), desktop: B("Desktop", "كمبيوتر مكتبي"), monitor: B("Monitor", "شاشة"),
+  laptop: B("Laptop", "لابتوب"), desktop: B("Desktop", "كمبيوتر مكتبي"), pc: B("PC", "كمبيوتر شخصي (PC)"), monitor: B("Monitor", "شاشة"),
   printer: B("Printer / Scanner", "طابعة / ماسح ضوئي"), mobile: B("Mobile phone", "هاتف محمول"),
   network: B("Network device", "جهاز شبكة"), accessory: B("Accessory", "ملحق"), other: B("Other", "أخرى"),
 };
