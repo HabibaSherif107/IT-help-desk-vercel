@@ -24,7 +24,7 @@ Nothing is shared, so changes in one can never affect the other.
 | 👤 **Employee** | Help Center, My Requests, Knowledge Base | Search quick fixes, raise tickets, chat with IT, confirm and rate a fix, reopen if still broken |
 | 🛠️ **IT Agent** | Ticket Queue, Assets, Stock, Purchase Requests, My Requests, Knowledge Base | Take tickets, reply, write private notes, change status/priority, resolve, **escalate to the IT manager**, add and update devices, update stock, raise purchase requests |
 | 👑 **IT Manager** | Everything an agent sees, plus Dashboard, Approvals, Auto-assignment | Approve or reject requests and purchase requests, declare a major incident, delete stock items |
-| 🛡️ **Admin** | Admin Console, plus everything above | Manage people, departments, categories, questions, priorities, statuses, replies, articles and settings |
+| 🛡️ **Admin** | Admin Console, plus everything above | Everything an IT manager can do (approvals, escalations, purchase approvals, auto-assignment), plus manage people, departments, categories, questions, priorities, statuses, replies, articles, dropdown lists and settings |
 | *Any manager* | Approvals (when someone they manage asks for something) | Approve or reject that person's requests |
 
 ### Assets (device inventory)
