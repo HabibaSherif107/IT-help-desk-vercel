@@ -464,6 +464,19 @@ async function tests() {
   r = await call("hany@dar.test", "admin-save-lists", { lists: { ...L2, empPriorities: L2.empPriorities.filter(o => o.id !== "medium") } });
   ok(r.status === 400 && /1 item still uses/.test(r.body.error), "a priority in use can't be deleted");
 
+  // ── Admin "View as" preview ──────────────────────────────────
+  r = await call("hany@dar.test", "bootstrap", { viewAs: "requester" });
+  ok(r.body.me.role === "requester" && r.body.me.realRole === "admin" && r.body.me.viewAs === "requester" && r.body.lists === undefined, "admin can preview as an employee (config is the employee's)");
+  ok((await call("hany@dar.test", "list-stock", { viewAs: "requester" })).status === 403, "…and really gets employee access (no stock)");
+  const allT = (await call("hany@dar.test", "list-tickets")).body.length, empT = (await call("hany@dar.test", "list-tickets", { viewAs: "requester" })).body;
+  ok(empT.length < allT && empT.every(x => x.requester === PP["hany@dar.test"].id || (x.approval && x.approval.by === PP["hany@dar.test"].id)), "…and only sees their own tickets, like an employee");
+  ok((await call("hany@dar.test", "list-stock", { viewAs: "agent" })).status === 200 && (await call("hany@dar.test", "admin-save-lists", { viewAs: "agent", lists: {} })).status === 403, "preview as IT agent: stock yes, Admin Console no");
+  ok((await call("hany@dar.test", "bootstrap", { viewAs: "manager" })).body.me.role === "manager", "preview as IT manager");
+  ok((await call("hany@dar.test", "bootstrap", { viewAs: "superuser" })).body.me.role === "admin", "unknown preview roles are ignored");
+  r = await call("karim@dar.test", "bootstrap", { viewAs: "manager" });
+  ok(r.body.me.role === "agent" && !r.body.me.viewAs, "non-admins can't use View as to raise their access");
+  ok((await call("sara@dar.test", "list-stock", { viewAs: "agent" })).status === 403, "an employee can't preview as IT");
+
   // ── Laptop specs ─────────────────────────────────────────────
   const specs = { cpu: "Intel Core i5-1135G7", ram: "8 GB", storage: "256 GB SSD", win11: "yes", lifetime: "until 2028", recommendation: "replace_1y", junk: "x" };
   r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "HP ProBook 450", status: "in_stock", specs } });

@@ -138,7 +138,10 @@ module.exports = async function handler(req, res) {
   const action = body.action;
 
   try {
-    const role = itRoleOf(viewer);
+    // "View as" preview: an admin can see and use the help desk exactly as an employee, IT agent or IT manager would.
+    // It only ever lowers access, and only for real admins.
+    const realRole = itRoleOf(viewer);
+    const role = realRole === "admin" && ["requester", "agent", "manager"].includes(body.viewAs) ? body.viewAs : realRole;
     const me = viewer;
 
     // Stock register & purchase requests live in _stock.js
@@ -146,7 +149,7 @@ module.exports = async function handler(req, res) {
     if (stockRes) return res.status(stockRes.status || 200).json(stockRes.body);
 
     // ── Read ──────────────────────────────────────────────────
-    if (action === "bootstrap") return res.status(200).json(await IT.loadConfig(viewer));
+    if (action === "bootstrap") return res.status(200).json(await IT.loadConfig(viewer, role));
 
     if (action === "list-tickets") {
       let rows;

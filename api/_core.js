@@ -217,7 +217,7 @@ async function seedIfEmpty() {
 }
 
 // Everything the page needs to draw itself, in the shape the front end uses.
-async function loadConfig(viewer) {
+async function loadConfig(viewer, roleOverride) {
   await seedIfEmpty();
   const [settings, users, deptRows, catRows, cannedRows, kbRows, myAssetRows] = await Promise.all([
     loadSettings(), loadUsers(),
@@ -227,11 +227,12 @@ async function loadConfig(viewer) {
     supabase.from("kb_articles").select("*").order("id").then(check),
     supabase.from("assets").select("*").eq("owner_id", viewer.id).order("id").then(check),
   ]);
-  const role = itRoleOf(viewer);
+  const realRole = itRoleOf(viewer);
+  const role = roleOverride || realRole;
   const depts = {};
   for (const d of deptRows || []) depts[d.id] = { n: d.name || B(d.id, d.id), icon: d.icon || "🏢", sort: d.sort || 0 };
   return {
-    me: { id: viewer.id, role, name: viewer.name },
+    me: { id: viewer.id, role, name: viewer.name, realRole, viewAs: role !== realRole ? role : null },
     supportEmail: isLead(role) ? SUPPORT_EMAIL() : undefined,
     supportEnabled: !!SUPPORT_EMAIL(),
     autoAssign: settings.autoAssign, approvalMode: settings.approvalMode, approver: settings.approverId,

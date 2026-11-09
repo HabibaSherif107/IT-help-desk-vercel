@@ -193,6 +193,8 @@ const S = {
   l_emp_prio:["Employee priority","أولوية الموظف"], l_emp_prio_d:["Shown on a device once it is assigned to someone.","يظهر على الجهاز عند تسليمه لشخص."],
   l_stock_cats:["Stock categories","فئات المخزون"], l_stock_cats_d:["Used in Stock → Category.","تُستخدم في المخزون ← الفئة."],
   emp_prio:["Employee priority","أولوية الموظف"], emp_prio_none:["— Not set —","— غير محددة —"], all_emp_prio:["All priorities","كل الأولويات"],
+  view_as:["View as","العرض كـ"], view_as_me:["Admin (me)","مسؤول النظام (أنا)"], viewing_as:["👁 Preview: you're seeing the help desk as {r}.","👁 معاينة: أنت ترى مكتب الدعم كـ {r}."],
+  viewing_as_note:["Anything you do here is real and is recorded under your name.","أي إجراء تقوم به هنا حقيقي ويُسجَّل باسمك."], back_admin:["Back to Admin","العودة لمسؤول النظام"],
   no_match_filters:["Nothing matches these filters.","لا توجد نتائج مطابقة لهذه الفلاتر."],
   toast_device_saved:["Device saved","تم حفظ الجهاز"], toast_device_deleted:["Device deleted","تم حذف الجهاز"], confirm_delete_device:["Delete device {id}?","حذف الجهاز {id}؟"], none_dash:["— None —","— لا يوجد —"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
   nav_stock:["Stock","المخزون"], title_stock:["IT Stock Register","سجل مخزون تقنية المعلومات"], nav_pr:["Purchase Requests","طلبات الشراء"],
@@ -229,9 +231,12 @@ const t = (k,v) => { let s=(S[k]||[k,k])[AR()?1:0]; if(v) for(const x in v) s=s.
 
 /* ═════════ API ═════════ */
 class ApiError extends Error { constructor(msg,status){ super(msg); this.status=status; } }
+/* "View as" preview (admins only): every request carries the role being previewed; the server applies it. Kept for this tab only. */
+let VIEW_AS = (()=>{ try{ return sessionStorage.getItem("ithd_viewas")||""; }catch(_){ return ""; } })();
+const setViewAs = r => { VIEW_AS=r||""; try{ if(VIEW_AS) sessionStorage.setItem("ithd_viewas",VIEW_AS); else sessionStorage.removeItem("ithd_viewas"); }catch(_){} };
 async function api(action, data){
   let r;
-  try { r = await fetch("/api/app",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...(data||{})})}); }
+  try { r = await fetch("/api/app",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...(data||{}),...(VIEW_AS?{viewAs:VIEW_AS}:{})})}); }
   catch(_){ throw new ApiError(AR()?"تعذّر الاتصال بالخادم.":"Couldn't reach the server. Check your connection.",0); }
   let j=null; try{ j=await r.json(); }catch(_){}
   if(!r.ok) throw new ApiError((j&&j.error)||("Error "+r.status), r.status);
@@ -1133,6 +1138,7 @@ function App(){
   /* Refresh the ticket list every minute while the tab is visible. */
   useEffect(()=>{ if(phase!=="ready") return; const i=setInterval(()=>{ if(document.visibilityState==="visible") api("list-tickets").then(setTickets).catch(()=>{}); tick(x=>x+1); },60000); return()=>clearInterval(i); },[phase]);
   useEffect(()=>{ const k=ev=>{ if(ev.key!=="Escape") return; if(kb) setKb(null); else if(newT) setNewT(null); else if(assetAlloc) setAssetAlloc(null); else if(assetEd) setAssetEd(null); else if(assetSel) setAssetSel(null); else if(stockEd) setStockEd(null); else if(stockSel) setStockSel(null); else if(prEd) setPrEd(null); else if(prSel) setPrSel(null); else setSel(null); }; window.addEventListener("keydown",k); return()=>window.removeEventListener("keydown",k); },[kb,newT,assetAlloc,assetEd,assetSel,stockEd,stockSel,prEd,prSel]);
+  const switchView=r=>{ setViewAs(r); setView(null); setSel(null); setAssetSel(null); setStockSel(null); setPrSel(null); setNav(false); load(); };
   const toggleLang=()=>{ LANG=LANG==="ar"?"en":"ar"; try{localStorage.setItem("ithd_lang",LANG);}catch(_){} applyDir(); setLangS(LANG); };
   const langBtn=e("button",{id:"lang-btn",onClick:toggleLang,style:{...BSm,display:"inline-flex",gap:6,alignItems:"center",whiteSpace:"nowrap"}},"🌐 "+t("lang_btn"));
 
@@ -1168,6 +1174,10 @@ function App(){
       navItems.map(([k,ic,l])=>e("button",{key:k,id:"nav-"+k,onClick:()=>go(k),"aria-current":cur===k?"page":undefined,style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 12px",borderRadius:8,border:"none",background:cur===k?"#E11A2222":"transparent",color:cur===k?"#F16A6F":"#C9C6C4",fontWeight:cur===k?700:500,marginBottom:2,textAlign:"start"}},e("span",null,ic),e("span",{style:{flex:1}},t(l)),
         k==="approvals"&&pending>0&&e("span",{style:{fontSize:"0.7rem",background:"#A78BFA",color:"#fff",borderRadius:10,padding:"1px 7px"}},pending),k==="purchases"&&prWaiting>0&&e("span",{style:{fontSize:"0.7rem",background:"#A78BFA",color:"#fff",borderRadius:10,padding:"1px 7px"}},prWaiting),k==="queue"&&unassigned>0&&e("span",{style:{fontSize:"0.7rem",background:"#E11A22",color:"#fff",borderRadius:10,padding:"1px 7px"}},unassigned))),
       null),
+    CFG.me.realRole==="admin"&&e("div",{style:{padding:"10px 14px",borderTop:"1px solid #332C2B"}},
+      e("label",{htmlFor:"view-as",style:{...LS,marginBottom:4}},"👁 "+t("view_as")),
+      e("select",{id:"view-as",value:CFG.me.viewAs||"",onChange:ev=>switchView(ev.target.value),style:{...IS,padding:"7px 10px",fontSize:"0.85rem"}},
+        e("option",{value:""},t("view_as_me")),["requester","agent","manager"].map(r=>e("option",{key:r,value:r},t("role_"+r))))),
     e("div",{style:{padding:14,borderTop:"1px solid #332C2B",background:"#151211",display:"flex",gap:8,alignItems:"center"}},e(Av,{id:me,size:32}),e("div",{style:{minWidth:0,flex:1}},e("div",{style:{fontSize:"0.84rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},meP.name),e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},t("role_"+role))),e("a",{href:"/api/auth-logout",title:t("sign_out"),"aria-label":t("sign_out"),style:{color:"#8A8583",textDecoration:"none",fontSize:"1.1rem",padding:4}},"⏻")));
 
   let body;
@@ -1190,6 +1200,9 @@ function App(){
       e("div",{style:{padding:"14px 26px",borderBottom:"1px solid #332C2B",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,background:"#12100Fee",backdropFilter:"blur(6px)",zIndex:50}},
         e("button",{className:"hamb",onClick:()=>setNav(true),"aria-label":t("menu"),style:{display:"none",background:"none",border:"1px solid #332C2B",color:"#C9C6C4",borderRadius:8,padding:"6px 10px"}},"☰"),
         e("h2",{style:{fontSize:"1.15rem",fontWeight:700,flex:1,minWidth:0}},t(TITLE[cur])),langBtn),
+      CFG.me.viewAs&&e("div",{id:"viewas-banner",role:"status",style:{background:"#3B2A06",borderBottom:"1px solid #F59E0B",color:"#FDE68A",padding:"9px 26px",display:"flex",gap:12,alignItems:"center",flexWrap:"wrap",fontSize:"0.85rem"}},
+        e("b",null,t("viewing_as",{r:t("role_"+CFG.me.viewAs)})),e("span",{style:{color:"#D6C089",flex:"1 1 220px"}},t("viewing_as_note")),
+        e("button",{id:"viewas-exit",onClick:()=>switchView(""),style:{...BSm,background:"#F59E0B",color:"#1A1206",border:"none",fontWeight:700}},t("back_admin"))),
       e("div",{className:"main-pad",style:{padding:"22px 26px",maxWidth:1260}},body)),
     selT&&e(Drawer,{tk:selT,me,role,onClose:()=>setSel(null),onChanged,toast}),
     assetSel&&!assetEd&&!assetAlloc&&assets.find(a=>a.id===assetSel)&&e(AssetModal,{a:assets.find(a=>a.id===assetSel),role,tickets,onClose:()=>setAssetSel(null),

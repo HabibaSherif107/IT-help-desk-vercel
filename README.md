@@ -54,6 +54,12 @@ Same layout as the sheet: **# · Item name · Product link · Quantity · Unit p
 - Each line can be linked to a stock item. When the request is marked **Received**, those quantities are added to stock automatically, and the stock history notes which request they came from.
 - **Print** gives a printable page with the same look as the sheet, including signature lines.
 
+### "View as" (admins only)
+At the bottom of the left menu, admins have a **👁 View as** switch: *Admin (me)*, *Employee*, *IT Agent* or *IT Manager*. While previewing, the whole help desk (menus, pages, what you can see and do) behaves exactly as it would for that role. The server enforces it, not just the screen. A yellow banner shows you're in preview, with **Back to Admin**.
+- You act as yourself: anything you do (raise a ticket, approve, adjust stock) is real and recorded under your name.
+- The preview lasts for that browser tab until you switch back or close the tab.
+- Only real admins can use it, and it can only lower access, never raise it.
+
 ### Dropdown lists (Admin Console → Dropdown lists)
 Admins can add, rename, reorder and delete the options of these dropdowns, in English and Arabic: **Device types, Locations, Company sectors, Employee priority, Stock categories**. Press **Save changes** when done.
 - Renaming updates everywhere at once (devices and people keep pointing at the same option).
