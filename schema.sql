@@ -162,7 +162,8 @@ insert into departments (id, name, icon, sort) values
   ('fin',   '{"en":"Finance","ar":"المالية"}',             '💰', 1),
   ('hr',    '{"en":"HR","ar":"الموارد البشرية"}',          '🧑‍🤝‍🧑', 2),
   ('sales', '{"en":"Sales","ar":"المبيعات"}',              '📈', 3),
-  ('ops',   '{"en":"Operations","ar":"العمليات"}',         '🏭', 4)
+  ('ops',   '{"en":"Operations","ar":"العمليات"}',         '🏭', 4),
+  ('maint', '{"en":"Maintenance","ar":"الصيانة"}',          '🔧', 5)
 on conflict (id) do nothing;
 
 -- 12. Upgrades — safe to re-run on a database created by an earlier version of this file
