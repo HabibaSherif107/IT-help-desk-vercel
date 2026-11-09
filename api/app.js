@@ -193,13 +193,56 @@ module.exports = async function handler(req, res) {
       if (body.isNew) {
         const newId = check(await supabase.rpc("next_asset_id"));   // devices are numbered automatically
         check(await supabase.from("assets").insert({ ...row, id: newId }));
+        if (owner) await supabase.from("asset_events").insert({ asset_id: newId, from_id: null, to_id: owner, received_on: row.received_on, actor_id: viewer.id });
       } else {
-        const existing = check(await supabase.from("assets").select("id").eq("id", str(a.id, 40)).maybeSingle());
+        const existing = check(await supabase.from("assets").select("id, owner_id").eq("id", str(a.id, 40)).maybeSingle());
         if (!existing) return fail(res, 404, "Device not found.");
         check(await supabase.from("assets").update(row).eq("id", existing.id));
+        if ((existing.owner_id || null) !== owner) await supabase.from("asset_events").insert({ asset_id: existing.id, from_id: existing.owner_id || null, to_id: owner, received_on: row.received_on, actor_id: viewer.id });
       }
       const rows = check(await supabase.from("assets").select("*").order("id")) || [];
       return res.status(200).json(rows.map(IT.shapeAsset));
+    }
+
+    // Allocate a device to someone (or back to IT). Optional swap: the new holder's device goes to the previous holder.
+    if (action === "allocate-asset") {
+      if (!isIT(role)) return fail(res, 403, "Only IT can allocate devices.");
+      const day = v => { const s = str(v, 10).trim(); if (!s) return null; const d = new Date(s + "T00:00:00Z"); if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(d) || d.toISOString().slice(0, 10) !== s) throw new Error("Dates must be valid (YYYY-MM-DD)."); return s; };
+      const dev = check(await supabase.from("assets").select("*").eq("id", str(body.id, 40)).maybeSingle());
+      if (!dev) return fail(res, 404, "Device not found.");
+      if (dev.status === "retired") return fail(res, 400, "This device is retired. Change its status first.");
+      const members = await IT.loadUsers();
+      const to = body.to ? str(body.to, 40) : null;
+      if (to && !members.some(m => m.id === to && m.active !== false)) return fail(res, 400, "That person isn't an active user.");
+      if (to && to === dev.owner_id) return fail(res, 400, "The device is already allocated to this person.");
+      if (!to && !dev.owner_id) return fail(res, 400, "The device is already with IT.");
+      if (body.location && !IT.ASSET_LOCATIONS[body.location]) return fail(res, 400, "Choose a location from the list.");
+      const received = to ? day(body.received) : null;                 // left empty unless entered
+      if (received && dev.purchased_on && received < IT.dateStr(dev.purchased_on)) return fail(res, 400, "The received date can't be before the purchase date.");
+      const note = str(body.note, 300).trim() || null;
+      let other = null;
+      if (body.swapWith) {
+        other = check(await supabase.from("assets").select("*").eq("id", str(body.swapWith, 40)).maybeSingle());
+        if (!other || !to || other.owner_id !== to) return fail(res, 400, "Pick one of the new holder's devices to swap.");
+        if (!dev.owner_id) return fail(res, 400, "A swap needs the device to be with someone now.");
+      }
+      const loc = body.location === undefined ? dev.location : (body.location || null);
+      check(await supabase.from("assets").update({ owner_id: to, received_on: received, location: loc,
+        status: to ? (dev.status === "in_stock" ? "in_use" : dev.status) : (dev.status === "in_use" ? "in_stock" : dev.status), updated_at: nowIso() }).eq("id", dev.id));
+      await supabase.from("asset_events").insert({ asset_id: dev.id, from_id: dev.owner_id || null, to_id: to, received_on: received, note, actor_id: viewer.id });
+      if (other) {
+        // the swapped device goes to the previous holder, at the previous holder's location
+        check(await supabase.from("assets").update({ owner_id: dev.owner_id, received_on: received, location: dev.location || other.location, updated_at: nowIso() }).eq("id", other.id));
+        await supabase.from("asset_events").insert({ asset_id: other.id, from_id: to, to_id: dev.owner_id, received_on: received, note: note || "Swap", actor_id: viewer.id });
+      }
+      const rows = check(await supabase.from("assets").select("*").order("id")) || [];
+      return res.status(200).json(rows.map(IT.shapeAsset));
+    }
+    if (action === "asset-history") {
+      if (!isIT(role)) return fail(res, 403, "Only IT can see device history.");
+      const rows = check(await supabase.from("asset_events").select("*").eq("asset_id", str(body.id, 40))) || [];
+      return res.status(200).json(rows.sort((x, y) => new Date(y.created_at) - new Date(x.created_at))
+        .map(r => ({ from: r.from_id, to: r.to_id, received: IT.dateStr(r.received_on), note: r.note || "", by: r.actor_id, ts: new Date(r.created_at).getTime() })));
     }
     if (action === "delete-asset") {
       if (!isLead(role)) return fail(res, 403, "Only the IT manager or an admin can delete devices.");

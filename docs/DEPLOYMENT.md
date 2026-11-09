@@ -53,7 +53,7 @@ Keep a **private note** open and paste each value into it as you go. Never put t
 
    ⚠ This key has full access to the database. Only ever paste it into Vercel.
 
-> **Already ran `schema.sql` before?** Run the **latest** `schema.sql` again. It's safe to re-run: it adds anything new (for example the escalation fields, assets, laptop specs, device location and received date, and the stock and purchase-request tables) and keeps all existing data.
+> **Already ran `schema.sql` before?** Run the **latest** `schema.sql` again. It's safe to re-run: it adds anything new (for example the escalation fields, assets, laptop specs, device location and received date, the device allocation history, and the stock and purchase-request tables) and keeps all existing data.
 
 You don't need to set up anything under Authentication or Storage.
 

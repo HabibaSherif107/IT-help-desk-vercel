@@ -273,3 +273,20 @@ alter table assets add column if not exists specs jsonb;
 -- ════════════════════════════════════════════════════════════
 update assets set location = null where location is not null and location not in ('abis','khorshid','kafr_el_sheikh','beheira');
 alter table assets add column if not exists received_on date;
+
+-- ════════════════════════════════════════════════════════════
+-- 18. Device allocation history (upgrade-safe): every time a device moves between
+--     people (or back to IT), who had it, who got it, when, and who did it.
+-- ════════════════════════════════════════════════════════════
+create table if not exists asset_events (
+  id          uuid primary key default gen_random_uuid(),
+  asset_id    text not null references assets(id) on delete cascade,
+  from_id     uuid references users(id) on delete set null,
+  to_id       uuid references users(id) on delete set null,
+  received_on date,
+  note        text,
+  actor_id    uuid references users(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+alter table asset_events enable row level security;
+create index if not exists asset_events_asset on asset_events (asset_id);

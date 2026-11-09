@@ -380,6 +380,29 @@ async function tests() {
   dl2 = r.body.find(a => a.id === dell.id);
   ok(dl2.received === null && dl2.location === "khorshid", "returning the device to IT clears the received date (location stays)");
 
+  // ── Allocate / swap ──────────────────────────────────────────
+  r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "Lenovo A", status: "in_stock", purchased: "2024-01-01" } });
+  const lenA = r.body.find(a => a.model === "Lenovo A");
+  ok(lenA.received === null && lenA.owner === null, "nothing is filled in automatically: no holder, no received date");
+  r = await call("karim@dar.test", "allocate-asset", { id: lenA.id, to: P["sara@dar.test"].id, location: "abis" });
+  let la = r.body.find(a => a.id === lenA.id);
+  ok(la.owner === P["sara@dar.test"].id && la.status === "in_use" && la.location === "abis" && la.received === null, "allocate to Sara: received date stays empty when not entered");
+  ok((await call("karim@dar.test", "allocate-asset", { id: lenA.id, to: P["sara@dar.test"].id })).status === 400, "can't allocate to the person who already has it");
+  ok((await call("sara@dar.test", "allocate-asset", { id: lenA.id, to: null })).status === 403, "employees can't allocate devices");
+  r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "Lenovo B", owner: P["mona@dar.test"].id, location: "beheira", status: "in_use" } });
+  const lenB = r.body.find(a => a.model === "Lenovo B");
+  ok((await call("karim@dar.test", "allocate-asset", { id: lenA.id, to: P["mona@dar.test"].id, swapWith: dell.id })).status === 400, "swap only with one of the new holder's own devices");
+  r = await call("karim@dar.test", "allocate-asset", { id: lenA.id, to: P["mona@dar.test"].id, swapWith: lenB.id, received: "2026-11-01", location: "beheira", note: "Faulty keyboard" });
+  la = r.body.find(a => a.id === lenA.id); const lb = r.body.find(a => a.id === lenB.id);
+  ok(la.owner === P["mona@dar.test"].id && la.location === "beheira" && la.received === "2026-11-01", "swap: Lenovo A goes to Mona (Beheira) with the entered date");
+  ok(lb.owner === P["sara@dar.test"].id && lb.location === "abis", "swap: Mona's Lenovo B goes to Sara, at Sara's location (Abis)");
+  r = await call("karim@dar.test", "asset-history", { id: lenA.id });
+  ok(r.body.length === 2 && r.body[0].from === P["sara@dar.test"].id && r.body[0].to === P["mona@dar.test"].id && r.body[0].note === "Faulty keyboard" && r.body[1].from === null, "allocation history: IT stock → Sara → Mona, with the note");
+  ok((await call("karim@dar.test", "asset-history", { id: lenB.id })).body[0].note === "Faulty keyboard", "the swapped device's history records the swap too");
+  r = await call("karim@dar.test", "allocate-asset", { id: lenA.id, to: null });
+  la = r.body.find(a => a.id === lenA.id);
+  ok(la.owner === null && la.status === "in_stock" && la.received === null, "return to IT stock: back in stock, received date cleared");
+
   // ── Laptop specs ─────────────────────────────────────────────
   const specs = { cpu: "Intel Core i5-1135G7", ram: "8 GB", storage: "256 GB SSD", win11: "yes", lifetime: "until 2028", recommendation: "replace_1y", junk: "x" };
   r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "HP ProBook 450", status: "in_stock", specs } });
