@@ -499,7 +499,11 @@ module.exports = async function handler(req, res) {
       if (action === "admin-save-settings") {
         const values = body.values || {};
         const rows = Object.entries(values).map(([key, v]) => ({ key, value: cleanSetting(key, v, members), updated_at: nowIso() }));
-        if (rows.length) check(await supabase.from("settings").upsert(rows, { onConflict: "key" }));
+        // An empty choice (e.g. "Escalations go to: first IT manager") is stored by removing the row, which means "use the default".
+        // (The settings.value column can't hold an empty value.)
+        const empty = rows.filter(r => r.value === null).map(r => r.key), filled = rows.filter(r => r.value !== null);
+        if (empty.length) check(await supabase.from("settings").delete().in("key", empty));
+        if (filled.length) check(await supabase.from("settings").upsert(filled, { onConflict: "key" }));
       } else if (action === "admin-save-lists") {
         // Add / rename / delete options in the editable dropdown lists. An option still in use can't be deleted.
         const st = await IT.loadSettings();
@@ -621,7 +625,7 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     if (err instanceof SetupRequired) {
       console.error("app.js setup required:", err.message);
-      return res.status(503).json({ error: "setup_required", detail: "Run schema.sql in the Supabase SQL Editor." });
+      return res.status(503).json({ error: "The database needs updating: run the latest schema.sql in the Supabase SQL Editor. (" + err.message + ")", code: "setup_required" });
     }
     console.error("app.js error:", action, err.message);
     return fail(res, err.message && /needs|must|Exactly|Unknown setting|Every/.test(err.message) ? 400 : 500, err.message);

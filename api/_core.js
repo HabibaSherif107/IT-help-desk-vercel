@@ -180,7 +180,9 @@ class SetupRequired extends Error {}
 function check(res) {
   if (res.error) {
     const m = res.error.message || "";
-    if (/does not exist|relation|schema cache/i.test(m)) throw new SetupRequired(m);
+    // Only a missing table / column / function means "run schema.sql". Other database errors (for example a
+    // not-null violation, whose message also mentions "relation") are real errors and are reported as such.
+    if (/(relation|table|column|function)\b[^\n]*does not exist|schema cache|Could not find the/i.test(m)) throw new SetupRequired(m);
     throw new Error(m);
   }
   return res.data;

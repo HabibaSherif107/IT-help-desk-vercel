@@ -28,7 +28,8 @@ const mails = [];
 
 // ── supabase-js adapter (only what the app uses) ──────────────
 const JSONB = { settings: ["value"], departments: ["name"], categories: ["name", "description", "fields"], canned_replies: ["title", "body"], kb_articles: ["title", "steps"], tickets: ["fields"] };
-const val = (t, c, v) => ((JSONB[t] || []).includes(c) || (v !== null && typeof v === "object" && !(v instanceof Date))) ? JSON.stringify(v) : v;
+// Like Supabase (PostgREST), a JSON null becomes SQL NULL, also for jsonb columns.
+const val = (t, c, v) => v === null || v === undefined ? null : ((JSONB[t] || []).includes(c) || (typeof v === "object" && !(v instanceof Date))) ? JSON.stringify(v) : v;
 class Q {
   constructor(t) { this.t = t; this.op = null; this.f = []; this.o = []; this.lim = null; this.one = null; }
   select(cols) { if (!this.op) { this.op = "select"; this.cols = cols || "*"; } else this.ret = cols || "*"; return this; }
@@ -463,6 +464,21 @@ async function tests() {
   await call("karim@dar.test", "allocate-asset", { id: pt.id, to: P["sara@dar.test"].id, empPriority: "medium" });
   r = await call("hany@dar.test", "admin-save-lists", { lists: { ...L2, empPriorities: L2.empPriorities.filter(o => o.id !== "medium") } });
   ok(r.status === 400 && /1 item still uses/.test(r.body.error), "a priority in use can't be deleted");
+
+  // ── Admin Console saves (General with empty choices, Priority, Statuses, Canned replies) ──
+  let gc = (await call("hany@dar.test", "bootstrap")).body;
+  r = await call("hany@dar.test", "admin-save-settings", { values: { supportCcUpdates: false, autoAssign: true, approvalMode: "direct_manager", approverId: null, escalateTo: null, kbSuggest: true, csat: true } });
+  ok(r.status === 200 && r.body.autoAssign === true, "General tab saves when Approver / Escalations are left empty (no setup_required error)");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { escalateTo: PP["omar@dar.test"].id } });
+  ok(r.status === 200 && r.body.escalateTo === PP["omar@dar.test"].id, "…and a chosen escalation contact is saved");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { escalateTo: null } });
+  ok(r.status === 200 && !r.body.escalateTo, "…and can be cleared again");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { prio: { ...gc.prio, P1: { n: { en: "Emergency", ar: "طارئة" }, c: "#FF0000" } }, impacts: gc.impacts, urgencies: gc.urgencies, matrix: gc.matrix } });
+  ok(r.status === 200 && r.body.prio.P1.n.en === "Emergency", "Priority & questions tab saves");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { statuses: { ...gc.statuses, New: { n: { en: "Just opened", ar: "جديدة" }, c: "#38BDF8" } } } });
+  ok(r.status === 200 && r.body.statuses.New.n.en === "Just opened", "Statuses tab saves");
+  r = await call("hany@dar.test", "admin-save-canned", { item: { l: { en: "Restart first", ar: "أعد التشغيل" }, t: { en: "Please restart and tell us.", ar: "أعد التشغيل وأخبرنا." } } });
+  ok(r.status === 200 && r.body.canned.some(c => c.l.en === "Restart first"), "Canned replies tab saves");
 
   // ── Admin "View as" preview ──────────────────────────────────
   r = await call("hany@dar.test", "bootstrap", { viewAs: "requester" });
