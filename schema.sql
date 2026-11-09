@@ -296,3 +296,10 @@ create index if not exists asset_events_asset on asset_events (asset_id);
 -- 19. Company sector for each person (upgrade-safe): shell | chipsy | jammy (or empty).
 -- ════════════════════════════════════════════════════════════
 alter table users add column if not exists sector text;
+
+-- ════════════════════════════════════════════════════════════
+-- 20. Employee priority on an assigned device (upgrade-safe). The options themselves
+--     (and device types, locations, company sectors, stock categories) are editable
+--     lists kept in settings under the key "lists".
+-- ════════════════════════════════════════════════════════════
+alter table assets add column if not exists emp_priority text;

@@ -420,6 +420,50 @@ async function tests() {
   const opt = r.body.find(a => a.model === "Dell OptiPlex 7010");
   ok(opt.specs && opt.specs.cpu === "Intel Core i5-3470" && opt.specs.win11 === "no" && opt.specs.recommendation === "retire", "PCs have the same specs as laptops");
 
+  // ── Editable dropdown lists & employee priority ─────────────
+  let ac = (await call("hany@dar.test", "bootstrap")).body;
+  ok(ac.lists && ac.lists.locations.length === 4 && ac.lists.empPriorities.map(o => o.id).join() === "high,medium,low", "admins get the editable lists (starting values)");
+  ok((await call("karim@dar.test", "bootstrap")).body.lists === undefined, "only admins get the raw lists");
+  ok((await call("omar@dar.test", "admin-save-lists", { lists: ac.lists })).status === 403, "only admins can edit lists");
+  let L2 = JSON.parse(JSON.stringify(ac.lists));
+  L2.locations.push({ id: "", n: { en: "Alexandria HQ", ar: "الإسكندرية" } });
+  L2.locations.find(o => o.id === "abis").n.en = "Abis Factory";
+  L2.sectors.find(o => o.id === "shell").n = { en: "Shell Egypt", ar: "شل مصر" };
+  L2.sectors.push({ id: "", n: { en: "Shell", ar: "" } });            // its id would clash with the renamed one
+  r = await call("hany@dar.test", "admin-save-lists", { lists: L2 });
+  const alex = r.body.lists.locations.find(o => o.n.en === "Alexandria HQ");
+  ok(r.status === 200 && alex && alex.id === "alexandria_hq" && r.body.assetLocations.abis.en === "Abis Factory", "add an option and rename one (existing id kept, so devices stay linked)");
+  ok(r.body.lists.sectors.find(o => o.id === "shell").n.en === "Shell Egypt" && r.body.lists.sectors.find(o => o.n.en === "Shell").id === "shell_2", "a new option never takes an existing option's id");
+  ok((await call("hany@dar.test", "admin-save-lists", { lists: { ...r.body.lists, locations: [...r.body.lists.locations, { id: "", n: { en: "khorshid", ar: "" } }] } })).status === 400, "the same name can't be in a list twice");
+  L2 = JSON.parse(JSON.stringify(r.body.lists));
+  L2.locations = L2.locations.filter(o => o.id !== "abis");
+  r = await call("hany@dar.test", "admin-save-lists", { lists: L2 });
+  ok(r.status === 400 && /Abis Factory/.test(r.body.error) && /still use/.test(r.body.error), "can't delete a location that devices still use (message says how many)");
+  L2 = JSON.parse(JSON.stringify((await call("hany@dar.test", "bootstrap")).body.lists));
+  L2.sectors = L2.sectors.filter(o => o.id !== "shell_2"); L2.sectors.find(o => o.id === "shell").n = { en: "Shell", ar: "شل" }; L2.locations = L2.locations.filter(o => o.id !== "alexandria_hq");
+  r = await call("hany@dar.test", "admin-save-lists", { lists: L2 });
+  ok(r.status === 200 && !r.body.sectors.shell_2 && !r.body.assetLocations.alexandria_hq, "unused options can be deleted");
+  ok((await call("hany@dar.test", "admin-save-lists", { lists: { ...L2, empPriorities: [] } })).status === 400, "a list can't be emptied");
+  ok((await call("hany@dar.test", "admin-save-lists", { lists: { ...L2, empPriorities: [{ id: "", n: { en: "", ar: "" } }] } })).status === 400, "options need a name");
+  L2.assetTypes.push({ id: "", n: { en: "Tablet", ar: "تابلت" } });
+  r = await call("hany@dar.test", "admin-save-lists", { lists: L2 });
+  r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "tablet", model: "iPad 10", status: "in_stock" } });
+  ok(r.status === 200 && r.body.some(a => a.type === "tablet"), "a newly added device type can be used straight away");
+  r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "Prio test", status: "in_stock", empPriority: "high" } });
+  const pt = r.body.find(a => a.model === "Prio test");
+  ok(pt.empPriority === "", "employee priority only applies when the device is assigned to someone");
+  ok((await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...pt, owner: P["sara@dar.test"].id, empPriority: "urgent" } })).status === 400, "only listed priorities are accepted");
+  r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...pt, owner: P["sara@dar.test"].id, empPriority: "high" } });
+  ok(r.body.find(a => a.id === pt.id).empPriority === "high", "employee priority saved for an assigned device");
+  r = await call("karim@dar.test", "allocate-asset", { id: pt.id, to: P["mona@dar.test"].id, empPriority: "low" });
+  ok(r.body.find(a => a.id === pt.id).empPriority === "low", "allocating sets the new holder's priority");
+  r = await call("karim@dar.test", "allocate-asset", { id: pt.id, to: null });
+  ok(r.body.find(a => a.id === pt.id).empPriority === "", "returning to IT clears the priority");
+  L2 = JSON.parse(JSON.stringify((await call("hany@dar.test", "bootstrap")).body.lists));
+  await call("karim@dar.test", "allocate-asset", { id: pt.id, to: P["sara@dar.test"].id, empPriority: "medium" });
+  r = await call("hany@dar.test", "admin-save-lists", { lists: { ...L2, empPriorities: L2.empPriorities.filter(o => o.id !== "medium") } });
+  ok(r.status === 400 && /1 item still uses/.test(r.body.error), "a priority in use can't be deleted");
+
   // ── Laptop specs ─────────────────────────────────────────────
   const specs = { cpu: "Intel Core i5-1135G7", ram: "8 GB", storage: "256 GB SSD", win11: "yes", lifetime: "until 2028", recommendation: "replace_1y", junk: "x" };
   r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "HP ProBook 450", status: "in_stock", specs } });

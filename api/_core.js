@@ -34,6 +34,7 @@ const DEFAULT_SETTINGS = {
   impacts: [B("Just me", "أنا فقط"), B("My team / department", "فريقي / قسمي"), B("The whole company", "الشركة بالكامل")],
   urgencies: [B("It can wait", "يمكنه الانتظار"), B("It's slowing me down", "يبطئ عملي"), B("I can't work at all", "لا أستطيع العمل إطلاقًا")],
   matrix: [["P4", "P3", "P3"], ["P3", "P3", "P2"], ["P3", "P2", "P1"]],   // [impact-1][urgency-1]
+  lists: null,                          // filled from DEFAULT_LISTS in loadSettings
   statuses: {
     "New": { n: B("New", "جديدة"), c: "#38BDF8" }, "Pending Approval": { n: B("Pending Approval", "بانتظار الموافقة"), c: "#A78BFA" },
     "Assigned": { n: B("Assigned", "مُسندة"), c: "#60A5FA" }, "In Progress": { n: B("In Progress", "قيد التنفيذ"), c: "#F59E0B" },
@@ -64,6 +65,21 @@ const STOCK_CATEGORIES = {
   cables: B("Cables & Adapters", "كابلات ومحولات"), networking: B("Networking", "شبكات"), accessories: B("Accessories", "ملحقات"),
   spare_parts: B("Spare Parts", "قطع غيار"), others: B("Others", "أخرى"),
 };
+// ── Editable dropdown lists (Admin Console → Lists). Stored in settings under "lists".
+// Each list is an ordered array of { id, n: { en, ar } }. The constants above are the starting values.
+const toList = obj => Object.entries(obj).map(([id, n]) => ({ id, n }));
+const DEFAULT_LISTS = {
+  assetTypes: toList(ASSET_TYPES), locations: toList(ASSET_LOCATIONS), sectors: toList(COMPANY_SECTORS),
+  stockCategories: toList(STOCK_CATEGORIES),
+  empPriorities: [{ id: "high", n: B("High", "عالية") }, { id: "medium", n: B("Medium", "متوسطة") }, { id: "low", n: B("Low", "منخفضة") }],
+};
+const LIST_KEYS = Object.keys(DEFAULT_LISTS);
+// Where each list's options are used (to stop deleting an option that is still in use).
+const LIST_USAGE = { assetTypes: ["assets", "type"], locations: ["assets", "location"], sectors: ["users", "sector"], stockCategories: ["stock_items", "category"], empPriorities: ["assets", "emp_priority"] };
+const listMap = arr => Object.fromEntries((arr || []).map(o => [o.id, o.n]));
+const inList = (settings, key, id) => !!id && (settings.lists[key] || []).some(o => o.id === id);
+const listLabel = (settings, key, id) => ((settings.lists[key] || []).find(o => o.id === id) || {}).n || null;
+
 const STOCK_STATUSES = { in: { n: B("In Stock", "متوفر"), c: "#34D399" }, low: { n: B("Low Stock", "مخزون منخفض"), c: "#F59E0B" }, out: { n: B("Out of Stock", "نفد المخزون"), c: "#EF4444" } };
 const PR_STATUSES = {
   draft: { n: B("Draft", "مسودة"), c: "#94A3B8" }, submitted: { n: B("Waiting approval", "بانتظار الموافقة"), c: "#A78BFA" },
@@ -75,7 +91,7 @@ const dateStr = v => (v ? (v instanceof Date ? v.toISOString().slice(0, 10) : St
 function shapeAsset(a) {
   const hasWarranty = !!a.has_warranty;
   return { id: a.id, type: a.type, model: a.model || "", serial: a.serial || "", owner: a.owner_id || null,
-    location: ASSET_LOCATIONS[a.location] ? a.location : "", received: a.owner_id ? dateStr(a.received_on) : null,
+    location: a.location || "", received: a.owner_id ? dateStr(a.received_on) : null, empPriority: a.owner_id ? (a.emp_priority || "") : "",
     status: a.status, purchased: dateStr(a.purchased_on), hasWarranty, warranty: hasWarranty ? dateStr(a.warranty_end) : null, notes: a.notes || "",
     specs: SPEC_TYPES.includes(a.type) ? cleanSpecs(a.specs) : null };
 }
@@ -178,6 +194,9 @@ async function loadSettings() {
   const rows = check(await supabase.from("settings").select("key, value")) || [];
   const s = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
   for (const r of rows) if (r.key in s) s[r.key] = r.value;
+  const stored = s.lists && typeof s.lists === "object" ? s.lists : {};
+  s.lists = {};
+  for (const k of LIST_KEYS) s.lists[k] = Array.isArray(stored[k]) && stored[k].length ? stored[k] : JSON.parse(JSON.stringify(DEFAULT_LISTS[k]));
   return s;
 }
 
@@ -218,14 +237,15 @@ async function loadConfig(viewer) {
     autoAssign: settings.autoAssign, approvalMode: settings.approvalMode, approver: settings.approverId,
     kbSuggest: settings.kbSuggest, csat: settings.csat, supportCcUpdates: settings.supportCcUpdates,
     escalateTo: settings.escalateTo, escalateTarget: pickEscalationTarget(settings, users),
-    assetTypes: ASSET_TYPES, assetStatuses: ASSET_STATUSES, assetLocations: ASSET_LOCATIONS, sectors: COMPANY_SECTORS,
-    stockCategories: STOCK_CATEGORIES, stockStatuses: STOCK_STATUSES, prStatuses: PR_STATUSES,
+    assetTypes: listMap(settings.lists.assetTypes), assetStatuses: ASSET_STATUSES, assetLocations: listMap(settings.lists.locations), sectors: listMap(settings.lists.sectors),
+    empPriorities: listMap(settings.lists.empPriorities), lists: role === "admin" ? settings.lists : undefined,
+    stockCategories: listMap(settings.lists.stockCategories), stockStatuses: STOCK_STATUSES, prStatuses: PR_STATUSES,
     myAssets: (myAssetRows || []).filter(a => a.status !== "retired").map(shapeAsset),
     greeting: settings.greeting, heroSub: settings.heroSub,
     prio: settings.prio, impacts: settings.impacts, urgencies: settings.urgencies, matrix: settings.matrix, statuses: settings.statuses,
     depts,
     people: users.map(u => ({
-      id: u.id, name: u.name, dept: u.dept_id, sector: COMPANY_SECTORS[u.sector] ? u.sector : null, role: itRoleOf(u), active: u.active !== false,
+      id: u.id, name: u.name, dept: u.dept_id, sector: u.sector || null, role: itRoleOf(u), active: u.active !== false,
       ...(role === "admin" ? { email: u.email, manager: u.manager_id } : {}),
     })),
     cats: (catRows || []).map(c => ({ id: c.id, icon: c.icon, active: c.active !== false, type: c.type, owner: c.owner_id, approval: !!c.needs_approval, notifySupport: c.notify_support !== false, n: c.name, d: c.description || B("", ""), fields: c.fields || [] })),
@@ -270,7 +290,7 @@ function ticketSummary(t, ctx, lang) {
     ? [`التذكرة: ${t.id} - ${t.title}`, `الفئة: ${L(cat && cat.name)}`, `الأولوية: ${t.priority} · ${L(prio)}`, `مقدم الطلب: ${requester ? requester.name : "-"}${dept ? " (" + (L(dept)) + ")" : ""}`, `المسؤول: ${assignee ? assignee.name : "غير مُسندة"}`]
     : [`Ticket: ${t.id} - ${t.title}`, `Category: ${L(cat && cat.name)}`, `Priority: ${t.priority} · ${L(prio)}`, `Requester: ${requester ? requester.name : "-"}${dept ? " (" + L(dept) + ")" : ""}`, `Assigned to: ${assignee ? assignee.name : "Unassigned"}`];
   if (ctx.asset) {
-    const a = ctx.asset, ty = L(ASSET_TYPES[a.type]);
+    const a = ctx.asset, ty = L(listLabel(settings, "assetTypes", a.type)) || a.type;
     lines.push((lang === "ar" ? "الجهاز: " : "Device: ") + [ty, a.model, a.serial ? "SN " + a.serial : ""].filter(Boolean).join(" · "));
   }
   const extra = fieldLines(cat, t.fields, lang);
@@ -318,6 +338,6 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 
 module.exports = {
   supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS,
-  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, COMPANY_SECTORS, shapeAsset, cleanSpecs, SPEC_TYPES, dateStr, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
+  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, COMPANY_SECTORS, shapeAsset, cleanSpecs, SPEC_TYPES, DEFAULT_LISTS, LIST_KEYS, LIST_USAGE, inList, listLabel, dateStr, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };

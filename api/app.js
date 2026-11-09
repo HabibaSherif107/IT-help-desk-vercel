@@ -175,16 +175,18 @@ module.exports = async function handler(req, res) {
     if (action === "save-asset") {
       if (!isIT(role)) return fail(res, 403, "Only IT can change the device inventory.");
       const a = body.asset || {};
-      if (!IT.ASSET_TYPES[a.type]) return fail(res, 400, "Choose a device type.");
+      const st = await IT.loadSettings();
+      if (!IT.inList(st, "assetTypes", a.type)) return fail(res, 400, "Choose a device type.");
       if (!IT.ASSET_STATUSES[a.status]) return fail(res, 400, "Choose a status.");
-      if (a.location && !IT.ASSET_LOCATIONS[a.location]) return fail(res, 400, "Choose a location from the list.");
+      if (a.location && !IT.inList(st, "locations", a.location)) return fail(res, 400, "Choose a location from the list.");
+      if (a.empPriority && !IT.inList(st, "empPriorities", a.empPriority)) return fail(res, 400, "Choose an employee priority from the list.");
       const day = v => { const s = str(v, 10).trim(); if (!s) return null; const d = new Date(s + "T00:00:00Z"); if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(d) || d.toISOString().slice(0, 10) !== s) throw new Error("Dates must be valid (YYYY-MM-DD)."); return s; };
       const members = await IT.loadUsers();
       const owner = a.owner ? (members.some(m => m.id === a.owner && m.active !== false) ? a.owner : null) : null;
       if (a.owner && !owner) return fail(res, 400, "That person isn't an active user.");
       const hasWarranty = !!a.hasWarranty;
       const row = { type: a.type, model: str(a.model, 120).trim(), serial: str(a.serial, 80).trim() || null, owner_id: owner,
-        location: a.location || null, received_on: owner ? day(a.received) : null,
+        location: a.location || null, received_on: owner ? day(a.received) : null, emp_priority: owner ? (a.empPriority || null) : null,
         status: a.status, purchased_on: day(a.purchased), has_warranty: hasWarranty, warranty_end: hasWarranty ? day(a.warranty) : null,
         notes: str(a.notes, 500).trim() || null, specs: IT.SPEC_TYPES.includes(a.type) ? IT.cleanSpecs(a.specs) : null, updated_at: nowIso() };
       if (!row.model) return fail(res, 400, "Enter the make and model.");
@@ -216,7 +218,9 @@ module.exports = async function handler(req, res) {
       if (to && !members.some(m => m.id === to && m.active !== false)) return fail(res, 400, "That person isn't an active user.");
       if (to && to === dev.owner_id) return fail(res, 400, "The device is already allocated to this person.");
       if (!to && !dev.owner_id) return fail(res, 400, "The device is already with IT.");
-      if (body.location && !IT.ASSET_LOCATIONS[body.location]) return fail(res, 400, "Choose a location from the list.");
+      const st = await IT.loadSettings();
+      if (body.location && !IT.inList(st, "locations", body.location)) return fail(res, 400, "Choose a location from the list.");
+      if (body.empPriority && !IT.inList(st, "empPriorities", body.empPriority)) return fail(res, 400, "Choose an employee priority from the list.");
       const received = to ? day(body.received) : null;                 // left empty unless entered
       if (received && dev.purchased_on && received < IT.dateStr(dev.purchased_on)) return fail(res, 400, "The received date can't be before the purchase date.");
       const note = str(body.note, 300).trim() || null;
@@ -228,11 +232,12 @@ module.exports = async function handler(req, res) {
       }
       const loc = body.location === undefined ? dev.location : (body.location || null);
       check(await supabase.from("assets").update({ owner_id: to, received_on: received, location: loc,
+        emp_priority: to ? (body.empPriority !== undefined ? (body.empPriority || null) : (other ? other.emp_priority : null)) : null,
         status: to ? (dev.status === "in_stock" ? "in_use" : dev.status) : (dev.status === "in_use" ? "in_stock" : dev.status), updated_at: nowIso() }).eq("id", dev.id));
       await supabase.from("asset_events").insert({ asset_id: dev.id, from_id: dev.owner_id || null, to_id: to, received_on: received, note, actor_id: viewer.id });
       if (other) {
         // the swapped device goes to the previous holder, at the previous holder's location
-        check(await supabase.from("assets").update({ owner_id: dev.owner_id, received_on: received, location: dev.location || other.location, updated_at: nowIso() }).eq("id", other.id));
+        check(await supabase.from("assets").update({ owner_id: dev.owner_id, received_on: received, location: dev.location || other.location, emp_priority: dev.emp_priority || null, updated_at: nowIso() }).eq("id", other.id));
         await supabase.from("asset_events").insert({ asset_id: other.id, from_id: to, to_id: dev.owner_id, received_on: received, note: note || "Swap", actor_id: viewer.id });
       }
       const rows = check(await supabase.from("assets").select("*").order("id")) || [];
@@ -492,6 +497,39 @@ module.exports = async function handler(req, res) {
         const values = body.values || {};
         const rows = Object.entries(values).map(([key, v]) => ({ key, value: cleanSetting(key, v, members), updated_at: nowIso() }));
         if (rows.length) check(await supabase.from("settings").upsert(rows, { onConflict: "key" }));
+      } else if (action === "admin-save-lists") {
+        // Add / rename / delete options in the editable dropdown lists. An option still in use can't be deleted.
+        const st = await IT.loadSettings();
+        const next = {};
+        for (const key of IT.LIST_KEYS) {
+          const incoming = body.lists && Array.isArray(body.lists[key]) ? body.lists[key] : st.lists[key];
+          if (incoming.length > 60) return fail(res, 400, "A list can have at most 60 options.");
+          // Existing options keep their id (so devices / people using them stay linked); new ones get a fresh id.
+          const known = new Set(st.lists[key].map(o => o.id));
+          const kept = new Set(incoming.filter(o => o && known.has(o.id)).map(o => o.id));
+          const taken = new Set([...known]), seen = new Set(), out = [];
+          for (const o of incoming) {
+            const n = bi(o && o.n, 80);
+            if (!n.en && !n.ar) return fail(res, 400, "Every option needs a name (English or Arabic).");
+            let id = o && kept.has(o.id) && !seen.has(o.id) ? o.id : "";
+            if (!id) {
+              const base = (n.en || "option").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 30) || "option";
+              id = base; for (let i = 2; taken.has(id) || seen.has(id); i++) id = base + "_" + i;
+            }
+            const same = out.find(x => (n.en && x.n.en.toLowerCase() === n.en.toLowerCase()) || (n.ar && x.n.ar === n.ar));
+            if (same) return fail(res, 400, `“${n.en || n.ar}” is in the list twice.`);
+            taken.add(id); seen.add(id); out.push({ id, n });
+          }
+          if (!out.length) return fail(res, 400, "Every list needs at least one option.");
+          const removed = st.lists[key].filter(o => !seen.has(o.id));
+          const [table, col] = IT.LIST_USAGE[key];
+          for (const r of removed) {
+            const used = (check(await supabase.from(table).select("id").eq(col, r.id)) || []).length;
+            if (used) return fail(res, 400, `Can't delete “${r.n.en || r.n.ar}”: ${used} ${used === 1 ? "item still uses" : "items still use"} it. Change ${used === 1 ? "it" : "them"} first.`);
+          }
+          next[key] = out;
+        }
+        check(await supabase.from("settings").upsert([{ key: "lists", value: next, updated_at: nowIso() }], { onConflict: "key" }));
       } else if (action === "admin-save-user") {
         const u = body.user || {};
         const email = str(u.email, 200).trim().toLowerCase(), name = str(u.name, 120).trim();
@@ -501,7 +539,7 @@ module.exports = async function handler(req, res) {
         const depts = check(await supabase.from("departments").select("id")) || [];
         const dept = u.dept && depts.some(d => d.id === u.dept) ? u.dept : null;
         const manager = u.manager && members.some(m => m.id === u.manager) && u.manager !== u.id ? u.manager : null;
-        if (u.sector && !IT.COMPANY_SECTORS[u.sector]) return fail(res, 400, "Choose a company sector from the list.");
+        if (u.sector && !IT.inList(await IT.loadSettings(), "sectors", u.sector)) return fail(res, 400, "Choose a company sector from the list.");
         const row = { email, name, dept_id: dept, manager_id: manager, role: u.role, active: u.active !== false };
         if (u.sector !== undefined) row.sector = u.sector || null;   // left unchanged when not sent
         const clash = members.find(m => m.email.toLowerCase() === email && m.id !== u.id);

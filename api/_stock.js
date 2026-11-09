@@ -9,7 +9,7 @@
 const { supabase } = require("./_db");
 const IT = require("./_core");
 const { sendEmail, SEP } = require("./_email");
-const { check, str, isIT, isLead, itRoleOf, STOCK_CATEGORIES } = IT;
+const { check, str, isIT, isLead, itRoleOf } = IT;
 
 const nowIso = () => new Date().toISOString();
 const ms = ts => (ts ? new Date(ts).getTime() : null);
@@ -116,7 +116,7 @@ async function handle(action, { body, viewer, role, me }) {
     const it = body.item || {};
     const name = str(it.name, 120).trim();
     if (!name) return bad("Enter the item name.");
-    if (!STOCK_CATEGORIES[it.category]) return bad("Choose a category.");
+    if (!IT.inList(await IT.loadSettings(), "stockCategories", it.category)) return bad("Choose a category.");
     let min = null;
     if (it.min !== "" && it.min != null) { min = int(it.min); if (!Number.isInteger(min) || min < 0 || min > 100000) return bad("The minimum level must be a whole number (0 or more)."); }
     const row = { name, category: it.category, model: str(it.model, 120).trim() || null, min_level: min, notes: str(it.notes, 500).trim() || null, updated_at: nowIso() };

@@ -31,7 +31,8 @@ Nothing is shared, so changes in one can never affect the other.
 IT keeps a list of company devices: type (Laptop, Desktop, PC, Monitor, Printer / Scanner, Mobile phone, Network device, Accessory, Other), make/model, serial number, who has it, status (*In use, In stock, Needs repair, Retired*), purchase date and warranty. Tick **Under warranty** to enter the warranty end date. Devices are numbered automatically, so there's no tag to type in.
 - The **Assets** page shows totals, devices in repair, and warranties ending within 90 days or already expired. You can search and filter it.
 - **Filter by department and company sector:** the list can be filtered by the department and/or the company sector (Shell, Chipsy, Jammy) of the person holding the device, or by *No department* / *No sector*. Each holder's department and sector are shown under their name.
-- **Location** is picked from a fixed list: *Abis, Khorshid, Kafr El Sheikh, Beheira / Damanhour*. The list can be filtered by location.
+- **Employee priority** (High / Medium / Low by default, editable) appears once the device is assigned to someone, also in *Allocate to…*. It is cleared when the device returns to IT, and the list can be filtered by it.
+- **Location** is picked from a list (editable in the Admin Console): *Abis, Khorshid, Kafr El Sheikh, Beheira / Damanhour*. The list can be filtered by location.
 - **Received by holder on** sits next to the purchase date. Like every date, it stays empty unless you enter it. It can't be before the purchase date and is cleared when the device comes back to IT.
 - **⇄ Allocate to…** (on a device's page) moves the device to another person or back to IT stock, with an optional received date, location and note. If the new person already has a device, you can **swap**: their device goes to the previous holder in the same step. Every move is kept in the device's **Allocation history** (from → to, date, who did it).
 - **Laptops and PCs have a Specs section:** processor, RAM, storage, Windows 11 compatibility (Compatible / Not compatible / Not checked yet), expected lifetime and a recommendation chosen from a fixed list (*Keep and upgrade SSD/RAM if needed*, *Replace within 1 year*, *Retire immediately*). It only appears when the type is *Laptop* or *PC*. The main specs and a Win 11 ✓/✕ show under the device in the list, and you can search by them.
@@ -52,6 +53,13 @@ Same layout as the sheet: **# · Item name · Product link · Quantity · Unit p
 - A rejected request can be fixed and submitted again. Drafts and rejected requests can be deleted.
 - Each line can be linked to a stock item. When the request is marked **Received**, those quantities are added to stock automatically, and the stock history notes which request they came from.
 - **Print** gives a printable page with the same look as the sheet, including signature lines.
+
+### Dropdown lists (Admin Console → Dropdown lists)
+Admins can add, rename, reorder and delete the options of these dropdowns, in English and Arabic: **Device types, Locations, Company sectors, Employee priority, Stock categories**. Press **Save changes** when done.
+- Renaming updates everywhere at once (devices and people keep pointing at the same option).
+- An option that is still in use can't be deleted. The message says how many items use it; change those first.
+- A list can't be emptied, and the same name can't appear twice.
+- Departments, ticket categories, priorities and statuses have their own tabs. Device status (In use / In stock / Needs repair / Retired), Windows 11 compatibility and the specs Recommendation stay fixed, because the app relies on them.
 
 ### People: department and company sector
 In **Admin Console → Users & roles**, each person has a **Department** and, next to it, a **Company sector** chosen from a fixed list: *Shell, Chipsy, Jammy*. The sector also shows as a column in the people table.
