@@ -416,6 +416,9 @@ async function tests() {
 
   r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "pc", model: "HP ProDesk 400", status: "in_stock" } });
   ok(r.status === 200 && r.body.find(a => a.model === "HP ProDesk 400").type === "pc" && cfg.assetTypes.pc.en === "PC", "PC is a device type");
+  r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "pc", model: "Dell OptiPlex 7010", status: "in_stock", specs: { cpu: "Intel Core i5-3470", ram: "4 GB", storage: "500 GB HDD", win11: "no", lifetime: "6 months", recommendation: "retire" } } });
+  const opt = r.body.find(a => a.model === "Dell OptiPlex 7010");
+  ok(opt.specs && opt.specs.cpu === "Intel Core i5-3470" && opt.specs.win11 === "no" && opt.specs.recommendation === "retire", "PCs have the same specs as laptops");
 
   // ── Laptop specs ─────────────────────────────────────────────
   const specs = { cpu: "Intel Core i5-1135G7", ram: "8 GB", storage: "256 GB SSD", win11: "yes", lifetime: "until 2028", recommendation: "replace_1y", junk: "x" };
@@ -429,7 +432,7 @@ async function tests() {
   r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...hp, specs: { ...hp.specs, recommendation: "retire" } } });
   ok(r.body.find(a => a.id === hp.id).specs.recommendation === "retire", "“Retire immediately” saved");
   r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "printer", model: "HP LaserJet", status: "in_use", specs } });
-  ok(r.body.find(a => a.model === "HP LaserJet").specs === null, "specs are only kept for laptops");
+  ok(r.body.find(a => a.model === "HP LaserJet").specs === null, "specs are only kept for laptops and PCs");
   r = await call("karim@dar.test", "save-asset", { isNew: false, asset: { ...hp, type: "desktop" } });
   ok(r.body.find(a => a.id === hp.id).specs === null, "changing a laptop to another type drops its specs");
 

@@ -186,7 +186,7 @@ module.exports = async function handler(req, res) {
       const row = { type: a.type, model: str(a.model, 120).trim(), serial: str(a.serial, 80).trim() || null, owner_id: owner,
         location: a.location || null, received_on: owner ? day(a.received) : null,
         status: a.status, purchased_on: day(a.purchased), has_warranty: hasWarranty, warranty_end: hasWarranty ? day(a.warranty) : null,
-        notes: str(a.notes, 500).trim() || null, specs: a.type === "laptop" ? IT.cleanSpecs(a.specs) : null, updated_at: nowIso() };
+        notes: str(a.notes, 500).trim() || null, specs: IT.SPEC_TYPES.includes(a.type) ? IT.cleanSpecs(a.specs) : null, updated_at: nowIso() };
       if (!row.model) return fail(res, 400, "Enter the make and model.");
       if (row.received_on && row.purchased_on && row.received_on < row.purchased_on) return fail(res, 400, "The received date can't be before the purchase date.");
       if (hasWarranty && !row.warranty_end) return fail(res, 400, "Enter when the warranty ends, or untick “Under warranty”.");

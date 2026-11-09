@@ -43,6 +43,8 @@ const DEFAULT_SETTINGS = {
 };
 
 // Device inventory: types and statuses (fixed lists, bilingual labels).
+// Device types that have a Specs section (processor, RAM, storage, Windows 11, lifetime, recommendation).
+const SPEC_TYPES = ["laptop", "pc"];
 const ASSET_TYPES = {
   laptop: B("Laptop", "لابتوب"), desktop: B("Desktop", "كمبيوتر مكتبي"), pc: B("PC", "كمبيوتر شخصي (PC)"), monitor: B("Monitor", "شاشة"),
   printer: B("Printer / Scanner", "طابعة / ماسح ضوئي"), mobile: B("Mobile phone", "هاتف محمول"),
@@ -75,7 +77,7 @@ function shapeAsset(a) {
   return { id: a.id, type: a.type, model: a.model || "", serial: a.serial || "", owner: a.owner_id || null,
     location: ASSET_LOCATIONS[a.location] ? a.location : "", received: a.owner_id ? dateStr(a.received_on) : null,
     status: a.status, purchased: dateStr(a.purchased_on), hasWarranty, warranty: hasWarranty ? dateStr(a.warranty_end) : null, notes: a.notes || "",
-    specs: a.type === "laptop" ? cleanSpecs(a.specs) : null };
+    specs: SPEC_TYPES.includes(a.type) ? cleanSpecs(a.specs) : null };
 }
 // Laptop specs: processor, RAM, storage, Windows 11 compatibility, expected lifetime, recommendation.
 const SPEC_KEYS = { cpu: 120, ram: 60, storage: 80, lifetime: 80 };
@@ -316,6 +318,6 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 
 module.exports = {
   supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS,
-  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, COMPANY_SECTORS, shapeAsset, cleanSpecs, dateStr, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
+  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, COMPANY_SECTORS, shapeAsset, cleanSpecs, SPEC_TYPES, dateStr, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };
