@@ -584,7 +584,7 @@ function AllocateModal({a,assets,onClose,onDone}){
   return e(Modal,{title:t("alloc_title",{m:a.model}),onClose,w:600},
     e("div",{style:{fontSize:"0.85rem",color:"#8A8583",marginBottom:14}},t("alloc_now")+": ",e("b",{style:{color:"#EDEBEA"}},a.owner?pname(a.owner):t("it_stock_short"))),
     e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:14,marginBottom:14}},
-      field("al-to",t("alloc_to")+" *",e("select",{id:"al-to",value:to,onChange:ev=>{const v=ev.target.value; setTo(v); setSwap(""); const known=assets.find(x=>x.owner===v&&x.location); if(known) setLoc(known.location); const kp=assets.find(x=>x.owner===v&&x.empPriority); setPrio(kp?kp.empPriority:"");},style:IS},
+      field("al-to",t("alloc_to")+" *",e("select",{id:"al-to",value:to,onChange:ev=>{const v=ev.target.value; setTo(v); setSwap(""); const known=assets.find(x=>x.owner===v&&x.location); if(known) setLoc(known.location); setPrio("");},style:IS},
         e("option",{value:""},t("alloc_pick")),a.owner&&e("option",{value:"__it"},t("alloc_return")),
         CFG.people.filter(p=>p.active!==false&&p.id!==a.owner).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
       field("al-loc",t("a_loc"),e("select",{id:"al-loc",value:loc,onChange:ev=>setLoc(ev.target.value),style:IS},e("option",{value:""},t("a_loc_none")),Object.keys(CFG.assetLocations||{}).map(k=>e("option",{key:k,value:k},L(CFG.assetLocations[k]))))),
