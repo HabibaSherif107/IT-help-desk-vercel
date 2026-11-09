@@ -183,6 +183,8 @@ const S = {
   alloc_btn:["Allocate","تسليم"], toast_allocated:["Device allocated","تم تسليم الجهاز"], toast_swapped:["Devices swapped","تم تبديل الأجهزة"],
   alloc_history:["Allocation history","سجل التسليم"], alloc_none:["No moves recorded yet.","لا توجد عمليات تسليم مسجلة بعد."], it_stock_short:["IT stock","مخزن التقنية"],
   alloc_dates_hint:["Dates stay empty unless you enter them.","تبقى التواريخ فارغة ما لم تُدخلها."],
+  sector:["Company sector","قطاع الشركة"], no_sector:["— No sector —","— بدون قطاع —"], all_depts:["All departments","كل الإدارات"], no_dept_holder:["No department","بدون إدارة"],
+  no_match_filters:["Nothing matches these filters.","لا توجد نتائج مطابقة لهذه الفلاتر."],
   toast_device_saved:["Device saved","تم حفظ الجهاز"], toast_device_deleted:["Device deleted","تم حذف الجهاز"], confirm_delete_device:["Delete device {id}?","حذف الجهاز {id}؟"], none_dash:["— None —","— لا يوجد —"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
   nav_stock:["Stock","المخزون"], title_stock:["IT Stock Register","سجل مخزون تقنية المعلومات"], nav_pr:["Purchase Requests","طلبات الشراء"],
   st_items:["Items","الأصناف"], st_units:["Units in stock","إجمالي الوحدات"], st_low:["Low stock","مخزون منخفض"], st_out:["Out of stock","نفد المخزون"],
@@ -489,10 +491,10 @@ function RecPill({r}){ const x=SPEC_RECS.find(([k])=>k===r); return x?e(Pill,{c:
 const warrantyText = a => !a.hasWarranty ? t("no_warranty") : (a.warranty||"—");
 const warrantyColor = a => !a.hasWarranty||!a.warranty ? "#6B6563" : a.warranty<todayStr() ? "#EF4444" : a.warranty<soonStr() ? "#F59E0B" : "#C9C6C4";
 function Assets({assets,tickets,onOpenAsset,onAdd}){
-  const [q,setQ]=useState(""), [ft,setFt]=useState(""), [fs,setFs]=useState(""), [fl,setFl]=useState("");
+  const [q,setQ]=useState(""), [ft,setFt]=useState(""), [fs,setFs]=useState(""), [fl,setFl]=useState(""), [fd,setFd]=useState("");
   const today=todayStr(), soon=soonStr(), live=assets.filter(a=>a.status!=="retired");
   const ql=q.toLowerCase();
-  const rows=assets.filter(a=>(!ft||a.type===ft)&&(!fs||a.status===fs)&&(!fl||a.location===fl)&&(!q||[a.model,a.serial,L(CFG.assetTypes[a.type]),a.owner?pname(a.owner):"",...(a.specs?[a.specs.cpu,a.specs.ram,a.specs.storage]:[])].join(" ").toLowerCase().includes(ql)));
+  const rows=assets.filter(a=>(!ft||a.type===ft)&&(!fs||a.status===fs)&&(!fl||a.location===fl)&&(!fd||(fd==="__none"?!(a.owner&&(person(a.owner)||{}).dept):a.owner&&(person(a.owner)||{}).dept===fd))&&(!q||[a.model,a.serial,L(CFG.assetTypes[a.type]),a.owner?pname(a.owner):"",...(a.specs?[a.specs.cpu,a.specs.ram,a.specs.storage]:[])].join(" ").toLowerCase().includes(ql)));
   const tile=(l,v,tone)=>e("div",{key:l,style:{...card,padding:14}},e("div",{style:{fontSize:"1.6rem",fontWeight:800,fontVariantNumeric:"tabular-nums",color:tone||"#EDEBEA"}},v),e("div",{style:{fontSize:"0.75rem",color:"#8A8583",lineHeight:1.35}},l));
   /* Every column can shrink and wrap, so long values never run into the next column. */
   const cols="minmax(180px,2fr) minmax(130px,1.3fr) minmax(110px,1fr) minmax(110px,1fr) minmax(70px,.6fr)";
@@ -506,6 +508,7 @@ function Assets({assets,tickets,onOpenAsset,onAdd}){
       e("input",{id:"as-search","aria-label":t("search_assets"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("search_assets"),style:{...IS,flex:"1 1 220px",maxWidth:340}}),
       e("select",{"aria-label":t("all_types"),value:ft,onChange:ev=>setFt(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_types")),Object.keys(CFG.assetTypes).map(k=>e("option",{key:k,value:k},L(CFG.assetTypes[k])))),
       e("select",{"aria-label":t("all_statuses"),value:fs,onChange:ev=>setFs(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_statuses")),Object.keys(CFG.assetStatuses).map(k=>e("option",{key:k,value:k},L(CFG.assetStatuses[k].n)))),
+      e("select",{id:"as-dept","aria-label":t("all_depts"),value:fd,onChange:ev=>setFd(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_depts")),Object.keys(CFG.depts).map(k=>e("option",{key:k,value:k},deptName(k))),e("option",{value:"__none"},t("no_dept_holder"))),
       e("select",{id:"as-loc","aria-label":t("all_locations"),value:fl,onChange:ev=>setFl(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_locations")),Object.keys(CFG.assetLocations||{}).map(k=>e("option",{key:k,value:k},L(CFG.assetLocations[k])))),
       e("button",{id:"add-device",onClick:onAdd,style:{...BP,marginInlineStart:"auto"}},t("add_device"))),
     !assets.length?e(Empty,{text:t("no_assets")}):
@@ -519,11 +522,12 @@ function Assets({assets,tickets,onOpenAsset,onAdd}){
             a.specs&&a.specs.recommendation&&a.specs.recommendation!=="keep"&&e("div",{style:{marginTop:4}},e(RecPill,{r:a.specs.recommendation}))),
           e("div",{style:cell},
             e("div",{style:{display:"flex",gap:6,alignItems:"center"}},a.owner?[e(Av,{key:"a",id:a.owner,size:22}),e("span",{key:"n",style:cell},pname(a.owner))]:e("span",{style:{color:"#8A8583"}},a.status==="in_stock"?t("in_it_stock"):"—")),
-            (a.location||a.received)&&e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginTop:3}},[a.location?"📍 "+L(CFG.assetLocations[a.location]):"",a.received?t("since",{d:a.received}):""].filter(Boolean).join(" · "))),
+            (()=>{ const hp=a.owner&&person(a.owner); const bits=[hp&&hp.dept?"🏢 "+deptName(hp.dept):"",a.location?"📍 "+L(CFG.assetLocations[a.location]):"",a.received?t("since",{d:a.received}):""].filter(Boolean);
+              return bits.length?e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginTop:3}},bits.join(" · ")):null; })()),
           e("div",{style:cell},e(AssetStatus,{s:a.status})),
           e("div",{style:{...cell,color:warrantyColor(a),fontVariantNumeric:"tabular-nums",lineHeight:1.35}},warrantyText(a),exp&&e("div",{style:{fontSize:"0.72rem"}},"("+t("expired")+")")),
           e("span",{style:{...cell,fontVariantNumeric:"tabular-nums",color:open?"#F59E0B":mine.length?"#EDEBEA":"#6B6563"}},open+" / "+mine.length)); }),
-      rows.length===0&&e("div",{style:{padding:30,textAlign:"center",color:"#6B6563"}},t("no_match")))));
+      rows.length===0&&e("div",{style:{padding:30,textAlign:"center",color:"#6B6563"}},t("no_match_filters")))));
 }
 function AssetModal({a,role,tickets,onClose,onEdit,onDelete,onOpenTicket,onAllocate}){
   const [hist,setHist]=useState(null);
@@ -725,6 +729,7 @@ function UserEditor({u0,onSave,onClose,busy,err}){
       field("ue-name",t("name"),e("input",{id:"ue-name",value:u.name,onChange:ev=>set("name",ev.target.value),style:IS})),
       field("ue-email",t("email"),e("input",{id:"ue-email",type:"email",dir:"ltr",value:u.email,onChange:ev=>set("email",ev.target.value),style:IS})),
       field("ue-dept",t("department"),e("select",{id:"ue-dept",value:u.dept||"",onChange:ev=>set("dept",ev.target.value||null),style:IS},e("option",{value:""},t("no_dept")),Object.keys(CFG.depts).map(k=>e("option",{key:k,value:k},deptName(k))))),
+      field("ue-sector",t("sector"),e("select",{id:"ue-sector",value:u.sector||"",onChange:ev=>set("sector",ev.target.value||null),style:IS},e("option",{value:""},t("no_sector")),Object.keys(CFG.sectors||{}).map(k=>e("option",{key:k,value:k},L(CFG.sectors[k]))))),
       field("ue-mgr",t("manager"),e("select",{id:"ue-mgr",value:u.manager||"",onChange:ev=>set("manager",ev.target.value||null),style:IS},e("option",{value:""},t("none_opt")),CFG.people.filter(p=>p.id!==u.id&&p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
       field("ue-role",t("it_role"),e("select",{id:"ue-role",disabled:self,value:u.role,onChange:ev=>set("role",ev.target.value),style:IS},ROLES.map(r=>e("option",{key:r,value:r},t("role_"+r))))),
       e("div",{style:{display:"flex",gap:10,alignItems:"center",paddingTop:18}},e(Switch,{on:u.active,disabled:self,label:t("active"),set:v=>set("active",v)}),t("active"))),
@@ -775,11 +780,11 @@ function Admin({setCfg,toast,onKB}){
         e(Switch,{on:c.active,label:t("shown"),disabled:busy,set:v=>call("admin-toggle-category",{id:c.id,active:v})}),
         editBtns(()=>setEd({kind:"cat",item:c}),()=>askDel(t("confirm_delete",{x:L(c.n)}),"admin-delete-category",{id:c.id}))]))}));
   } else if(tab==="users"){
-    const userRow=p=>({id:p.id,name:p.name,email:p.email||"",dept:p.dept||null,manager:p.manager||null,role:p.role,active:p.active!==false});
-    body=e(Section,{title:t("a_users"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"user",item:{id:null,name:"",email:"",dept:null,manager:null,role:"requester",active:true}});},style:BP},t("add_user"))},
+    const userRow=p=>({id:p.id,name:p.name,email:p.email||"",dept:p.dept||null,sector:p.sector||null,manager:p.manager||null,role:p.role,active:p.active!==false});
+    body=e(Section,{title:t("a_users"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"user",item:{id:null,name:"",email:"",dept:null,sector:null,manager:null,role:"requester",active:true}});},style:BP},t("add_user"))},
       e("p",{style:{color:"#8A8583",fontSize:"0.84rem",marginBottom:12,maxWidth:"70ch"}},t("users_note")),
-      e(AdminTable,{cols:[t("name"),t("email"),t("department"),t("manager"),t("it_role"),""],rows:CFG.people.map(p=>[
-        e("div",{style:{display:"flex",gap:8,alignItems:"center",opacity:p.active===false?.5:1}},e(Av,{id:p.id,size:26}),p.name,p.active===false&&e(Pill,{c:"#94A3B8"},t("inactive"))),e("span",{dir:"ltr",style:{color:"#8A8583"}},p.email||""),deptName(p.dept),p.manager?pname(p.manager):"—",
+      e(AdminTable,{cols:[t("name"),t("email"),t("department"),t("sector"),t("manager"),t("it_role"),""],rows:CFG.people.map(p=>[
+        e("div",{style:{display:"flex",gap:8,alignItems:"center",opacity:p.active===false?.5:1}},e(Av,{id:p.id,size:26}),p.name,p.active===false&&e(Pill,{c:"#94A3B8"},t("inactive"))),e("span",{dir:"ltr",style:{color:"#8A8583"}},p.email||""),deptName(p.dept),p.sector&&CFG.sectors[p.sector]?L(CFG.sectors[p.sector]):"—",p.manager?pname(p.manager):"—",
         e("select",{"aria-label":t("it_role")+": "+p.name,disabled:busy||p.id===CFG.me.id,value:p.role,onChange:ev=>call("admin-save-user",{user:{...userRow(p),role:ev.target.value}}),style:{...IS,width:"auto",padding:"6px 8px"}},ROLES.map(r=>e("option",{key:r,value:r},t("role_"+r)))),
         editBtns(()=>setEd({kind:"user",item:userRow(p)}))])}));
   } else if(tab==="prio"){
@@ -867,7 +872,7 @@ function StockView({items,onOpen,onAdd}){
         e("span",{style:{...cell,fontWeight:700,fontVariantNumeric:"tabular-nums",color:i.status==="out"?"#EF4444":i.status==="low"?"#F59E0B":"#EDEBEA"}},i.quantity),
         e("span",{style:{...cell,fontVariantNumeric:"tabular-nums",color:"#8A8583"}},i.min==null?"—":i.min),
         e("div",{style:cell},e(StockStatus,{s:i.status})))),
-      rows.length===0&&e("div",{style:{padding:30,textAlign:"center",color:"#6B6563"}},t("no_match")))));
+      rows.length===0&&e("div",{style:{padding:30,textAlign:"center",color:"#6B6563"}},t("no_match_filters")))));
 }
 
 function StockModal({it,role,onClose,onEdit,onDelete,onAdjust,onRequest}){
@@ -944,7 +949,7 @@ function PRView({prs,me,role,onOpen,onNew}){
         e("span",{style:{...cell,fontVariantNumeric:"tabular-nums",fontWeight:600}},money(p.total)),
         e("div",{style:cell},e(PRStatus,{s:p.status})),
         e("span",{style:{...cell,color:"#8A8583",fontSize:"0.78rem"}},fmtDay(p.submitted||p.created)))),
-      rows.length===0&&e("div",{style:{padding:30,textAlign:"center",color:"#6B6563"}},t("no_match")))));
+      rows.length===0&&e("div",{style:{padding:30,textAlign:"center",color:"#6B6563"}},t("no_match_filters")))));
 }
 
 function printPR(p){

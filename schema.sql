@@ -290,3 +290,8 @@ create table if not exists asset_events (
 );
 alter table asset_events enable row level security;
 create index if not exists asset_events_asset on asset_events (asset_id);
+
+-- ════════════════════════════════════════════════════════════
+-- 19. Company sector for each person (upgrade-safe): shell | chipsy | jammy (or empty).
+-- ════════════════════════════════════════════════════════════
+alter table users add column if not exists sector text;

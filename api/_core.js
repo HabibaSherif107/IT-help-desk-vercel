@@ -48,6 +48,8 @@ const ASSET_TYPES = {
   printer: B("Printer / Scanner", "طابعة / ماسح ضوئي"), mobile: B("Mobile phone", "هاتف محمول"),
   network: B("Network device", "جهاز شبكة"), accessory: B("Accessory", "ملحق"), other: B("Other", "أخرى"),
 };
+// Company sectors (fixed list) a person belongs to.
+const COMPANY_SECTORS = { shell: B("Shell", "شل"), chipsy: B("Chipsy", "شيبسي"), jammy: B("Jammy", "جامي") };
 // Company sites (fixed list) where the device's holder is based.
 const ASSET_LOCATIONS = { abis: B("Abis", "أبيس"), khorshid: B("Khorshid", "خورشيد"), kafr_el_sheikh: B("Kafr El Sheikh", "كفر الشيخ"), beheira: B("Beheira / Damanhour", "البحيرة / دمنهور") };
 const ASSET_STATUSES = {
@@ -167,7 +169,7 @@ function check(res) {
 }
 
 async function loadUsers() {
-  return check(await supabase.from("users").select("id, email, name, dept_id, manager_id, role, active").order("name")) || [];
+  return check(await supabase.from("users").select("*").order("name")) || [];
 }
 
 async function loadSettings() {
@@ -214,14 +216,14 @@ async function loadConfig(viewer) {
     autoAssign: settings.autoAssign, approvalMode: settings.approvalMode, approver: settings.approverId,
     kbSuggest: settings.kbSuggest, csat: settings.csat, supportCcUpdates: settings.supportCcUpdates,
     escalateTo: settings.escalateTo, escalateTarget: pickEscalationTarget(settings, users),
-    assetTypes: ASSET_TYPES, assetStatuses: ASSET_STATUSES, assetLocations: ASSET_LOCATIONS,
+    assetTypes: ASSET_TYPES, assetStatuses: ASSET_STATUSES, assetLocations: ASSET_LOCATIONS, sectors: COMPANY_SECTORS,
     stockCategories: STOCK_CATEGORIES, stockStatuses: STOCK_STATUSES, prStatuses: PR_STATUSES,
     myAssets: (myAssetRows || []).filter(a => a.status !== "retired").map(shapeAsset),
     greeting: settings.greeting, heroSub: settings.heroSub,
     prio: settings.prio, impacts: settings.impacts, urgencies: settings.urgencies, matrix: settings.matrix, statuses: settings.statuses,
     depts,
     people: users.map(u => ({
-      id: u.id, name: u.name, dept: u.dept_id, role: itRoleOf(u), active: u.active !== false,
+      id: u.id, name: u.name, dept: u.dept_id, sector: COMPANY_SECTORS[u.sector] ? u.sector : null, role: itRoleOf(u), active: u.active !== false,
       ...(role === "admin" ? { email: u.email, manager: u.manager_id } : {}),
     })),
     cats: (catRows || []).map(c => ({ id: c.id, icon: c.icon, active: c.active !== false, type: c.type, owner: c.owner_id, approval: !!c.needs_approval, notifySupport: c.notify_support !== false, n: c.name, d: c.description || B("", ""), fields: c.fields || [] })),
@@ -314,6 +316,6 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 
 module.exports = {
   supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS,
-  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, shapeAsset, cleanSpecs, dateStr, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
+  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, COMPANY_SECTORS, shapeAsset, cleanSpecs, dateStr, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };

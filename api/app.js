@@ -501,7 +501,9 @@ module.exports = async function handler(req, res) {
         const depts = check(await supabase.from("departments").select("id")) || [];
         const dept = u.dept && depts.some(d => d.id === u.dept) ? u.dept : null;
         const manager = u.manager && members.some(m => m.id === u.manager) && u.manager !== u.id ? u.manager : null;
+        if (u.sector && !IT.COMPANY_SECTORS[u.sector]) return fail(res, 400, "Choose a company sector from the list.");
         const row = { email, name, dept_id: dept, manager_id: manager, role: u.role, active: u.active !== false };
+        if (u.sector !== undefined) row.sector = u.sector || null;   // left unchanged when not sent
         const clash = members.find(m => m.email.toLowerCase() === email && m.id !== u.id);
         if (clash) return fail(res, 400, "Someone already uses that email.");
         if (u.id) {

@@ -380,6 +380,17 @@ async function tests() {
   dl2 = r.body.find(a => a.id === dell.id);
   ok(dl2.received === null && dl2.location === "khorshid", "returning the device to IT clears the received date (location stays)");
 
+  // ── Company sector ───────────────────────────────────────────
+  let PP = await people();
+  ok((await call("hany@dar.test", "admin-save-user", { user: { ...PP["sara@dar.test"], sector: "pepsi" } })).status === 400, "only listed company sectors are accepted");
+  r = await call("hany@dar.test", "admin-save-user", { user: { ...PP["sara@dar.test"], sector: "chipsy" } });
+  PP = await people();
+  ok(r.status === 200 && PP["sara@dar.test"].sector === "chipsy", "admin sets Sara's company sector to Chipsy");
+  await call("hany@dar.test", "admin-save-user", { user: { id: PP["sara@dar.test"].id, name: PP["sara@dar.test"].name, email: PP["sara@dar.test"].email, dept: PP["sara@dar.test"].dept, role: "requester" } });
+  ok((await people())["sara@dar.test"].sector === "chipsy", "saving a person without the sector field keeps their sector");
+  cfg = (await call("karim@dar.test", "bootstrap")).body;
+  ok(cfg.sectors.shell.en === "Shell" && cfg.sectors.jammy.ar === "جامي" && Object.keys(cfg.sectors).length === 3 && cfg.people.find(p => p.id === PP["sara@dar.test"].id).sector === "chipsy", "sectors (Shell, Chipsy, Jammy) and each person's sector reach the app");
+
   // ── Allocate / swap ──────────────────────────────────────────
   r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "Lenovo A", status: "in_stock", purchased: "2024-01-01" } });
   const lenA = r.body.find(a => a.model === "Lenovo A");
