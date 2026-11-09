@@ -30,7 +30,7 @@ Nothing is shared, so changes in one can never affect the other.
 ### Assets (device inventory)
 IT keeps a list of company devices: type, make/model, serial number, who has it, status (*In use, In stock, Needs repair, Retired*), purchase date and warranty. Tick **Under warranty** to enter the warranty end date. Devices are numbered automatically, so there's no tag to type in.
 - The **Assets** page shows totals, devices in repair, and warranties ending within 90 days or already expired. You can search and filter it.
-- **Filter by department:** the list can be filtered by the department of the person holding the device (or *No department*). Each holder's department is shown under their name.
+- **Filter by department and company sector:** the list can be filtered by the department and/or the company sector (Shell, Chipsy, Jammy) of the person holding the device, or by *No department* / *No sector*. Each holder's department and sector are shown under their name.
 - **Location** is picked from a fixed list: *Abis, Khorshid, Kafr El Sheikh, Beheira / Damanhour*. The list can be filtered by location.
 - **Received by holder on** sits next to the purchase date. Like every date, it stays empty unless you enter it. It can't be before the purchase date and is cleared when the device comes back to IT.
 - **⇄ Allocate to…** (on a device's page) moves the device to another person or back to IT stock, with an optional received date, location and note. If the new person already has a device, you can **swap**: their device goes to the previous holder in the same step. Every move is kept in the device's **Allocation history** (from → to, date, who did it).
