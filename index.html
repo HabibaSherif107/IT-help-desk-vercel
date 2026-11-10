@@ -82,7 +82,7 @@ const S = {
   toast_created:["{id} submitted. IT support has been emailed.","تم إرسال {id} وإبلاغ الدعم الفني بالبريد."],
   tab_active:["Active","النشطة"], tab_closed:["Closed","المغلقة"], handled_by:["handled by {name}","يتابعها {name}"], waiting_pickup:["waiting to be picked up","بانتظار الاستلام"], nothing:["Nothing here.","لا يوجد شيء هنا."],
   st_sub:["Submitted","أُرسلت"], st_asg:["Assigned","أُسندت"], st_prog:["In Progress","قيد التنفيذ"], st_res:["Resolved","حُلّت"], st_closed:["Closed","أُغلقت"],
-  q_mine:["My tickets","تذاكري"], q_unassigned:["Unassigned","غير مُسندة"], q_all:["All open","كل المفتوحة"], q_urgent:["Urgent (P1–P2)","عاجلة (P1–P2)"], q_waiting:["Waiting","بالانتظار"], q_done:["Resolved / Closed","المحلولة / المغلقة"],
+  q_mine:["My tickets","تذاكري"], q_unassigned:["Unassigned","غير مُسندة"], q_all:["All open","كل المفتوحة"], q_urgent:["Urgent ({p})","عاجلة ({p})"], q_waiting:["Waiting","بالانتظار"], q_done:["Resolved / Closed","المحلولة / المغلقة"],
   q_search:["Search ID, title, requester…","ابحث بالرقم أو العنوان أو اسم الموظف…"], all_cats:["All categories","كل الفئات"], all_prios:["All priorities","كل الأولويات"],
   h_id:["ID","الرقم"], h_subject:["Subject","الموضوع"], h_req:["Requester","مقدم الطلب"], h_prio:["Priority","الأولوية"], h_opened:["Opened","فُتحت"], status:["Status","الحالة"],
   nothing_unassigned:["Nothing unassigned. Nice work.","لا توجد تذاكر غير مُسندة. عمل رائع."], no_match:["No tickets match.","لا توجد تذاكر مطابقة."], major:["Major incident","عطل رئيسي"],
@@ -110,7 +110,7 @@ const S = {
   reject_title:["Reject {id}","رفض {id}"], reason_lbl:["Reason (shared with the employee)","السبب (يظهر للموظف)"], toast_approved:["Approved. IT can start.","تمت الموافقة ويمكن لفريق التقنية البدء."], toast_rejected:["Rejected. The employee was emailed.","تم الرفض وإبلاغ الموظف."],
   search_kb:["Search articles…","ابحث في المقالات…"], solved_q:["Did this solve your problem?","هل حلّت هذه المقالة مشكلتك؟"], yes:["👍 Yes","👍 نعم"], no:["👎 No","👎 لا"],
   fb_yes:["Great! No ticket needed.","رائع! لا حاجة لفتح تذكرة."], fb_no:["Sorry about that. Please raise a ticket and IT will help.","نأسف لذلك. يُرجى فتح تذكرة وسيساعدك فريق التقنية."],
-  k_open:["Open tickets","التذاكر المفتوحة"], k_unassigned_sub:["{n} unassigned","{n} غير مُسندة"], k_urgent:["Urgent open (P1–P2)","عاجلة مفتوحة (P1–P2)"], attention:["Needs attention","تحتاج متابعة"], all_good:["All clear","لا يوجد ما يقلق"],
+  k_open:["Open tickets","التذاكر المفتوحة"], k_unassigned_sub:["{n} unassigned","{n} غير مُسندة"], k_urgent:["Urgent open ({p})","عاجلة مفتوحة ({p})"], attention:["Needs attention","تحتاج متابعة"], all_good:["All clear","لا يوجد ما يقلق"],
   k_resolved7:["Resolved in the last 7 days","حُلّت خلال آخر 7 أيام"], k_avg:["Average time to resolve","متوسط وقت الحل"], k_csat:["Satisfaction","رضا الموظفين"], k_ratings:["{n} ratings","{n} تقييمات"],
   k_pending:["Pending approval","بانتظار الموافقة"], k_waiting:["Waiting on employee","بانتظار رد الموظف"], k_total:["All tickets","كل التذاكر"],
   by_cat:["Tickets by category","التذاكر حسب الفئة"], by_dept:["Tickets by department","التذاكر حسب القسم"], workload:["Team workload","عبء العمل على الفريق"],
@@ -195,6 +195,11 @@ const S = {
   emp_prio:["Employee priority","أولوية الموظف"], emp_prio_none:["— Not set —","— غير محددة —"], all_emp_prio:["All priorities","كل الأولويات"],
   view_as:["View as","العرض كـ"], view_as_me:["Admin (me)","مسؤول النظام (أنا)"], viewing_as:["👁 Preview: you're seeing the help desk as {r}.","👁 معاينة: أنت ترى مكتب الدعم كـ {r}."],
   viewing_as_note:["Anything you do here is real and is recorded under your name.","أي إجراء تقوم به هنا حقيقي ويُسجَّل باسمك."], back_admin:["Back to Admin","العودة لمسؤول النظام"],
+  add_prio:["+ Add priority level","+ إضافة مستوى أولوية"], add_answer:["+ Add answer","+ إضافة إجابة"], add_status:["+ Add status","+ إضافة حالة"], new_status:["New status","حالة جديدة"],
+  prio_order_note:["Top = most urgent. The top two levels count as “Urgent” in the queue and dashboard, and a major incident uses the top level. 2–8 levels; a level that tickets still use can't be deleted.","الأعلى = الأكثر إلحاحًا. أعلى مستويين يُعتبران «عاجلة» في القائمة ولوحة المتابعة، والعطل الرئيسي يأخذ أعلى مستوى. من 2 إلى 8 مستويات؛ لا يمكن حذف مستوى تستخدمه تذاكر."],
+  impact_order_note:["Listed from smallest to biggest impact (2–5 answers).","مرتبة من الأقل تأثيرًا إلى الأكبر (2–5 إجابات)."], urgency_order_note:["Listed from least to most urgent (2–5 answers).","مرتبة من الأقل إلحاحًا إلى الأكثر (2–5 إجابات)."],
+  status_note2:["The 🔒 built-in statuses drive the ticket workflow (approval, resolve, close), so they can be renamed and recoloured but not deleted. Statuses you add count as “open” and IT can set them on a ticket (for example “On hold – waiting for parts”). A status that tickets are in can't be deleted.","الحالات الأساسية 🔒 تتحكم في سير التذكرة (الموافقة، الحل، الإغلاق)، لذا يمكن إعادة تسميتها وتغيير لونها دون حذفها. الحالات التي تضيفها تُعتبر «مفتوحة» ويمكن لفريق التقنية اختيارها للتذكرة (مثل «معلّقة – بانتظار قطع غيار»). لا يمكن حذف حالة توجد بها تذاكر."],
+  builtin:["Built-in","أساسية"], builtin_d:["Needed by the ticket workflow","مطلوبة لسير عمل التذاكر"],
   no_match_filters:["Nothing matches these filters.","لا توجد نتائج مطابقة لهذه الفلاتر."],
   toast_device_saved:["Device saved","تم حفظ الجهاز"], toast_device_deleted:["Device deleted","تم حذف الجهاز"], confirm_delete_device:["Delete device {id}?","حذف الجهاز {id}؟"], none_dash:["— None —","— لا يوجد —"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
   nav_stock:["Stock","المخزون"], title_stock:["IT Stock Register","سجل مخزون تقنية المعلومات"], nav_pr:["Purchase Requests","طلبات الشراء"],
@@ -260,9 +265,15 @@ const soonStr = () => new Date(Date.now()+90*DAY).toISOString().slice(0,10);
 function AssetStatus({s}){ const x=(CFG.assetStatuses||{})[s]||{n:{en:s},c:"#64748B"}; return e(Pill,{c:x.c},L(x.n)); }
 const HIST_ICON = {asset:"💻",created:"✦",assigned:"👤",status:"→",priority:"⚡",major:"🚨",escalated:"⬆",resolved:"✅",closed:"🔒",reopened:"🔄",approved:"✓",rejected:"✕"};
 const OPEN_STATES = ["New","Pending Approval","Assigned","In Progress","Waiting on User"];
-const isOpen = x => OPEN_STATES.includes(x.status);
+/* Custom statuses (added in Admin Console → Statuses) count as open / being worked on. */
+const customSts = () => Object.keys((CFG&&CFG.statuses)||{}).filter(k=>CFG.statuses[k]&&CFG.statuses[k].custom);
+const isOpen = x => OPEN_STATES.includes(x.status) || customSts().includes(x.status);
+/* Priority levels are ordered: the first is the most urgent; the top two count as "Urgent". */
+const prioKeys = () => Object.keys((CFG&&CFG.prio)||{});
+const urgentPrios = () => prioKeys().slice(0,2);
+const prioRank = p => { const i=prioKeys().indexOf(p); return i<0?99:i; };
 const STEP_KEYS = ["st_sub","st_asg","st_prog","st_res","st_closed"];
-const stepIdx = s => s==="New"||s==="Pending Approval"?0:s==="Assigned"?1:s==="In Progress"||s==="Waiting on User"?2:s==="Resolved"?3:4;
+const stepIdx = s => s==="New"||s==="Pending Approval"?0:s==="Assigned"?1:s==="In Progress"||s==="Waiting on User"||customSts().includes(s)?2:s==="Resolved"?3:4;
 const fieldVal = (fd,v) => v==null||v==="" ? "" : fd.kind==="select" ? L((fd.opts||[])[v]) : String(v);
 const ROLES = ["requester","agent","manager","admin"];
 const isITRole = r => r==="agent"||r==="manager"||r==="admin";
@@ -340,7 +351,7 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
   const [err,setErr]=useState(""), [busy,setBusy]=useState(false);
   const set=(k,v)=>setF(x=>({...x,[k]:v}));
   const c=cat(f.cat), incident=c.type==="incident";
-  const p=CFG.matrix[(incident?f.impact:1)-1][f.urgency-1];
+  const p=(CFG.matrix[(incident?f.impact:1)-1]||[])[f.urgency-1]||prioKeys().slice(-1)[0];
   const words=f.title.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(x=>x.length>3);
   const sugg=CFG.kbSuggest&&f.title.trim().length>2?CFG.kb.filter(a=>a.cat===f.cat||words.some(w=>((a.t.en||"")+" "+(a.t.ar||"")).toLowerCase().includes(w))).slice(0,3):[];
   const submit=async()=>{ if(!f.title.trim())return setErr(t("err_title")); if(!f.desc.trim())return setErr(t("err_desc"));
@@ -386,12 +397,12 @@ function Queue({me,role,tickets,onOpen,selId}){
   const [tab,setTab]=useState(role==="agent"?"mine":"all");
   const [q,setQ]=useState(""), [fc,setFc]=useState(""), [fp,setFp]=useState("");
   const sets={mine:tickets.filter(x=>x.assignee===me&&isOpen(x)),unassigned:tickets.filter(x=>!x.assignee&&isOpen(x)),all:tickets.filter(isOpen),
-    urgent:tickets.filter(x=>isOpen(x)&&(x.priority==="P1"||x.priority==="P2")),escalated:tickets.filter(x=>isOpen(x)&&x.escalated),waiting:tickets.filter(x=>x.status==="Waiting on User"||x.status==="Pending Approval"),done:tickets.filter(x=>!isOpen(x))};
-  const rank={P1:0,P2:1,P3:2,P4:3};
+    urgent:tickets.filter(x=>isOpen(x)&&urgentPrios().includes(x.priority)),escalated:tickets.filter(x=>isOpen(x)&&x.escalated),waiting:tickets.filter(x=>x.status==="Waiting on User"||x.status==="Pending Approval"),done:tickets.filter(x=>!isOpen(x))};
+  const rank=new Proxy({}, {get:(_,p)=>prioRank(p)});
   const rows=sets[tab].filter(x=>(!fc||x.cat===fc)&&(!fp||x.priority===fp)&&(!q||(x.id+" "+x.title+" "+pname(x.req)).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>tab==="done"?b.created-a.created:(rank[a.priority]-rank[b.priority]||a.created-b.created));
   const cols="86px minmax(0,1fr) 150px 130px 150px 90px 40px";
   return e("div",null,
-    e(Tabs,{val:tab,set:setTab,tabs:[["mine",t("q_mine"),sets.mine.length],["unassigned",t("q_unassigned"),sets.unassigned.length],["all",t("q_all"),sets.all.length],["urgent",t("q_urgent"),sets.urgent.length],["escalated",t("q_escalated"),sets.escalated.length],["waiting",t("q_waiting"),sets.waiting.length],["done",t("q_done")]]}),
+    e(Tabs,{val:tab,set:setTab,tabs:[["mine",t("q_mine"),sets.mine.length],["unassigned",t("q_unassigned"),sets.unassigned.length],["all",t("q_all"),sets.all.length],["urgent",t("q_urgent",{p:urgentPrios().join("–")}),sets.urgent.length],["escalated",t("q_escalated"),sets.escalated.length],["waiting",t("q_waiting"),sets.waiting.length],["done",t("q_done")]]}),
     e("div",{style:{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}},
       e("input",{id:"q-search","aria-label":t("q_search"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("q_search"),style:{...IS,flex:"1 1 220px",maxWidth:340}}),
       e("select",{"aria-label":t("all_cats"),value:fc,onChange:ev=>setFc(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_cats")),CFG.cats.map(c=>e("option",{key:c.id,value:c.id},c.icon+" "+L(c.n)))),
@@ -438,7 +449,7 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
           e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},e("button",{disabled:busy,onClick:()=>run("confirm",{csat:rating||null},t("toast_closed")),style:{...BP,background:"#059669"}},t("yes_close")),e("button",{disabled:busy,onClick:()=>run("reopen",{},t("toast_reopened")),style:BS},t("still_broken")))),
         agent&&isOpen(tk)&&e("div",{className:"g3",style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}},
           e("div",null,e("label",{style:LS,htmlFor:"d-asg"},t("assignee")),e("select",{id:"d-asg",disabled:busy,value:tk.assignee||"",onChange:ev=>run("update-ticket",{assignee:ev.target.value||null},t("toast_saved_t")),style:IS},e("option",{value:""},t("unassigned")),CFG.people.filter(p=>isITRole(p.role)&&(p.active!==false||p.id===tk.assignee)).map(a=>e("option",{key:a.id,value:a.id},a.name)))),
-          e("div",null,e("label",{style:LS,htmlFor:"d-st"},t("status")),e("select",{id:"d-st",disabled:busy||tk.status==="Pending Approval",value:tk.status,onChange:ev=>run("update-ticket",{status:ev.target.value},t("toast_saved_t")),style:IS},["New","Assigned","In Progress","Waiting on User"].concat(tk.status==="Pending Approval"?["Pending Approval"]:[]).map(x=>e("option",{key:x,value:x},stLabel(x))))),
+          e("div",null,e("label",{style:LS,htmlFor:"d-st"},t("status")),e("select",{id:"d-st",disabled:busy||tk.status==="Pending Approval",value:tk.status,onChange:ev=>run("update-ticket",{status:ev.target.value},t("toast_saved_t")),style:IS},["New","Assigned","In Progress","Waiting on User"].concat(customSts()).concat(tk.status==="Pending Approval"?["Pending Approval"]:[]).map(x=>e("option",{key:x,value:x},stLabel(x))))),
           e("div",null,e("label",{style:LS,htmlFor:"d-pr"},t("h_prio")),e("select",{id:"d-pr",disabled:busy,value:tk.priority,onChange:ev=>run("update-ticket",{priority:ev.target.value},t("toast_saved_t")),style:IS},Object.keys(CFG.prio).map(p=>e("option",{key:p,value:p},prioLabel(p)))))),
         agent&&isOpen(tk)&&e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
           !tk.assignee&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{assignee:me},t("toast_took")),style:{...BP,padding:"8px 14px"}},t("take_it")),
@@ -677,7 +688,7 @@ function Dashboard({tickets}){
   const open=tickets.filter(isOpen), done=tickets.filter(x=>x.resolved);
   const avg=done.length?done.reduce((a,x)=>a+(x.resolved-x.created),0)/done.length:0;
   const rated=tickets.filter(x=>x.csat), csat=rated.length?rated.reduce((a,x)=>a+x.csat,0)/rated.length:0;
-  const urgent=open.filter(x=>x.priority==="P1"||x.priority==="P2").length, wk=Date.now()-7*DAY;
+  const urgent=open.filter(x=>urgentPrios().includes(x.priority)).length, wk=Date.now()-7*DAY;
   const kpi=(l,v,sub,tone)=>e("div",{key:l,style:{...card,padding:16}},e("div",{style:{fontSize:"0.75rem",color:"#8A8583",marginBottom:6}},l),e("div",{style:{fontSize:"1.8rem",fontWeight:800,fontVariantNumeric:"tabular-nums"}},e("bdi",{dir:"ltr"},v)),sub&&e("div",{style:{fontSize:"0.72rem",color:tone||"#8A8583",marginTop:4}},sub));
   const byCat=CFG.cats.map(c=>({k:c.icon+" "+L(c.n),v:tickets.filter(x=>x.cat===c.id).length})).filter(d=>d.v).sort((a,b)=>b.v-a.v);
   const byDept=Object.keys(CFG.depts).map(k=>({k:deptName(k),v:tickets.filter(x=>x.dept===k).length})).filter(d=>d.v).sort((a,b)=>b.v-a.v);
@@ -685,7 +696,7 @@ function Dashboard({tickets}){
   return e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
     e("div",{className:"g4",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}},
       kpi(t("k_open"),open.length,t("k_unassigned_sub",{n:open.filter(x=>!x.assignee).length})),
-      kpi(t("k_urgent"),urgent,urgent?"⚠ "+t("attention"):"✓ "+t("all_good"),urgent?"#F59E0B":"#34D399"),
+      kpi(t("k_urgent",{p:urgentPrios().join("–")}),urgent,urgent?"⚠ "+t("attention"):"✓ "+t("all_good"),urgent?"#F59E0B":"#34D399"),
       kpi(t("k_resolved7"),done.filter(x=>x.resolved>=wk).length),
       kpi(t("k_avg"),done.length?dur(avg):"—"),
       kpi(t("k_csat"),csat?csat.toFixed(1)+" / 5":"—",t("k_ratings",{n:rated.length})),
@@ -698,10 +709,13 @@ function Dashboard({tickets}){
       team.map(r=>e("div",{key:r.a.id,style:{display:"grid",gridTemplateColumns:"1.6fr 90px 90px 90px",gap:12,padding:"10px 4px",borderTop:"1px solid #231F1E",alignItems:"center",fontSize:"0.86rem",fontVariantNumeric:"tabular-nums"}},e("div",{style:{display:"flex",gap:8,alignItems:"center"}},e(Av,{id:r.a.id,size:26}),e("div",null,r.a.name,e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},t("role_"+r.a.role)))),e("span",{style:{fontWeight:700,color:r.open>=4?"#F59E0B":"#EDEBEA"}},r.open),e("span",null,r.done),e("span",null,r.csat==="—"?"—":"★ "+r.csat)))))));
 }
 
-function Matrix({value,setValue}){ const m=value||CFG.matrix; return e("div",{style:{overflowX:"auto"}},e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:"0.85rem",minWidth:520}},
-  e("thead",null,e("tr",null,[t("matrix_corner")].concat(CFG.urgencies.map(L)).map((h,i)=>e("th",{key:i,style:{textAlign:"start",padding:8,...HEAD,borderBottom:"1px solid #332C2B"}},h)))),
-  e("tbody",null,[2,1,0].map(ii=>e("tr",{key:ii},e("td",{style:{padding:"9px 8px",borderBottom:"1px solid #231F1E"}},L(CFG.impacts[ii])),[0,1,2].map(ui=>e("td",{key:ui,style:{padding:"9px 8px",borderBottom:"1px solid #231F1E"}},
-    setValue?e("select",{"aria-label":L(CFG.impacts[ii])+" / "+L(CFG.urgencies[ui]),value:m[ii][ui],onChange:ev=>{const v=ev.target.value;const n=m.map(r=>r.slice());n[ii][ui]=v;setValue(n);},style:{...IS,width:"auto",padding:"6px 8px"}},Object.keys(CFG.prio).map(p=>e("option",{key:p,value:p},prioLabel(p)))):e(PrioB,{p:m[ii][ui]})))))))); }
+function Matrix({value,setValue,impacts,urgencies,prio}){ const m=value||CFG.matrix, im=impacts||CFG.impacts, ur=urgencies||CFG.urgencies, pr=prio||CFG.prio;
+  const td={padding:"9px 8px",borderBottom:"1px solid #231F1E"};
+  return e("div",{style:{overflowX:"auto"}},e("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:"0.85rem",minWidth:520}},
+  e("thead",null,e("tr",null,[t("matrix_corner")].concat(ur.map(L)).map((h,i)=>e("th",{key:i,style:{textAlign:"start",padding:8,...HEAD,borderBottom:"1px solid #332C2B"}},h)))),
+  e("tbody",null,im.map((_,k)=>im.length-1-k).map(ii=>e("tr",{key:ii},e("td",{style:td},L(im[ii])),ur.map((_,ui)=>e("td",{key:ui,style:td},
+    setValue?e("select",{"aria-label":L(im[ii])+" / "+L(ur[ui]),value:(m[ii]||[])[ui]||"",onChange:ev=>{const v=ev.target.value;const n=m.map(r=>r.slice());n[ii][ui]=v;setValue(n);},style:{...IS,width:"auto",padding:"6px 8px"}},Object.keys(pr).map(p=>e("option",{key:p,value:p},p+" · "+L(pr[p].n))))
+      :e(PrioB,{p:(m[ii]||[])[ui]})))))))); }
 
 function Rules(){ const td={padding:"10px 8px",borderBottom:"1px solid #231F1E"};
   return e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
@@ -834,17 +848,41 @@ function Admin({setCfg,toast,onKB}){
         e("select",{"aria-label":t("it_role")+": "+p.name,disabled:busy||p.id===CFG.me.id,value:p.role,onChange:ev=>call("admin-save-user",{user:{...userRow(p),role:ev.target.value}}),style:{...IS,width:"auto",padding:"6px 8px"}},ROLES.map(r=>e("option",{key:r,value:r},t("role_"+r)))),
         editBtns(()=>setEd({kind:"user",item:userRow(p)}))])}));
   } else if(tab==="prio"){
+    /* Keep the matrix the right size and pointing at existing priority levels whenever something changes. */
+    const fit=(m,ni,nu,keys)=>Array.from({length:ni},(_,i)=>Array.from({length:nu},(_,j)=>{ const v=((m||[])[i]||[])[j]; return keys.includes(v)?v:keys[keys.length-1]; }));
+    const keys=Object.keys(draft.prio);
+    const setPrioKeys=(order,obj)=>{ const o={}; order.forEach(k=>o[k]=obj[k]); setDraft(d=>({...d,prio:o,matrix:fit(d.matrix,d.impacts.length,d.urgencies.length,order)})); };
+    const setAns=(k,arr)=>setDraft(d=>({...d,[k]:arr,matrix:fit(d.matrix,k==="impacts"?arr.length:d.impacts.length,k==="urgencies"?arr.length:d.urgencies.length,Object.keys(d.prio))}));
+    const nextId=()=>"P"+(Math.max(0,...keys.map(k=>parseInt(k.slice(1),10)||0))+1);
+    const arrow=(lbl,dis,fn)=>e("button",{"aria-label":lbl,disabled:dis,onClick:fn,style:{...BSm,padding:"0 6px"}},lbl);
     body=e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
-      e(Section,{title:t("prio_levels")},e(AdminTable,{cols:["",t("name"),t("color")],rows:Object.keys(draft.prio).map(p=>[e("b",null,p),
-        e("div",{style:{minWidth:320}},e(Bi,{val:draft.prio[p].n,set:v=>dset("prio",{...draft.prio,[p]:{...draft.prio[p],n:v}})})),colorInput(draft.prio[p].c,v=>dset("prio",{...draft.prio,[p]:{...draft.prio[p],c:v}}),p)])})),
+      e(Section,{title:t("prio_levels"),right:e("button",{id:"add-prio",disabled:keys.length>=8,onClick:()=>{const id=nextId();setPrioKeys([...keys,id],{...draft.prio,[id]:{n:{en:"",ar:""},c:"#64748B"}});},style:BSm},t("add_prio"))},
+        e("p",{style:{color:"#8A8583",fontSize:"0.8rem",marginBottom:10}},t("prio_order_note")),
+        keys.map((p,i)=>e("div",{key:p,className:"prio-row",style:{display:"grid",gridTemplateColumns:"auto 44px minmax(0,1fr) auto auto",gap:10,alignItems:"center",padding:"6px 0",borderTop:"1px solid #231F1E"}},
+          e("div",{style:{display:"flex",flexDirection:"column",gap:2}},arrow("▲",i===0,()=>{const o=keys.slice();[o[i-1],o[i]]=[o[i],o[i-1]];setPrioKeys(o,draft.prio);}),arrow("▼",i===keys.length-1,()=>{const o=keys.slice();[o[i+1],o[i]]=[o[i],o[i+1]];setPrioKeys(o,draft.prio);})),
+          e("b",null,p),
+          e("div",{style:{minWidth:0,marginBottom:-12}},e(Bi,{val:draft.prio[p].n,set:v=>dset("prio",{...draft.prio,[p]:{...draft.prio[p],n:v}})})),
+          colorInput(draft.prio[p].c,v=>dset("prio",{...draft.prio,[p]:{...draft.prio[p],c:v}}),p),
+          e("button",{"aria-label":t("delete")+" "+p,disabled:keys.length<=2,onClick:()=>{const o=keys.filter(k=>k!==p);const ob={...draft.prio};delete ob[p];setPrioKeys(o,ob);},style:{...BSm,color:"#FCA5A5"}},"🗑")))),
       e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
-        ["impacts","urgencies"].map(k=>e(Section,{key:k,title:t(k==="impacts"?"impact_opts":"urgency_opts")},draft[k].map((o,i)=>e(Bi,{key:i,val:o,set:v=>dset(k,draft[k].map((x,j)=>j===i?v:x))}))))),
-      e(Section,{title:t("matrix_edit")},e(Matrix,{value:draft.matrix,setValue:v=>dset("matrix",v)})),
+        ["impacts","urgencies"].map(k=>e(Section,{key:k,title:t(k==="impacts"?"impact_opts":"urgency_opts"),right:e("button",{className:"add-ans",disabled:draft[k].length>=5,onClick:()=>setAns(k,[...draft[k],{en:"",ar:""}]),style:BSm},t("add_answer"))},
+          e("p",{style:{color:"#8A8583",fontSize:"0.78rem",marginBottom:10}},t(k==="impacts"?"impact_order_note":"urgency_order_note")),
+          draft[k].map((o,i)=>e("div",{key:i,style:{display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:8,alignItems:"center"}},
+            e(Bi,{val:o,set:v=>setAns(k,draft[k].map((x,j)=>j===i?v:x))}),
+            e("button",{"aria-label":t("delete"),disabled:draft[k].length<=2,onClick:()=>setAns(k,draft[k].filter((_,j)=>j!==i)),style:{...BSm,color:"#FCA5A5"}},"🗑")))))),
+      e(Section,{title:t("matrix_edit")},e(Matrix,{value:draft.matrix,setValue:v=>dset("matrix",v),impacts:draft.impacts,urgencies:draft.urgencies,prio:draft.prio})),
       e(SaveBar,{keys:["prio","impacts","urgencies","matrix"]}));
   } else if(tab==="status"){
-    body=e(Section,{title:t("a_status")},e("p",{style:{color:"#8A8583",fontSize:"0.84rem",marginBottom:12}},t("status_note")),
-      e(AdminTable,{cols:["",t("name"),t("color")],rows:Object.keys(draft.statuses).map(s=>[e(Pill,{c:draft.statuses[s].c},s),e("div",{style:{minWidth:320}},e(Bi,{val:draft.statuses[s].n,set:v=>dset("statuses",{...draft.statuses,[s]:{...draft.statuses[s],n:v}})})),
-        colorInput(draft.statuses[s].c,v=>dset("statuses",{...draft.statuses,[s]:{...draft.statuses[s],c:v}}),s)])}),e(SaveBar,{keys:["statuses"]}));
+    const sk=Object.keys(draft.statuses);
+    body=e(Section,{title:t("a_status"),right:e("button",{id:"add-status",disabled:sk.filter(k=>draft.statuses[k].custom).length>=10,onClick:()=>dset("statuses",{...draft.statuses,["cs_"+Date.now().toString(36)]:{n:{en:"",ar:""},c:"#94A3B8",custom:true}}),style:BSm},t("add_status"))},
+      e("p",{style:{color:"#8A8583",fontSize:"0.84rem",marginBottom:12,maxWidth:"75ch",lineHeight:1.5}},t("status_note2")),
+      e(AdminTable,{cols:["",t("name"),t("color"),""],rows:sk.map(s=>{ const x=draft.statuses[s];
+        return [x.custom?e(Pill,{c:x.c},"＋ "+(L(x.n)||t("new_status"))):e(Pill,{c:x.c},s),
+          e("div",{style:{minWidth:320}},e(Bi,{val:x.n,set:v=>dset("statuses",{...draft.statuses,[s]:{...x,n:v}})})),
+          colorInput(x.c,v=>dset("statuses",{...draft.statuses,[s]:{...x,c:v}}),s),
+          x.custom?e("button",{"aria-label":t("delete"),onClick:()=>{const o={...draft.statuses};delete o[s];dset("statuses",o);},style:{...BSm,color:"#FCA5A5"}},"🗑")
+                  :e("span",{title:t("builtin_d"),style:{fontSize:"0.72rem",color:"#6B6563",whiteSpace:"nowrap"}},"🔒 "+t("builtin"))]; })}),
+      e(SaveBar,{keys:["statuses"]}));
   } else if(tab==="canned"){
     body=e(Section,{title:t("a_canned"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"canned",item:{id:null,l:{en:"",ar:""},t:{en:"",ar:""}}});},style:BP},t("add_canned"))},
       CFG.canned.length?e(AdminTable,{cols:[t("title_lbl"),t("text_lbl"),""],rows:CFG.canned.map(x=>[both(x.l),e("div",{style:{maxWidth:520}},both(x.t)),editBtns(()=>setEd({kind:"canned",item:x}),()=>askDel(t("confirm_delete",{x:L(x.l)}),"admin-delete-canned",{id:x.id}))])}):e(Empty,{text:t("nothing")}));

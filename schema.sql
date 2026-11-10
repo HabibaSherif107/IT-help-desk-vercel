@@ -303,3 +303,15 @@ alter table users add column if not exists sector text;
 --     lists kept in settings under the key "lists".
 -- ════════════════════════════════════════════════════════════
 alter table assets add column if not exists emp_priority text;
+
+-- ════════════════════════════════════════════════════════════
+-- 21. Editable priority levels, impact / urgency answers and custom statuses (upgrade-safe).
+--     The allowed values now come from the Admin Console (settings), so the fixed lists
+--     in the tickets table are relaxed. The app checks every value before saving.
+-- ════════════════════════════════════════════════════════════
+alter table tickets drop constraint if exists tickets_priority_check;
+alter table tickets drop constraint if exists tickets_status_check;
+alter table tickets drop constraint if exists tickets_impact_check;
+alter table tickets drop constraint if exists tickets_urgency_check;
+alter table tickets add constraint tickets_impact_check check (impact between 1 and 10);
+alter table tickets add constraint tickets_urgency_check check (urgency between 1 and 10);

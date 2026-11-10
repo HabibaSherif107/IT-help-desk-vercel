@@ -54,6 +54,10 @@ Same layout as the sheet: **# · Item name · Product link · Quantity · Unit p
 - Each line can be linked to a stock item. When the request is marked **Received**, those quantities are added to stock automatically, and the stock history notes which request they came from.
 - **Print** gives a printable page with the same look as the sheet, including signature lines.
 
+### Priorities, questions and statuses (Admin Console)
+- **Priority & questions:** add (up to 8), remove, rename, recolour and reorder priority levels. The top level is the most urgent: the top two count as *Urgent* in the queue and dashboard, and a major incident takes the top level. Add or remove answers to *Who is affected?* and *How urgent is it?* (2–5 each). The priority matrix grows or shrinks to match, and new cells start at the least urgent level. A priority level that tickets use can't be deleted.
+- **Statuses:** the 8 built-in statuses (🔒) drive the ticket workflow, so they can be renamed and recoloured but not deleted. You can add up to 10 of your own (for example *On hold – waiting for parts*). They count as open, and IT can set them on a ticket. A status that tickets are in can't be deleted.
+
 ### "View as" (admins only)
 At the bottom of the left menu, admins have a **👁 View as** switch: *Admin (me)*, *Employee*, *IT Agent* or *IT Manager*. While previewing, the whole help desk (menus, pages, what you can see and do) behaves exactly as it would for that role. The server enforces it, not just the screen. A yellow banner shows you're in preview, with **Back to Admin**.
 - You act as yourself: anything you do (raise a ticket, approve, adjust stock) is real and recorded under your name.

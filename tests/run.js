@@ -588,6 +588,47 @@ async function tests() {
   r = await call("omar@dar.test", "delete-stock-item", { id: toner.id });
   ok(r.status === 200 && !r.body.some(i => i.id === toner.id), "IT manager deletes a stock item");
   ok((await call("karim@dar.test", "list-prs")).body.find(p => p.id === prId).lines[1].stock === null, "a deleted stock item is simply unlinked from old requests");
+
+  // ── Editable priorities, impact / urgency answers, custom statuses ──
+  let sc = (await call("hany@dar.test", "bootstrap")).body;
+  const P5 = { ...sc.prio, P5: { n: { en: "Whenever", ar: "في أي وقت" }, c: "#999999" } };
+  ok((await call("hany@dar.test", "admin-save-settings", { values: { prio: P5, impacts: sc.impacts, urgencies: sc.urgencies, matrix: sc.matrix.map(r => r.map(() => "P9")) } })).status === 400, "the matrix can only use existing priority levels");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { prio: P5, impacts: sc.impacts, urgencies: sc.urgencies, matrix: [["P5", "P4", "P3"], sc.matrix[1], sc.matrix[2]] } });
+  ok(r.status === 200 && Object.keys(r.body.prio).join() === "P1,P2,P3,P4,P5" && r.body.matrix[0][0] === "P5", "add a 5th priority level and use it in the matrix");
+  const imp4 = [...sc.impacts, { en: "Customers are affected", ar: "العملاء متأثرون" }];
+  ok((await call("hany@dar.test", "admin-save-settings", { values: { impacts: imp4 } })).status === 400, "adding an impact answer needs a matching matrix row");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { impacts: imp4, matrix: [...r.body.matrix, ["P2", "P1", "P1"]] } });
+  ok(r.status === 200 && r.body.impacts.length === 4 && r.body.matrix.length === 4, "add a 4th impact answer (matrix grows to 4 rows)");
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "Customers can't reach site", description: "x", impact: 4, urgency: 3 } });
+  ok(r.status === 201 && r.body.ticket.priority === "P1", "a ticket with the new impact answer gets its priority from the new matrix row");
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "Tiny thing", description: "x", impact: 1, urgency: 1 } });
+  const tinyId = r.body.ticket.id;
+  ok(r.body.ticket.priority === "P5", "…and the new priority level is used too");
+  sc = (await call("hany@dar.test", "bootstrap")).body;
+  const noP5 = { ...sc.prio }; delete noP5.P5;
+  r = await call("hany@dar.test", "admin-save-settings", { values: { prio: noP5, matrix: sc.matrix.map(rw => rw.map(x => x === "P5" ? "P4" : x)) } });
+  ok(r.status === 400 && /Can't delete priority P5/.test(r.body.error) && /1 ticket still uses/.test(r.body.error), "a priority level that a ticket uses can't be deleted");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { prio: { P2: sc.prio.P2, P1: sc.prio.P1, P3: sc.prio.P3, P4: sc.prio.P4, P5: sc.prio.P5 } } });
+  ok(r.status === 200 && Object.keys(r.body.prio)[0] === "P2", "priority levels can be reordered (top = most urgent)");
+  ok((await call("hany@dar.test", "admin-save-settings", { values: { prio: { P1: sc.prio.P1 } , matrix: sc.matrix.map(rw => rw.map(() => "P1")) } })).status === 400, "at least 2 priority levels");
+  // custom statuses
+  ok((await call("hany@dar.test", "admin-save-settings", { values: { statuses: { ...sc.statuses, "On hold": { n: { en: "On hold", ar: "" }, c: "#999999" } } } })).status === 400, "custom status ids are checked");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { statuses: { ...sc.statuses, cs_hold: { n: { en: "On hold – waiting for parts", ar: "معلّقة – بانتظار قطع غيار" }, c: "#999999", custom: true } } } });
+  ok(r.status === 200 && r.body.statuses.cs_hold.custom === true && r.body.statuses.New, "add a custom status (built-in ones are kept)");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { statuses: { cs_hold: r.body.statuses.cs_hold } } });
+  ok(r.status === 200 && Object.keys(r.body.statuses).filter(k => !k.startsWith("cs_")).length === 8 && r.body.statuses.Resolved.n.en === "Resolved" && r.body.statuses.Resolved.n.ar === "محلولة", "built-in statuses can't be deleted (they're always kept, with their names)");
+  r = await call("karim@dar.test", "update-ticket", { id: tinyId, status: "cs_hold" });
+  ok(r.status === 200 && r.body.ticket.status === "cs_hold" && r.body.ticket.history.some(h => h.d.en === "Status → On hold – waiting for parts"), "IT can set a ticket to the custom status (History shows its name)");
+  r = await call("karim@dar.test", "update-ticket", { id: tinyId, priority: "P3" });
+  ok(r.status === 200 && r.body.ticket.priority === "P3", "a ticket in a custom status is still open and can be worked on");
+  sc = (await call("hany@dar.test", "bootstrap")).body;
+  const noHold = { ...sc.statuses }; delete noHold.cs_hold;
+  r = await call("hany@dar.test", "admin-save-settings", { values: { statuses: noHold } });
+  ok(r.status === 400 && /1 ticket is in it/.test(r.body.error), "a custom status that tickets are in can't be deleted");
+  await call("karim@dar.test", "update-ticket", { id: tinyId, status: "In Progress" });
+  ok((await call("hany@dar.test", "admin-save-settings", { values: { statuses: noHold } })).status === 200, "…once empty, it can be deleted");
+  r = await call("omar@dar.test", "update-ticket", { id: tinyId, major: true });
+  ok(r.body.ticket.priority === "P2", "a major incident takes the top priority level (P2 after reordering)");
 }
 
 (async () => {

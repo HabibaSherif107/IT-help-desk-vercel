@@ -91,18 +91,43 @@ function cleanSetting(key, v, members) {
     case "escalateTo": return v && members.some(m => m.id === v && m.active !== false && isLead(itRoleOf(m))) ? v : null;
     case "greeting": case "heroSub": return bi(v, 300);
     case "prio": {
-      const o = {}; for (const p of IT.PRIOS) { const x = (v || {})[p] || {}; o[p] = { n: bi(x.n, 40), c: isColor(x.c) ? x.c : IT.DEFAULT_SETTINGS.prio[p].c }; } return o;
+      // Ordered: the first level is the most urgent. Ids look like P1, P2 … (new ones get the next number).
+      const keys = Object.keys(v && typeof v === "object" ? v : {});
+      if (keys.length < 2 || keys.length > 8) throw new Error("There must be between 2 and 8 priority levels.");
+      const o = {};
+      for (const p of keys) {
+        if (!/^P\d{1,2}$/.test(p)) throw new Error("Unknown priority id: " + p);
+        const x = v[p] || {}, n = bi(x.n, 40);
+        if (!n.en && !n.ar) throw new Error("Every priority level needs a name.");
+        o[p] = { n, c: isColor(x.c) ? x.c : "#64748B", o: Object.keys(o).length };   // "o" keeps the order (the database doesn't)
+      }
+      return o;
     }
     case "statuses": {
-      const o = {}; for (const s of IT.STATUSES) { const x = (v || {})[s] || {}; o[s] = { n: bi(x.n, 40), c: isColor(x.c) ? x.c : IT.DEFAULT_SETTINGS.statuses[s].c }; } return o;
+      const o = {}, src = v && typeof v === "object" ? v : {};
+      for (const s of IT.STATUSES) {   // built-in statuses are always kept; an empty name falls back to the standard one
+        const x = src[s] || {}, d = IT.DEFAULT_SETTINGS.statuses[s], n = bi(x.n, 40);
+        o[s] = { n: { en: n.en || d.n.en, ar: n.ar || d.n.ar }, c: isColor(x.c) ? x.c : d.c };
+      }
+      const custom = Object.keys(src).filter(k => !IT.STATUSES.includes(k));
+      if (custom.length > 10) throw new Error("There can be at most 10 custom statuses.");
+      for (const k of custom) {
+        if (!/^cs_[a-z0-9_]{1,30}$/.test(k)) throw new Error("Unknown status id: " + k);
+        const x = src[k] || {}, n = bi(x.n, 40);
+        if (!n.en && !n.ar) throw new Error("Every status needs a name.");
+        o[k] = { n, c: isColor(x.c) ? x.c : "#64748B", custom: true, o: Object.keys(o).length };
+      }
+      return o;
     }
     case "impacts": case "urgencies": {
-      if (!Array.isArray(v) || v.length !== 3) throw new Error("Exactly three answers are needed.");
-      return v.map(x => bi(x, 80));
+      if (!Array.isArray(v) || v.length < 2 || v.length > 5) throw new Error("Between 2 and 5 answers are needed.");
+      const out = v.map(x => bi(x, 80));
+      if (out.some(x => !x.en && !x.ar)) throw new Error("Every answer needs a text.");
+      return out;
     }
     case "matrix": {
-      if (!Array.isArray(v) || v.length !== 3 || v.some(r => !Array.isArray(r) || r.length !== 3 || r.some(p => !IT.PRIOS.includes(p))))
-        throw new Error("The priority matrix must be 3×3 with P1–P4 values.");
+      if (!Array.isArray(v) || !v.length || v.some(r => !Array.isArray(r) || !r.length || r.some(p => typeof p !== "string")))
+        throw new Error("The priority matrix must be filled in completely.");
       return v.map(r => r.slice());
     }
     default: throw new Error("Unknown setting: " + key);
@@ -283,8 +308,9 @@ module.exports = async function handler(req, res) {
         else { v = str(v, 300).trim(); if (!v) return fail(res, 400, "Please fill in: " + (fd.label.en || fd.label.ar)); }
         fields[fd.k] = v;
       }
-      const clamp = n => Math.min(3, Math.max(1, parseInt(n, 10) || 1));
-      const impact = cat.type === "incident" ? clamp(t.impact) : 1, urgency = clamp(t.urgency || 2);
+      const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
+      const clamp = (n, max) => Math.min(max, Math.max(1, parseInt(n, 10) || 1));
+      const impact = cat.type === "incident" ? clamp(t.impact, settings.impacts.length) : 1, urgency = clamp(t.urgency || 2, settings.urgencies.length);
       const link = str(t.link, 500).trim();
       let assetId = null;
       if (t.asset_id) {
@@ -294,7 +320,6 @@ module.exports = async function handler(req, res) {
       }
       if (link && !/^https?:\/\//i.test(link)) return fail(res, 400, "The file link must start with http:// or https://");
 
-      const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
       const owner = settings.autoAssign && cat.owner_id && members.some(m => m.id === cat.owner_id && m.active !== false) ? cat.owner_id : null;
       const needsApproval = !!cat.needs_approval;
       const approver = needsApproval ? pickApprover(settings, members, me) : null;
@@ -304,7 +329,7 @@ module.exports = async function handler(req, res) {
 
       const row = {
         id, category_id: cat.id, title, description, requester_id: viewer.id, dept_id: me.dept_id || null,
-        impact, urgency, priority: settings.matrix[impact - 1][urgency - 1],
+        impact, urgency, priority: (settings.matrix[impact - 1] || [])[urgency - 1] || Object.keys(settings.prio).slice(-1)[0],
         status: needsApproval ? "Pending Approval" : owner ? "Assigned" : "New",
         assignee_id: owner, fields, attachment_url: link || null, asset_id: assetId,
         approval_state: needsApproval ? "pending" : null, approver_id: approver,
@@ -369,10 +394,10 @@ module.exports = async function handler(req, res) {
 
       if (action === "update-ticket") {
         if (!isIT(role)) return fail(res, 403, "Only IT can change tickets.");
-        if (!IT.OPEN_STATES.includes(t.status)) return fail(res, 400, "This ticket is no longer open.");
         const patch = {}, events = [];
         const [members, settings] = await Promise.all([IT.loadUsers(), IT.loadSettings()]);
-        const stAr = v => ((settings.statuses[v] || {}).n || {}).ar || v;
+        if (!IT.isOpenStatus(settings, t.status)) return fail(res, 400, "This ticket is no longer open.");
+        const stAr = v => ((settings.statuses[v] || {}).n || {}).ar || v, stEn = v => ((settings.statuses[v] || {}).n || {}).en || v;
         if ("assignee" in body) {
           const v = body.assignee || null;
           if (v && !members.some(m => m.id === v && m.active !== false && isIT(itRoleOf(m)))) return fail(res, 400, "Tickets can only be assigned to active IT team members.");
@@ -385,11 +410,11 @@ module.exports = async function handler(req, res) {
         if ("status" in body) {
           const v = body.status;
           if (t.status === "Pending Approval") return fail(res, 400, "Wait for the approval decision first.");
-          if (!["New", "Assigned", "In Progress", "Waiting on User"].includes(v)) return fail(res, 400, "Use Resolve to close a ticket.");
-          patch.status = v; if (v !== t.status) events.push(["status", ev("Status → " + v, "الحالة ← " + stAr(v))]);
+          if (!["New", "Assigned", "In Progress", "Waiting on User", ...IT.customStatuses(settings)].includes(v)) return fail(res, 400, "Use Resolve to close a ticket.");
+          patch.status = v; if (v !== t.status) events.push(["status", ev("Status → " + stEn(v), "الحالة ← " + stAr(v))]);
         }
         if ("priority" in body) {
-          if (!IT.PRIOS.includes(body.priority)) return fail(res, 400, "Unknown priority.");
+          if (!(body.priority in settings.prio)) return fail(res, 400, "Unknown priority.");
           patch.priority = body.priority; if (body.priority !== t.priority) events.push(["priority", ev("Priority → " + body.priority, "الأولوية ← " + body.priority)]);
         }
         if ("asset" in body) {
@@ -402,7 +427,7 @@ module.exports = async function handler(req, res) {
         }
         if ("major" in body) {
           if (!isLead(role)) return fail(res, 403, "Only the IT manager can declare a major incident.");
-          patch.is_major = !!body.major; if (patch.is_major) patch.priority = "P1";
+          patch.is_major = !!body.major; if (patch.is_major) patch.priority = Object.keys(settings.prio)[0];   // the most urgent level
           events.push(["major", patch.is_major ? ev("Declared major incident", "تم إعلان عطل رئيسي") : ev("Major incident cleared", "أُلغي العطل الرئيسي")]);
         }
         await patchTicket(t.id, patch);
@@ -419,7 +444,7 @@ module.exports = async function handler(req, res) {
       // A technician hands the ticket to the IT manager: reassign + private note + email.
       if (action === "escalate") {
         if (!isIT(role)) return fail(res, 403, "Only IT can escalate tickets.");
-        if (!IT.OPEN_STATES.includes(t.status) || t.status === "Pending Approval") return fail(res, 400, "This ticket can't be escalated right now.");
+        if (!IT.isOpenStatus(await IT.loadSettings(), t.status) || t.status === "Pending Approval") return fail(res, 400, "This ticket can't be escalated right now.");
         const reason = str(body.reason, 1000).trim();
         if (!reason) return fail(res, 400, "Say why you're escalating.");
         const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
@@ -437,7 +462,7 @@ module.exports = async function handler(req, res) {
 
       if (action === "resolve") {
         if (!isIT(role)) return fail(res, 403, "Only IT can resolve tickets.");
-        if (!IT.OPEN_STATES.includes(t.status) || t.status === "Pending Approval") return fail(res, 400, "This ticket can't be resolved right now.");
+        if (!IT.isOpenStatus(await IT.loadSettings(), t.status) || t.status === "Pending Approval") return fail(res, 400, "This ticket can't be resolved right now.");
         const note = str(body.note, 3000).trim();
         if (!note) return fail(res, 400, "Describe the fix first.");
         await addMessage(t.id, viewer.id, "✅ " + note, false);
@@ -499,6 +524,24 @@ module.exports = async function handler(req, res) {
       if (action === "admin-save-settings") {
         const values = body.values || {};
         const rows = Object.entries(values).map(([key, v]) => ({ key, value: cleanSetting(key, v, members), updated_at: nowIso() }));
+        const cur = await IT.loadSettings(), next = { ...cur };
+        for (const r of rows) next[r.key] = r.value;
+        // The matrix must have one row per impact answer and one column per urgency answer, using existing priorities.
+        if (["prio", "impacts", "urgencies", "matrix"].some(k => k in values)) {
+          const pk = Object.keys(next.prio), m = next.matrix;
+          if (!Array.isArray(m) || m.length !== next.impacts.length || m.some(r => r.length !== next.urgencies.length || r.some(p => !pk.includes(p))))
+            return fail(res, 400, "The priority matrix must match the impact and urgency answers and use existing priority levels.");
+        }
+        // Priority levels / custom statuses that tickets still use can't be removed.
+        const tickets = check(await supabase.from("tickets").select("id, priority, status")) || [];
+        for (const p of Object.keys(cur.prio).filter(p => !(p in next.prio))) {
+          const n = tickets.filter(x => x.priority === p).length;
+          if (n) return fail(res, 400, `Can't delete priority ${p} (${(cur.prio[p].n || {}).en || p}): ${n} ${n === 1 ? "ticket still uses" : "tickets still use"} it. Change ${n === 1 ? "it" : "them"} first.`);
+        }
+        for (const st of IT.customStatuses(cur).filter(k => !(k in next.statuses))) {
+          const n = tickets.filter(x => x.status === st).length;
+          if (n) return fail(res, 400, `Can't delete the status “${(cur.statuses[st].n || {}).en || st}”: ${n} ${n === 1 ? "ticket is" : "tickets are"} in it. Move ${n === 1 ? "it" : "them"} to another status first.`);
+        }
         // An empty choice (e.g. "Escalations go to: first IT manager") is stored by removing the row, which means "use the default".
         // (The settings.value column can't hold an empty value.)
         const empty = rows.filter(r => r.value === null).map(r => r.key), filled = rows.filter(r => r.value !== null);
@@ -628,6 +671,6 @@ module.exports = async function handler(req, res) {
       return res.status(503).json({ error: "The database needs updating: run the latest schema.sql in the Supabase SQL Editor. (" + err.message + ")", code: "setup_required" });
     }
     console.error("app.js error:", action, err.message);
-    return fail(res, err.message && /needs|must|Exactly|Unknown setting|Every/.test(err.message) ? 400 : 500, err.message);
+    return fail(res, err.message && /needs|must|Exactly|Unknown|Every|There must|There can|Between/.test(err.message) ? 400 : 500, err.message);
   }
 };

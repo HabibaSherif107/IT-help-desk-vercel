@@ -17,7 +17,11 @@ const APP_LINK = () => (process.env.APP_URL || "").replace(/\/+$/, "") + "/";
 const IT_ROLES = ["requester", "agent", "manager", "admin"];
 const STATUSES = ["New", "Pending Approval", "Assigned", "In Progress", "Waiting on User", "Resolved", "Closed", "Rejected"];
 const OPEN_STATES = ["New", "Pending Approval", "Assigned", "In Progress", "Waiting on User"];
-const PRIOS = ["P1", "P2", "P3", "P4"];
+const PRIOS = ["P1", "P2", "P3", "P4"];   // starting priority levels; admins can add / remove / reorder them
+// Statuses: the 8 built-in ones drive the ticket workflow (rename / recolour only). Admins can add custom
+// statuses (ids start with "cs_"); a custom status counts as "open / being worked on".
+const isOpenStatus = (settings, s) => OPEN_STATES.includes(s) || (!!settings.statuses[s] && !!settings.statuses[s].custom);
+const customStatuses = settings => Object.keys(settings.statuses).filter(k => settings.statuses[k] && settings.statuses[k].custom);
 
 // ── Defaults (used until an admin saves a change) ─────────────
 const DEFAULT_SETTINGS = {
@@ -196,6 +200,11 @@ async function loadSettings() {
   const rows = check(await supabase.from("settings").select("key, value")) || [];
   const s = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
   for (const r of rows) if (r.key in s) s[r.key] = r.value;
+  // Priority levels and statuses are kept in their saved order ("o"); the database itself doesn't keep key order.
+  const ordered = (obj, first) => { const ks = Object.keys(obj || {}); const rank = k => first && first.includes(k) ? first.indexOf(k) - 1000 : (obj[k] && typeof obj[k].o === "number" ? obj[k].o : 500);
+    const out = {}; ks.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, "en", { numeric: true })).forEach(k => out[k] = obj[k]); return out; };
+  s.prio = ordered(s.prio);
+  s.statuses = ordered(s.statuses, STATUSES);
   const stored = s.lists && typeof s.lists === "object" ? s.lists : {};
   s.lists = {};
   for (const k of LIST_KEYS) s.lists[k] = Array.isArray(stored[k]) && stored[k].length ? stored[k] : JSON.parse(JSON.stringify(DEFAULT_LISTS[k]));
@@ -340,7 +349,7 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 }
 
 module.exports = {
-  supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS,
+  supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS, isOpenStatus, customStatuses,
   itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, COMPANY_SECTORS, shapeAsset, cleanSpecs, SPEC_TYPES, DEFAULT_LISTS, LIST_KEYS, LIST_USAGE, inList, listLabel, dateStr, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };
