@@ -550,10 +550,10 @@ async function tests() {
     { name: "Laptop stand", qty: 1, price: 0 } ] } });
   const prId = r.body.id;
   let pr = r.body.prs.find(p => p.id === prId);
-  ok(prId === "PR-00001" && pr.status === "draft", "the first request gets its own running number: PR-00001");
+  ok(prId === "PR-001" && pr.status === "draft", "the first request gets its own running number: PR-001");
   ok(pr.lines.length === 3 && pr.lines[0].total === 1505 && pr.total === 6305, "empty rows skipped; line totals and grand total computed (10×150.50 + 4×1,200 + 0 = 6,305)");
   r = await call("karim@dar.test", "save-pr", { pr: { lines: [{ name: "Spare keyboard", qty: 2, price: 300 }] } });
-  ok(r.body.id === "PR-00002", "the next request gets the next number: PR-00002 (never reused)");
+  ok(r.body.id === "PR-002", "the next request gets the next number: PR-002 (never reused)");
   const pr2 = r.body.id;
   ok((await call("mona@dar.test", "save-pr", { pr: { id: prId, lines: [{ name: "x", qty: 1, price: 1 }] } })).status === 403, "non-IT can't touch requests");
   ok((await call("karim@dar.test", "decide-pr", { id: prId, approve: true })).status === 403, "an agent can't approve");
@@ -685,10 +685,24 @@ async function tests() {
   await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
   const prsNow = (await call("karim@dar.test", "list-prs")).body;
   const moved = prsNow.find(p => p.lines.some(l => l.name === "Old cable"));
-  ok(moved && /^PR-\d{5}$/.test(moved.id) && !prsNow.some(p => p.id === "PR-1126"), "an old-style number (PR-1126) is renumbered to the running format, with its lines");
+  ok(moved && /^PR-\d{3}$/.test(moved.id) && !prsNow.some(p => p.id === "PR-1126"), "an old month-based number (PR-1126) is renumbered to the running format, with its lines");
   ok((await pool.query("select count(*)::int n from stock_movements where pr_id = $1", [moved.id])).rows[0].n === 1, "…and its stock history follows the new number");
   await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
   ok((await call("karim@dar.test", "list-prs")).body.find(p => p.lines.some(l => l.name === "Old cable")).id === moved.id, "running schema.sql again doesn't renumber anything");
+  // a request numbered by the previous version (PR-00009 style) keeps its number in the 3-digit format
+  await pool.query("select setval('pr_seq', greatest((select last_value from pr_seq), 9))");
+  await pool.query("insert into purchase_requests (id, status, created_by) values ('PR-00009', 'draft', $1)", [PP["karim@dar.test"].id]);
+  await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
+  ok((await call("karim@dar.test", "list-prs")).body.some(p => p.id === "PR-009") && !(await call("karim@dar.test", "list-prs")).body.some(p => p.id === "PR-00009"), "PR-00009 (previous format) becomes PR-009");
+  // 3 digits up to 999, then 4 digits
+  await pool.query("select setval('pr_seq', 998)");
+  r = await call("karim@dar.test", "save-pr", { pr: { lines: [{ name: "A", qty: 1, price: 1 }] } });
+  ok(r.body.id === "PR-999", "request #999 is PR-999");
+  r = await call("karim@dar.test", "save-pr", { pr: { lines: [{ name: "B", qty: 1, price: 1 }] } });
+  ok(r.body.id === "PR-1000", "request #1000 is PR-1000 (4 digits, nothing cut off)");
+  await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
+  const after1000 = (await call("karim@dar.test", "list-prs")).body.map(p => p.id);
+  ok(after1000.includes("PR-999") && after1000.includes("PR-1000"), "running schema.sql again leaves PR-999 and PR-1000 alone");
 }
 
 (async () => {

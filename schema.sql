@@ -317,23 +317,41 @@ alter table tickets add constraint tickets_impact_check check (impact between 1 
 alter table tickets add constraint tickets_urgency_check check (urgency between 1 and 10);
 
 -- ════════════════════════════════════════════════════════════
--- 22. Purchase request numbers: one running number per request, PR-00001, PR-00002 …
---     (replaces the month-based PR-1126 / PR-1126-2). Requests created with the old format
---     are renumbered once, oldest first; their lines and stock history follow. Safe to re-run.
+-- 22. Purchase request numbers: one running number per request.
+--     PR-001 … PR-999 (3 digits), then PR-1000, PR-1001 … (as many digits as needed).
+--     Older formats are converted once: PR-00001 (previous version) keeps its number → PR-001;
+--     month-based ids (PR-1126, PR-1126-2) get the next running numbers, oldest first.
+--     Lines follow (ON UPDATE CASCADE); stock history and the email log are updated. Safe to re-run.
 -- ════════════════════════════════════════════════════════════
 create sequence if not exists pr_seq start 1;
+create or replace function pr_fmt(n bigint) returns text language sql immutable as $$
+  select 'PR-' || case when n < 1000 then lpad(n::text, 3, '0') else n::text end   -- lpad would cut 1000 to "100"
+$$;
 create or replace function next_pr_id() returns text language sql as $$
-  select 'PR-' || lpad(nextval('pr_seq')::text, 5, '0')
+  select pr_fmt(nextval('pr_seq'))
 $$;
 alter table purchase_request_lines drop constraint if exists purchase_request_lines_pr_id_fkey;
 alter table purchase_request_lines add constraint purchase_request_lines_pr_id_fkey
   foreign key (pr_id) references purchase_requests(id) on delete cascade on update cascade;
 do $$
-declare r record; nid text;
+declare r record; nid text; last_n bigint;
 begin
-  for r in select id from purchase_requests where id !~ '^PR-[0-9]{5}$' order by created_at, id loop
+  -- 1) PR-00001 style (5 digits, from the previous version): same number, new format.
+  for r in select id from purchase_requests where id ~ '^PR-0[0-9]{4}$' order by id loop
+    nid := pr_fmt(substring(r.id from 4)::bigint);
+    if not exists (select 1 from purchase_requests where id = nid) then
+      update purchase_requests set id = nid where id = r.id;
+      update stock_movements set pr_id = nid where pr_id = r.id;
+      update email_log set ticket_id = nid where ticket_id = r.id;
+    end if;
+  end loop;
+  -- 2) Anything that isn't a number the sequence has handed out (e.g. month-based PR-1126): next numbers.
+  select case when is_called then last_value else 0 end into last_n from pr_seq;
+  for r in select id from purchase_requests
+           where not (id ~ '^PR-[0-9]{3,}$' and pr_fmt(substring(id from 4)::bigint) = id and substring(id from 4)::bigint <= last_n)
+           order by created_at, id loop
     nid := next_pr_id();
-    update purchase_requests set id = nid where id = r.id;             -- lines follow (on update cascade)
+    update purchase_requests set id = nid where id = r.id;
     update stock_movements set pr_id = nid where pr_id = r.id;
     update email_log set ticket_id = nid where ticket_id = r.id;
   end loop;
