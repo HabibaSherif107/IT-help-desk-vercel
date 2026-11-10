@@ -42,15 +42,9 @@ async function listPRs() {
 }
 async function getPR(id) { return check(await supabase.from("purchase_requests").select("*").eq("id", str(id, 40)).maybeSingle()); }
 
-// Reference like the sheet's tab names: PR-<MM><YY> in Cairo time, then -2, -3 … within the same month.
+// Every request gets its own running number: PR-00001, PR-00002 … (database sequence, never reused).
 async function nextRef() {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", month: "2-digit", year: "2-digit" })
-    .formatToParts(new Date()).map(x => [x.type, x.value]));
-  const base = `PR-${parts.month}${parts.year}`;
-  const ids = new Set((check(await supabase.from("purchase_requests").select("id")) || []).map(r => r.id));
-  if (!ids.has(base)) return base;
-  for (let n = 2; n < 1000; n++) if (!ids.has(`${base}-${n}`)) return `${base}-${n}`;
-  throw new Error("Could not create a request number.");
+  return check(await supabase.rpc("next_pr_id"));
 }
 
 async function cleanLines(lines) {

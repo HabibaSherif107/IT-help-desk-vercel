@@ -550,10 +550,10 @@ async function tests() {
     { name: "Laptop stand", qty: 1, price: 0 } ] } });
   const prId = r.body.id;
   let pr = r.body.prs.find(p => p.id === prId);
-  ok(/^PR-\d{4}$/.test(prId) && pr.status === "draft", "draft saved with a sheet-style number (PR-MMYY)");
+  ok(prId === "PR-00001" && pr.status === "draft", "the first request gets its own running number: PR-00001");
   ok(pr.lines.length === 3 && pr.lines[0].total === 1505 && pr.total === 6305, "empty rows skipped; line totals and grand total computed (10×150.50 + 4×1,200 + 0 = 6,305)");
   r = await call("karim@dar.test", "save-pr", { pr: { lines: [{ name: "Spare keyboard", qty: 2, price: 300 }] } });
-  ok(r.body.id === prId + "-2", "second request in the same month gets -2");
+  ok(r.body.id === "PR-00002", "the next request gets the next number: PR-00002 (never reused)");
   const pr2 = r.body.id;
   ok((await call("mona@dar.test", "save-pr", { pr: { id: prId, lines: [{ name: "x", qty: 1, price: 1 }] } })).status === 403, "non-IT can't touch requests");
   ok((await call("karim@dar.test", "decide-pr", { id: prId, approve: true })).status === 403, "an agent can't approve");
@@ -653,6 +653,42 @@ async function tests() {
   r = await call("sara@dar.test", "reopen", { id: ee, text: "Not working" });
   ok(r.body.ticket.assignee === PP["hany@dar.test"].id && r.body.ticket.status === "In Progress", "employee escalation goes to the person the admin chose");
   ok((await call("karim@dar.test", "reopen", { id: ee, text: "x" })).status === 403, "only the employee who raised it can escalate a resolved ticket");
+
+  // ── Escalate is available on every unfinished ticket ─────────
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "Resolved esc", description: "x" } });
+  const re1 = r.body.ticket.id;
+  await call("karim@dar.test", "update-ticket", { id: re1, assignee: PP["karim@dar.test"].id });
+  await call("karim@dar.test", "resolve", { id: re1, note: "done" });
+  r = await call("karim@dar.test", "escalate", { id: re1, reason: "Came back, need help", to: PP["omar@dar.test"].id });
+  ok(r.status === 200 && r.body.ticket.status === "In Progress" && r.body.ticket.assignee === PP["omar@dar.test"].id, "a resolved ticket can be escalated (it reopens with the manager)");
+  r = await call("mona@dar.test", "create-ticket", { ticket: { category_id: "newsoft", title: "Need Visio", description: "x", fields: { app: "Visio", why: "Diagrams" } } });
+  ok(r.status === 201 && r.body.ticket.status === "Pending Approval", "(a request that needs approval)");
+  r = await call("karim@dar.test", "escalate", { id: r.body.ticket.id, reason: "Approver is away", to: PP["hany@dar.test"].id });
+  ok(r.status === 200 && r.body.ticket.status === "Pending Approval" && r.body.ticket.assignee === PP["hany@dar.test"].id, "a ticket waiting for approval can be escalated (it stays waiting for approval)");
+  await call("omar@dar.test", "resolve", { id: re1, note: "fixed" });
+  await call("sara@dar.test", "confirm", { id: re1 });
+  ok((await call("karim@dar.test", "escalate", { id: re1, reason: "x", to: PP["omar@dar.test"].id })).status === 400, "a closed ticket can't be escalated");
+
+  // ── Sign-in status in Users & roles ──────────────────────────
+  await call("hany@dar.test", "admin-save-user", { user: { name: "New Starter", email: "new.starter@dar.test", role: "requester", active: true } });
+  let ppl = (await call("hany@dar.test", "bootstrap")).body.people;
+  ok(ppl.find(p => p.email === "new.starter@dar.test").lastLogin === null && typeof ppl.find(p => p.email === "sara@dar.test").lastLogin === "number", "admins see who has signed in (with the last time) and who hasn't yet");
+  ok((await call("karim@dar.test", "bootstrap")).body.people.every(p => p.lastLogin === undefined), "sign-in times are only shown to admins");
+  await signIn("new.starter@dar.test");
+  ppl = (await call("hany@dar.test", "bootstrap")).body.people;
+  ok(typeof ppl.find(p => p.email === "new.starter@dar.test").lastLogin === "number", "after their first sign-in they show as signed in");
+
+  // ── Old month-based purchase request numbers are renumbered by schema.sql ──
+  await pool.query("insert into purchase_requests (id, status, created_by, created_at) values ('PR-1126', 'draft', $1, now() - interval '30 days')", [PP["karim@dar.test"].id]);
+  await pool.query("insert into purchase_request_lines (pr_id, line_no, item_name, quantity, unit_price) values ('PR-1126', 1, 'Old cable', 2, 10)");
+  await pool.query("insert into stock_movements (item_id, change, quantity_after, reason, pr_id) select id, 0, quantity, 'old', 'PR-1126' from stock_items limit 1");
+  await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
+  const prsNow = (await call("karim@dar.test", "list-prs")).body;
+  const moved = prsNow.find(p => p.lines.some(l => l.name === "Old cable"));
+  ok(moved && /^PR-\d{5}$/.test(moved.id) && !prsNow.some(p => p.id === "PR-1126"), "an old-style number (PR-1126) is renumbered to the running format, with its lines");
+  ok((await pool.query("select count(*)::int n from stock_movements where pr_id = $1", [moved.id])).rows[0].n === 1, "…and its stock history follows the new number");
+  await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
+  ok((await call("karim@dar.test", "list-prs")).body.find(p => p.lines.some(l => l.name === "Old cable")).id === moved.id, "running schema.sql again doesn't renumber anything");
 }
 
 (async () => {

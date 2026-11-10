@@ -47,7 +47,7 @@ Same columns as the sheet: **Category · Item name · Brand / Model · Quantity 
 - **Request more** opens a new purchase request with that item already filled in.
 
 ### Purchase Requests (replaces the "IT Purchase Request" sheet)
-Same layout as the sheet: **# · Item name · Product link · Quantity · Unit price (EGP) · Total price (EGP)**, with the **Grand total** worked out automatically. Requests are numbered the way the sheet's tabs were: `PR-1126` for November 2026, then `PR-1126-2` and so on.
+Same layout as the sheet: **# · Item name · Product link · Quantity · Unit price (EGP) · Total price (EGP)**, with the **Grand total** worked out automatically. Each request gets its own running number that is never reused: `PR-00001`, `PR-00002`, … (requests made with the earlier month-based numbers such as `PR-1126` are renumbered once when `schema.sql` is run).
 - The paper signatures are now steps in the app: **Draft → Submit for approval → Approved / Rejected → Ordered → Received.** The *Submitted by* and *Approved by* boxes fill in automatically with names and dates.
 - When a request is submitted, the IT managers and admins get a bilingual email listing the items and the total. The person who submitted it is emailed the decision; a rejection includes the reason. A manager can't approve their own request.
 - A rejected request can be fixed and submitted again. Drafts and rejected requests can be deleted.
@@ -72,7 +72,7 @@ Admins can add, rename, reorder and delete the options of these dropdowns, in En
 - Departments, ticket categories, priorities and statuses have their own tabs. Device status (In use / In stock / Needs repair / Retired), Windows 11 compatibility and the specs Recommendation stay fixed, because the app relies on them.
 
 ### People: department and company sector
-In **Admin Console → Users & roles**, each person has a **Department** and, next to it, a **Company sector** chosen from a fixed list: *Shell, Chipsy, Jammy*. The sector also shows as a column in the people table.
+In **Admin Console → Users & roles** you can search people and filter **Signed in** / **Not signed in yet** (with the last sign-in time). Each person has a **Department** and, next to it, a **Company sector** chosen from a fixed list: *Shell, Chipsy, Jammy*. The sector also shows as a column in the people table.
 
 ### Help categories
 Request Hardware · Internet & Connectivity · Email & Accounts · New Software / License Purchase *(needs approval)* · New Joiner / Leaver *(needs approval)* · Something Else.

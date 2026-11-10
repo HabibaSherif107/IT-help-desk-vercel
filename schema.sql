@@ -315,3 +315,26 @@ alter table tickets drop constraint if exists tickets_impact_check;
 alter table tickets drop constraint if exists tickets_urgency_check;
 alter table tickets add constraint tickets_impact_check check (impact between 1 and 10);
 alter table tickets add constraint tickets_urgency_check check (urgency between 1 and 10);
+
+-- ════════════════════════════════════════════════════════════
+-- 22. Purchase request numbers: one running number per request, PR-00001, PR-00002 …
+--     (replaces the month-based PR-1126 / PR-1126-2). Requests created with the old format
+--     are renumbered once, oldest first; their lines and stock history follow. Safe to re-run.
+-- ════════════════════════════════════════════════════════════
+create sequence if not exists pr_seq start 1;
+create or replace function next_pr_id() returns text language sql as $$
+  select 'PR-' || lpad(nextval('pr_seq')::text, 5, '0')
+$$;
+alter table purchase_request_lines drop constraint if exists purchase_request_lines_pr_id_fkey;
+alter table purchase_request_lines add constraint purchase_request_lines_pr_id_fkey
+  foreign key (pr_id) references purchase_requests(id) on delete cascade on update cascade;
+do $$
+declare r record; nid text;
+begin
+  for r in select id from purchase_requests where id !~ '^PR-[0-9]{5}$' order by created_at, id loop
+    nid := next_pr_id();
+    update purchase_requests set id = nid where id = r.id;             -- lines follow (on update cascade)
+    update stock_movements set pr_id = nid where pr_id = r.id;
+    update email_log set ticket_id = nid where ticket_id = r.id;
+  end loop;
+end $$;

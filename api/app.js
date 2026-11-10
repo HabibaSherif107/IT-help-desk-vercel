@@ -444,7 +444,8 @@ module.exports = async function handler(req, res) {
       // A technician hands the ticket to the IT manager: reassign + private note + email.
       if (action === "escalate") {
         if (!isIT(role)) return fail(res, 403, "Only IT can escalate tickets.");
-        if (!IT.isOpenStatus(await IT.loadSettings(), t.status) || t.status === "Pending Approval") return fail(res, 400, "This ticket can't be escalated right now.");
+        // Any ticket that isn't finished can be escalated: open, waiting for approval, or resolved (it reopens).
+        if (!(IT.isOpenStatus(await IT.loadSettings(), t.status) || t.status === "Resolved")) return fail(res, 400, "This ticket is closed and can't be escalated.");
         const reason = str(body.reason, 1000).trim();
         if (!reason) return fail(res, 400, "Say why you're escalating.");
         const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
@@ -459,7 +460,8 @@ module.exports = async function handler(req, res) {
         if (target === viewer.id) return fail(res, 400, "You receive escalations yourself. Assign the ticket instead.");
         if (t.assignee_id === target) return fail(res, 400, "This ticket is already with " + (members.find(m => m.id === target) || {}).name + ".");
         await addMessage(t.id, viewer.id, "⬆ " + reason, true);
-        await patchTicket(t.id, { assignee_id: target, escalated_at: nowIso(), escalated_by: viewer.id, escalated_from: t.assignee_id || null, escalation_reason: reason, status: t.status === "New" ? "Assigned" : t.status });
+        await patchTicket(t.id, { assignee_id: target, escalated_at: nowIso(), escalated_by: viewer.id, escalated_from: t.assignee_id || null, escalation_reason: reason,
+          status: t.status === "New" ? "Assigned" : t.status === "Resolved" ? "In Progress" : t.status, ...(t.status === "Resolved" ? { resolved_at: null } : {}) });
         await addEvent(t.id, viewer.id, "escalated", ev(`Escalated to ${nameOf(members, target)}: ${short(reason)}`, `صُعّدت إلى ${nameOf(members, target)}: ${short(reason)}`));
         const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
         await IT.notify("escalated", fresh, ctx, [ctx.assignee && ctx.assignee.email, ctx.supportCc], { text: reason, by: me.name }, "escalated");

@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5"/>
+<meta name="format-detection" content="telephone=no,email=no,address=no,date=no"/>
 <title>IT Help Desk · Dar El Salam</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -209,6 +210,11 @@ const S = {
   g_emp_escalate:["When an employee says a resolved ticket is still not fixed, escalate to","عندما يقول الموظف إن التذكرة المحلولة لم تُحل، تُصعّد إلى"],
   g_emp_escalate_d:["The ticket is reopened and reassigned to this person, who gets an email with the employee's message. The previous technician is told too.","يُعاد فتح التذكرة وتُسند لهذا الشخص ويصله بريد برسالة الموظف. ويتم إبلاغ الفني السابق أيضًا."],
   same_as_it_esc:["— Same as IT escalations —","— نفس جهة تصعيد فريق التقنية —"],
+  manager_short:["Manager","المدير"],
+  search_people:["Search name, email or department…","ابحث بالاسم أو البريد أو الإدارة…"], u_signin:["Sign-in","تسجيل الدخول"],
+  u_signed_in:["Signed in","سجّل الدخول"], u_never:["Not signed in yet","لم يسجّل الدخول بعد"], u_last:["last {d}","آخر مرة {d}"],
+  esc_none_other:["There is no other active IT manager or admin to escalate to. Add one in Admin Console → Users & roles.","لا يوجد مدير تقنية أو مسؤول آخر نشط للتصعيد إليه. أضف واحدًا من لوحة الإدارة ← المستخدمون والأدوار."],
+  esc_none_other_with:["This ticket is already with {name}, and there is no other IT manager or admin to escalate to.","هذه التذكرة بالفعل مع {name}، ولا يوجد مدير تقنية أو مسؤول آخر للتصعيد إليه."],
   no_match_filters:["Nothing matches these filters.","لا توجد نتائج مطابقة لهذه الفلاتر."],
   toast_device_saved:["Device saved","تم حفظ الجهاز"], toast_device_deleted:["Device deleted","تم حذف الجهاز"], confirm_delete_device:["Delete device {id}?","حذف الجهاز {id}؟"], none_dash:["— None —","— لا يوجد —"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
   nav_stock:["Stock","المخزون"], title_stock:["IT Stock Register","سجل مخزون تقنية المعلومات"], nav_pr:["Purchase Requests","طلبات الشراء"],
@@ -433,7 +439,7 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
   const [resolveOpen,setResolveOpen]=useState(false), [resNote,setResNote]=useState(""), [empEsc,setEmpEsc]=useState(false), [empEscText,setEmpEscText]=useState("");
   const [rej,setRej]=useState(false), [reason,setReason]=useState("");
   const [escOpen,setEscOpen]=useState(false), [escReason,setEscReason]=useState(""), [escPick,setEscPick]=useState("");
-  const escTo=CFG.escalateTarget, leadsToEscalate=CFG.people.filter(p=>p.active!==false&&isLeadRole(p.role)&&p.id!==me&&p.id!==tk.assignee), canEscalate=agent&&isOpen(tk)&&tk.status!=="Pending Approval"&&leadsToEscalate.length>0;
+  const escTo=CFG.escalateTarget, leadsToEscalate=CFG.people.filter(p=>p.active!==false&&isLeadRole(p.role)&&p.id!==me&&p.id!==tk.assignee), canEscalate=agent&&(isOpen(tk)||tk.status==="Resolved");
   useEffect(()=>{setReply("");setInternal(false);setEmpEsc(false);setEmpEscText("");setEscPick("");},[tk.id]);
   const c=cat(tk.cat), rq=person(tk.req)||{name:"—",dept:tk.dept};
   const run=async(action,data,okMsg)=>{ setBusy(true); try{ const r=await api(action,{id:tk.id,...data}); onChanged(r.ticket); if(okMsg) toast(okMsg); return true; }catch(x){ toast(x.message,"error"); return false; } finally{ setBusy(false); } };
@@ -459,11 +465,11 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
           e("div",null,e("label",{style:LS,htmlFor:"d-asg"},t("assignee")),e("select",{id:"d-asg",disabled:busy,value:tk.assignee||"",onChange:ev=>run("update-ticket",{assignee:ev.target.value||null},t("toast_saved_t")),style:IS},e("option",{value:""},t("unassigned")),CFG.people.filter(p=>isITRole(p.role)&&(p.active!==false||p.id===tk.assignee)).map(a=>e("option",{key:a.id,value:a.id},a.name)))),
           e("div",null,e("label",{style:LS,htmlFor:"d-st"},t("status")),e("select",{id:"d-st",disabled:busy||tk.status==="Pending Approval",value:tk.status,onChange:ev=>run("update-ticket",{status:ev.target.value},t("toast_saved_t")),style:IS},["New","Assigned","In Progress","Waiting on User"].concat(customSts()).concat(tk.status==="Pending Approval"?["Pending Approval"]:[]).map(x=>e("option",{key:x,value:x},stLabel(x))))),
           e("div",null,e("label",{style:LS,htmlFor:"d-pr"},t("h_prio")),e("select",{id:"d-pr",disabled:busy,value:tk.priority,onChange:ev=>run("update-ticket",{priority:ev.target.value},t("toast_saved_t")),style:IS},Object.keys(CFG.prio).map(p=>e("option",{key:p,value:p},prioLabel(p)))))),
-        agent&&isOpen(tk)&&e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
-          !tk.assignee&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{assignee:me},t("toast_took")),style:{...BP,padding:"8px 14px"}},t("take_it")),
-          tk.status!=="Pending Approval"&&e("button",{disabled:busy,onClick:()=>setResolveOpen(true),style:{...BP,background:"#059669",padding:"8px 14px"}},t("resolve")),
+        agent&&(isOpen(tk)||tk.status==="Resolved")&&e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
+          isOpen(tk)&&!tk.assignee&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{assignee:me},t("toast_took")),style:{...BP,padding:"8px 14px"}},t("take_it")),
+          isOpen(tk)&&tk.status!=="Pending Approval"&&e("button",{disabled:busy,onClick:()=>setResolveOpen(true),style:{...BP,background:"#059669",padding:"8px 14px"}},t("resolve")),
           canEscalate&&e("button",{id:"escalate-btn",disabled:busy,onClick:()=>setEscOpen(true),style:{...BS,padding:"8px 14px",color:"#FCD34D",borderColor:"#A16207"}},t("escalate")),
-          isLeadRole(role)&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{major:!tk.major},tk.major?t("toast_saved_t"):t("toast_major")),style:{...BS,padding:"8px 14px",color:"#FCA5A5"}},tk.major?t("clear_major"):t("declare_major"))),
+          isOpen(tk)&&isLeadRole(role)&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{major:!tk.major},tk.major?t("toast_saved_t"):t("toast_major")),style:{...BS,padding:"8px 14px",color:"#FCA5A5"}},tk.major?t("clear_major"):t("declare_major"))),
         agent&&tk.escalated&&e("div",{style:{background:"#42200633",border:"1px solid #A1620766",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:"0.85rem",color:"#FCD34D"}},"⬆ "+t("escalated_by",{by:pname(tk.escalated.by),x:ago(tk.escalated.at),reason:tk.escalated.reason||""})),
         e(Section,{title:t("details"),style:{marginBottom:14,padding:14}},
           e("div",{style:{fontSize:"0.88rem",lineHeight:1.6,color:"#D6D3D1",marginBottom:10,whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},tk.desc),
@@ -498,7 +504,8 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
       e("label",{style:LS,htmlFor:"emp-esc-text"},t("emp_esc_q")+" *"),e("textarea",{id:"emp-esc-text",rows:3,value:empEscText,onChange:ev=>setEmpEscText(ev.target.value),placeholder:t("emp_esc_ph"),style:{...IS,marginBottom:12}}),
       e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},CFG.employeeEscalateTarget?t("emp_esc_hint",{name:pname(CFG.employeeEscalateTarget)}):t("emp_esc_hint_any")),
       e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setEmpEsc(false),style:BS},t("cancel")),e("button",{id:"emp-esc-go",disabled:busy||!empEscText.trim(),onClick:async()=>{ if(await run("reopen",{text:empEscText.trim()},t("toast_emp_escalated"))){setEmpEsc(false);setEmpEscText("");} },style:{...BP,background:"#A16207"}},t("escalate_btn")))),
-    escOpen&&(()=>{ const target=escPick&&leadsToEscalate.some(p=>p.id===escPick)?escPick:(leadsToEscalate.some(p=>p.id===escTo)?escTo:leadsToEscalate[0].id);
+    escOpen&&!leadsToEscalate.length&&e(Modal,{title:t("escalate"),onClose:()=>setEscOpen(false),w:440},e("p",{style:{fontSize:"0.9rem",lineHeight:1.6,marginBottom:16}},tk.assignee&&tk.assignee!==me?t("esc_none_other_with",{name:pname(tk.assignee)}):t("esc_none_other")),e("div",{style:{display:"flex",justifyContent:"flex-end"}},e("button",{onClick:()=>setEscOpen(false),style:BS},t("close")))),
+    escOpen&&leadsToEscalate.length>0&&(()=>{ const target=escPick&&leadsToEscalate.some(p=>p.id===escPick)?escPick:(leadsToEscalate.some(p=>p.id===escTo)?escTo:leadsToEscalate[0].id);
       return e(Modal,{title:t("escalate_title",{id:tk.id,name:pname(target)}),onClose:()=>setEscOpen(false),w:480},
       e("label",{style:LS,htmlFor:"esc-to"},t("escalate_to_lbl")),e("select",{id:"esc-to",value:target,onChange:ev=>setEscPick(ev.target.value),style:{...IS,marginBottom:12}},leadsToEscalate.map(p=>e("option",{key:p.id,value:p.id},p.name+" · "+t("role_"+p.role)+(p.id===escTo?" ("+t("default_lbl")+")":"")))),
       e("label",{style:LS,htmlFor:"esc-reason"},t("escalate_reason")+" *"),e("textarea",{id:"esc-reason",rows:3,value:escReason,onChange:ev=>setEscReason(ev.target.value),placeholder:t("escalate_ph"),style:{...IS,marginBottom:12}}),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},t("escalate_hint",{name:pname(target)})),
@@ -833,6 +840,7 @@ function ListsEditor({busy,save}){
 function Admin({setCfg,toast,onKB}){
   const [tab,setTab]=useState("cats");
   const [ed,setEd]=useState(null), [del,setDel]=useState(null), [busy,setBusy]=useState(false), [err,setErr]=useState("");
+  const [uf,setUf]=useState("all"), [uq,setUq]=useState("");
   const [draft,setDraft]=useState(()=>clone({prio:CFG.prio,impacts:CFG.impacts,urgencies:CFG.urgencies,matrix:CFG.matrix,statuses:CFG.statuses,
     autoAssign:CFG.autoAssign,approvalMode:CFG.approvalMode,approverId:CFG.approver,escalateTo:CFG.escalateTo,employeeEscalateTo:CFG.employeeEscalateTo,kbSuggest:CFG.kbSuggest,supportCcUpdates:CFG.supportCcUpdates,greeting:CFG.greeting,heroSub:CFG.heroSub}));
   const dset=(k,v)=>setDraft(d=>({...d,[k]:v}));
@@ -856,10 +864,27 @@ function Admin({setCfg,toast,onKB}){
     const userRow=p=>({id:p.id,name:p.name,email:p.email||"",dept:p.dept||null,sector:p.sector||null,manager:p.manager||null,role:p.role,active:p.active!==false});
     body=e(Section,{title:t("a_users"),right:e("button",{onClick:()=>{setErr("");setEd({kind:"user",item:{id:null,name:"",email:"",dept:null,sector:null,manager:null,role:"requester",active:true}});},style:BP},t("add_user"))},
       e("p",{style:{color:"#8A8583",fontSize:"0.84rem",marginBottom:12,maxWidth:"70ch"}},t("users_note")),
-      e(AdminTable,{cols:[t("name"),t("email"),t("department"),t("sector"),t("manager"),t("it_role"),""],rows:CFG.people.map(p=>[
-        e("div",{style:{display:"flex",gap:8,alignItems:"center",opacity:p.active===false?.5:1}},e(Av,{id:p.id,size:26}),p.name,p.active===false&&e(Pill,{c:"#94A3B8"},t("inactive"))),e("span",{dir:"ltr",style:{color:"#8A8583"}},p.email||""),deptName(p.dept),p.sector&&CFG.sectors[p.sector]?L(CFG.sectors[p.sector]):"—",p.manager?pname(p.manager):"—",
-        e("select",{"aria-label":t("it_role")+": "+p.name,disabled:busy||p.id===CFG.me.id,value:p.role,onChange:ev=>call("admin-save-user",{user:{...userRow(p),role:ev.target.value}}),style:{...IS,width:"auto",padding:"6px 8px"}},ROLES.map(r=>e("option",{key:r,value:r},t("role_"+r)))),
-        editBtns(()=>setEd({kind:"user",item:userRow(p)}))])}));
+      (()=>{ /* Compact list: name + email together, and whether each person has signed in yet. */
+        const signed=CFG.people.filter(p=>p.lastLogin), never=CFG.people.filter(p=>!p.lastLogin), ql=uq.trim().toLowerCase();
+        const list=(uf==="in"?signed:uf==="never"?never:CFG.people).filter(p=>!ql||[p.name,p.email,deptName(p.dept)].join(" ").toLowerCase().includes(ql));
+        const cell={padding:"8px 8px",borderBottom:"1px solid #231F1E",verticalAlign:"middle"}, th={...HEAD,textAlign:"start",padding:"8px 8px",borderBottom:"1px solid #332C2B",whiteSpace:"nowrap"};
+        return e("div",null,
+          e("div",{style:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:10}},
+            e("input",{id:"u-search","aria-label":t("search_people"),value:uq,onChange:ev=>setUq(ev.target.value),placeholder:"🔍 "+t("search_people"),style:{...IS,flex:"1 1 200px",maxWidth:300,padding:"8px 12px"}}),
+            e(Tabs,{val:uf,set:setUf,wrap:true,tabs:[["all",t("pr_all"),CFG.people.length],["in",t("u_signed_in"),signed.length],["never",t("u_never"),never.length]]})),
+          e("div",{style:{overflowX:"auto"}},e("table",{id:"users-table",style:{width:"100%",borderCollapse:"collapse",fontSize:"0.85rem",minWidth:720}},
+            e("thead",null,e("tr",null,[t("name"),t("department"),t("sector"),t("manager_short"),t("u_signin"),t("it_role"),""].map((h,i)=>e("th",{key:i,style:th,title:i===3?t("manager"):undefined},h)))),
+            e("tbody",null,list.map(p=>e("tr",{key:p.id,style:{opacity:p.active===false?.5:1}},
+              e("td",{style:cell},e("div",{style:{display:"flex",gap:10,alignItems:"center",minWidth:0}},e(Av,{id:p.id,size:30}),
+                e("div",{style:{minWidth:0}},e("div",{style:{fontWeight:600,whiteSpace:"nowrap"}},p.name,p.active===false&&e("span",{style:{marginInlineStart:6}},e(Pill,{c:"#94A3B8"},t("inactive")))),
+                  e("div",{dir:"ltr",style:{fontSize:"0.75rem",color:"#8A8583",whiteSpace:"nowrap",textAlign:"start"}},p.email||"")))),
+              e("td",{style:{...cell,whiteSpace:"nowrap"}},p.dept?deptName(p.dept):"—"),
+              e("td",{style:{...cell,whiteSpace:"nowrap"}},p.sector&&CFG.sectors[p.sector]?L(CFG.sectors[p.sector]):"—"),
+              e("td",{style:{...cell,whiteSpace:"nowrap"}},p.manager?pname(p.manager):"—"),
+              e("td",{style:{...cell,whiteSpace:"nowrap"}},p.lastLogin?e("div",{title:fmtDate(p.lastLogin),style:{lineHeight:1.3}},e("div",{style:{color:"#34D399",fontWeight:600,fontSize:"0.8rem"}},"● "+t("u_signed_in")),e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},ago(p.lastLogin))):e("div",{style:{color:"#94A3B8",fontSize:"0.8rem"}},"○ "+t("u_never"))),
+              e("td",{style:cell},e("select",{"aria-label":t("it_role")+": "+p.name,disabled:busy||p.id===CFG.me.id,value:p.role,onChange:ev=>call("admin-save-user",{user:{...userRow(p),role:ev.target.value}}),style:{...IS,width:"auto",padding:"5px 8px",fontSize:"0.82rem"}},ROLES.map(r=>e("option",{key:r,value:r},t("role_"+r))))),
+              e("td",{style:{...cell,textAlign:"end"}},editBtns(()=>setEd({kind:"user",item:userRow(p)})))))))),
+          !list.length&&e("div",{style:{padding:24,textAlign:"center",color:"#6B6563"}},t("no_match_filters"))); })());
   } else if(tab==="prio"){
     /* Keep the matrix the right size and pointing at existing priority levels whenever something changes. */
     const fit=(m,ni,nu,keys)=>Array.from({length:ni},(_,i)=>Array.from({length:nu},(_,j)=>{ const v=((m||[])[i]||[])[j]; return keys.includes(v)?v:keys[keys.length-1]; }));
