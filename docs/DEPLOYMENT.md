@@ -201,8 +201,9 @@ Do these in order. Each Admin Console page has its own **Save** button.
 5. **General** (Admin Console → *General*), then **Save changes**:
    - **Auto-assign new tickets by category:** on
    - **Who approves requests:** *the employee's manager* (recommended), plus a **fallback approver** for people with no manager
-   - **Escalations go to:** the IT Manager. This is who receives a ticket when a technician presses **⬆ Escalate to manager**.
-   - **Suggest articles** and **Ask employees to rate:** on (recommended)
+   - **Escalations go to:** the IT Manager. This is the default person when a technician presses **⬆ Escalate to manager / admin** (they can pick another IT manager or admin).
+   - **Suggest articles:** on (recommended)
+   - **When an employee says a resolved ticket is still not fixed, escalate to:** who receives those tickets (leave on *Same as IT escalations* to use the person above)
 6. **Texts** (same page): adjust the Help Center greeting in both languages if you like.
 7. **Canned replies** and **Knowledge base:** add your own ready-made replies and how-to articles.
 8. **Assets** (left menu → *Assets* → **+ Add device**): enter company devices (type, model, serial, who has it, their location, the date they received it, and tick **Under warranty** to add the end date). For laptops, also fill in the **Laptop specs** box. Employees can then pick their device when raising a ticket.
@@ -220,7 +221,7 @@ Use one employee account, one technician account and the IT Manager.
 | 3 | Employee raises a ticket in a **category owned by the IT Manager** | The **IT Manager** gets the assignment email; the technician does not |
 | 4 | Technician opens the ticket from test 1 → **⬆ Escalate to manager** → writes a reason → **Escalate** | The ticket moves to the IT Manager (**Escalated** tab). The **manager** gets *"Ticket escalated to you"* with the reason. The employee gets **no** email. |
 | 5 | Manager hands it back (Assignee → technician) | The technician gets an assignment email again |
-| 6 | Technician replies, then **Resolve** with a fix note | The employee is emailed each time, then confirms and rates the fix |
+| 6 | Technician replies, then **Resolve** with a fix note | The employee is emailed each time, then closes the ticket (or presses **⬆ Not fixed – escalate**) |
 | 7 | Employee raises a **New Software** request | Their manager gets an approval email and approves it in **Approvals**. The category's technician then gets *"assigned to you… Approved by …"*. |
 | 8 | Open any ticket as IT → **History** | Shows created, assigned (and how), escalated, resolved… with names and times |
 | 9 | Supabase → **Table Editor** → `email_log` | One row per email sent, each with `ok = true` |
@@ -245,7 +246,7 @@ When everything matches, share **`https://helpdesk.your-company.com`** with staf
 | A technician gets no assignment emails | Their address in **Users & roles** doesn't match their real mailbox (2c), or they aren't the category's **Auto-assign to** person |
 | The IT Manager gets every ticket | `IT_SUPPORT_EMAIL` points to a group the manager is in → leave it empty (Step 2a), Redeploy |
 | Zoho refuses: *Sender is not allowed* / *Relaying disallowed* | `MAIL_FROM_ADDRESS` is set but the `SMTP_USER` account has no **Send as** permission for it → Step 2b Option B, or remove `MAIL_FROM_ADDRESS` |
-| The Escalate button is missing | Nobody is set under **General → Escalations go to**, or the ticket is already with the manager, or it's waiting for approval |
+| The Escalate button is missing | There is no other active IT manager / admin to escalate to, or the ticket is waiting for approval or already resolved |
 | Emails land in spam | SPF/DKIM not verified → Step 2d |
 | Domain stuck on *Invalid Configuration* | CNAME typo, or Cloudflare proxy on → fix the record; allow time to spread |
 

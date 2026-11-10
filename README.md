@@ -21,7 +21,7 @@ Nothing is shared, so changes in one can never affect the other.
 ### Who uses it
 | Role | Sees | Can do |
 |---|---|---|
-| 👤 **Employee** | Help Center, My Requests, Knowledge Base | Search quick fixes, raise tickets, chat with IT, confirm and rate a fix, reopen if still broken |
+| 👤 **Employee** | Help Center, My Requests, Knowledge Base | Search quick fixes, raise tickets, chat with IT, close a resolved ticket, or escalate it if it's still not fixed |
 | 🛠️ **IT Agent** | Ticket Queue, Assets, Stock, Purchase Requests, My Requests, Knowledge Base | Take tickets, reply, write private notes, change status/priority, resolve, **escalate to the IT manager**, add and update devices, update stock, raise purchase requests |
 | 👑 **IT Manager** | Everything an agent sees, plus Dashboard, Approvals, Auto-assignment | Approve or reject requests and purchase requests, declare a major incident, delete stock items |
 | 🛡️ **Admin** | Admin Console, plus everything above | Everything an IT manager can do (approvals, escalations, purchase approvals, auto-assignment), plus manage people, departments, categories, questions, priorities, statuses, replies, articles, dropdown lists and settings |
@@ -84,9 +84,9 @@ Admins can rename, reorder, hide, add or remove categories and change their ques
 3. The ticket goes automatically to the person who owns that category. That can be a technician (e.g. Hardware → Karim) or the IT manager (e.g. Email & Accounts → the manager). Only that person is emailed.
 4. Software and joiner/leaver requests first wait for the **employee's manager** to approve.
 5. IT replies (or writes private notes), then marks the ticket resolved with a note on the fix.
-6. The employee confirms and rates it, or reopens it.
+6. The employee closes it. If it's still not fixed, they press **⬆ Not fixed – escalate** and say what's wrong: the ticket reopens and goes to the person the admin chose under **General → "When an employee says a resolved ticket is still not fixed, escalate to"** (by default the normal escalation contact). That person is emailed the message, and the previous technician is told.
 
-**Escalation:** if a technician can't finish a ticket, they press **⬆ Escalate to manager** and write why. The ticket moves to the IT manager, who gets an email with the reason. The reason stays private to IT, and the employee isn't notified. The manager can solve it or hand it back. Admins choose who receives escalations (**Admin Console → General**).
+**Escalation:** if a technician can't finish a ticket, they press **⬆ Escalate to manager / admin**, choose which IT manager or admin (the default is the one set under *General → Escalations go to*) and write why. The ticket moves to that person, who gets an email with the reason. The reason stays private to IT, and the employee isn't notified. The manager can solve it or hand it back. Admins choose who receives escalations (**Admin Console → General**).
 
 ### Emails
 | When | Who gets an email |
@@ -96,7 +96,7 @@ Admins can rename, reorder, hide, add or remove categories and change their ques
 | Escalated | The IT manager receiving escalations, with the reason |
 | IT replies | The employee |
 | The employee replies | The assigned IT person (or the IT manager if nobody is assigned) |
-| Assigned / approved / rejected / resolved / reopened | The people involved |
+| Assigned / approved / rejected / resolved / escalated by the employee | The people involved |
 
 Every email is in Arabic and English and is recorded in a log (`email_log`). IT staff also see a **History** on each ticket (created, assigned, status changes, escalations, approvals, resolution), so every step is documented both in the app and by email.
 

@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS = {
   approverId: null,
   escalateTo: null,                     // who receives escalations (null → first active IT manager)
   kbSuggest: true,
-  csat: true,
+  employeeEscalateTo: null,             // who gets a ticket when the employee says it's still not fixed (null → same as IT escalations)
   supportCcUpdates: false,              // also copy the support mailbox on resolve / reopen / approval decisions
   greeting: B("Hi {name}, how can IT help?", "مرحبًا {name}، كيف يمكن لفريق التقنية مساعدتك؟"),
   heroSub: B("Search for a quick fix, or pick a category below to raise a ticket.", "ابحث عن حل سريع، أو اختر فئة بالأسفل لفتح تذكرة."),
@@ -163,6 +163,11 @@ const isLead = r => r === "manager" || r === "admin";
 
 // Who receives an escalation: the chosen person if they're an active IT manager/admin,
 // otherwise the first active IT manager, otherwise the first active admin.
+// When an employee says a resolved ticket is still not fixed: the admin's choice, else the normal escalation contact.
+function pickEmployeeEscalationTarget(settings, users) {
+  const chosen = users.find(u => u.id === settings.employeeEscalateTo && u.active !== false && (itRoleOf(u) === "manager" || itRoleOf(u) === "admin"));
+  return chosen ? chosen.id : pickEscalationTarget(settings, users);
+}
 function pickEscalationTarget(settings, users) {
   const lead = u => u && u.active !== false && (itRoleOf(u) === "manager" || itRoleOf(u) === "admin");
   const chosen = users.find(u => u.id === settings.escalateTo);
@@ -247,7 +252,8 @@ async function loadConfig(viewer, roleOverride) {
     supportEmail: isLead(role) ? SUPPORT_EMAIL() : undefined,
     supportEnabled: !!SUPPORT_EMAIL(),
     autoAssign: settings.autoAssign, approvalMode: settings.approvalMode, approver: settings.approverId,
-    kbSuggest: settings.kbSuggest, csat: settings.csat, supportCcUpdates: settings.supportCcUpdates,
+    kbSuggest: settings.kbSuggest, supportCcUpdates: settings.supportCcUpdates,
+    employeeEscalateTo: settings.employeeEscalateTo, employeeEscalateTarget: pickEmployeeEscalationTarget(settings, users),
     escalateTo: settings.escalateTo, escalateTarget: pickEscalationTarget(settings, users),
     assetTypes: listMap(settings.lists.assetTypes), assetStatuses: ASSET_STATUSES, assetLocations: listMap(settings.lists.locations), sectors: listMap(settings.lists.sectors),
     empPriorities: listMap(settings.lists.empPriorities), lists: role === "admin" ? settings.lists : undefined,
@@ -274,7 +280,7 @@ function shapeTicket(t, messages, includeInternal, events) {
   return {
     id: t.id, cat: t.category_id, title: t.title, desc: t.description, req: t.requester_id, dept: t.dept_id,
     impact: t.impact, urgency: t.urgency, priority: t.priority, status: t.status, assignee: t.assignee_id,
-    created: ms(t.created_at), updated: ms(t.updated_at), resolved: ms(t.resolved_at), csat: t.csat,
+    created: ms(t.created_at), updated: ms(t.updated_at), resolved: ms(t.resolved_at),
     fields: t.fields || {}, link: t.attachment_url, major: !!t.is_major, asset: t.asset_id || null,
     approval: t.approval_state ? { by: t.approver_id, state: t.approval_state, reason: t.approval_reason } : null,
     escalated: t.escalated_at ? { at: ms(t.escalated_at), by: t.escalated_by, from: t.escalated_from, reason: t.escalation_reason } : null,
@@ -323,10 +329,10 @@ function buildEmail(kind, t, ctx, extra = {}) {
     rejected: ["تم رفض الطلب", "Request rejected", `تم رفض الطلب.${note ? "\nالسبب: " + note : ""}\n\n${sAr}`, `The request was rejected.${note ? "\nReason: " + note : ""}\n\n${sEn}`],
     reply_to_requester: ["رد جديد من فريق التقنية", "New reply from IT", `${note}\n\n${sAr}`, `${note}\n\n${sEn}`],
     reply_to_it: ["رد جديد من الموظف", "New reply from the employee", `${note}\n\n${sAr}`, `${note}\n\n${sEn}`],
-    resolved: ["تم حل تذكرتك", "Your ticket was resolved", `حدد فريق التقنية هذه التذكرة كمحلولة. افتح مكتب الدعم لتأكيد الحل وتقييمه، أو لإعادة فتحها.\nالحل: ${note}\n\n${sAr}`, `IT marked this ticket as resolved. Open the Help Desk to confirm and rate the fix, or reopen it.\nFix: ${note}\n\n${sEn}`],
+    resolved: ["تم حل تذكرتك", "Your ticket was resolved", `حدد فريق التقنية هذه التذكرة كمحلولة. افتح مكتب الدعم لإغلاقها، أو لتصعيدها إذا كانت المشكلة ما زالت قائمة.\nالحل: ${note}\n\n${sAr}`, `IT marked this ticket as resolved. Open the Help Desk to close it, or escalate it if the problem is still there.\nFix: ${note}\n\n${sEn}`],
     escalated: ["تم تصعيد تذكرة إليك", "Ticket escalated to you", `صعّد ${extra.by || "فريق التقنية"} هذه التذكرة إليك.\nالسبب: ${note}\n\n${sAr}\n\nالتفاصيل:\n${t.description}`, `${extra.by || "IT"} escalated this ticket to you.\nReason: ${note}\n\n${sEn}\n\nDetails:\n${t.description}`],
     unassigned_new: ["تذكرة جديدة بانتظار الإسناد", "New ticket waiting to be assigned", `فُتحت تذكرة جديدة ولم تُسند لأحد. يُرجى إسنادها من قائمة التذاكر ← غير مُسندة.\n\n${sAr}\n\nالتفاصيل:\n${t.description}`, `A new ticket was raised and nobody is assigned to it. Please assign it from Ticket Queue → Unassigned.\n\n${sEn}\n\nDetails:\n${t.description}`],
-    reopened: ["أُعيد فتح التذكرة", "Ticket reopened", `أعاد الموظف فتح التذكرة لأن المشكلة ما زالت قائمة.\n\n${sAr}`, `The employee reopened the ticket because the issue is still happening.\n\n${sEn}`],
+    reopened: ["أُعيد فتح التذكرة", "Ticket reopened", `قال الموظف إن المشكلة ما زالت قائمة.${note ? "\nالسبب: " + note : ""}${extra.to ? "\nتم تصعيدها إلى " + extra.to + "." : ""}\n\n${sAr}`, `The employee says the issue is still happening.${note ? "\nReason: " + note : ""}${extra.to ? "\nIt was escalated to " + extra.to + "." : ""}\n\n${sEn}`],
   }[kind];
   const [hAr, hEn, bAr, bEn] = T;
   return {
@@ -350,6 +356,6 @@ async function notify(kind, t, ctx, toList, extra = {}, logKind) {
 
 module.exports = {
   supabase, SUPPORT_EMAIL, IT_ROLES, STATUSES, OPEN_STATES, PRIOS, DEFAULT_SETTINGS, isOpenStatus, customStatuses,
-  itRoleOf, isIT, isLead, pickEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, COMPANY_SECTORS, shapeAsset, cleanSpecs, SPEC_TYPES, DEFAULT_LISTS, LIST_KEYS, LIST_USAGE, inList, listLabel, dateStr, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
+  itRoleOf, isIT, isLead, pickEscalationTarget, pickEmployeeEscalationTarget, ASSET_TYPES, ASSET_STATUSES, ASSET_LOCATIONS, COMPANY_SECTORS, shapeAsset, cleanSpecs, SPEC_TYPES, DEFAULT_LISTS, LIST_KEYS, LIST_USAGE, inList, listLabel, dateStr, STOCK_CATEGORIES, STOCK_STATUSES, PR_STATUSES, str, bi, isColor, check, SetupRequired,
   loadUsers, loadSettings, loadConfig, shapeTicket, notify, buildEmail,
 };

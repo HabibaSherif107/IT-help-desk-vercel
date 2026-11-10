@@ -85,10 +85,10 @@ function pickApprover(settings, members, requester) {
 // ── Settings validation (admin) ───────────────────────────────
 function cleanSetting(key, v, members) {
   switch (key) {
-    case "autoAssign": case "kbSuggest": case "csat": case "supportCcUpdates": return !!v;
+    case "autoAssign": case "kbSuggest": case "supportCcUpdates": return !!v;
     case "approvalMode": return v === "fixed" ? "fixed" : "direct_manager";
     case "approverId": return v && members.some(m => m.id === v && m.active !== false) ? v : null;
-    case "escalateTo": return v && members.some(m => m.id === v && m.active !== false && isLead(itRoleOf(m))) ? v : null;
+    case "escalateTo": case "employeeEscalateTo": return v && members.some(m => m.id === v && m.active !== false && isLead(itRoleOf(m))) ? v : null;
     case "greeting": case "heroSub": return bi(v, 300);
     case "prio": {
       // Ordered: the first level is the most urgent. Ids look like P1, P2 … (new ones get the next number).
@@ -448,7 +448,13 @@ module.exports = async function handler(req, res) {
         const reason = str(body.reason, 1000).trim();
         if (!reason) return fail(res, 400, "Say why you're escalating.");
         const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
-        const target = IT.pickEscalationTarget(settings, members);
+        // The agent can pick which IT manager / admin to escalate to; otherwise the admin's default escalation contact.
+        let target = IT.pickEscalationTarget(settings, members);
+        if (body.to) {
+          const pick = members.find(m => m.id === body.to && m.active !== false && isLead(itRoleOf(m)));
+          if (!pick) return fail(res, 400, "You can only escalate to an active IT manager or admin.");
+          target = pick.id;
+        }
         if (!target) return fail(res, 400, "Nobody is set up to receive escalations. Ask the admin to choose someone in Admin Console → General.");
         if (target === viewer.id) return fail(res, 400, "You receive escalations yourself. Assign the ticket instead.");
         if (t.assignee_id === target) return fail(res, 400, "This ticket is already with " + (members.find(m => m.id === target) || {}).name + ".");
@@ -476,20 +482,36 @@ module.exports = async function handler(req, res) {
       if (action === "confirm") {
         if (!mine) return fail(res, 403, "Only the employee who raised the ticket can confirm it.");
         if (t.status !== "Resolved") return fail(res, 400, "This ticket isn't waiting for confirmation.");
-        const csat = parseInt(body.csat, 10);
-        await patchTicket(t.id, { status: "Closed", closed_at: nowIso(), csat: csat >= 1 && csat <= 5 ? csat : null });
-        await addEvent(t.id, viewer.id, "closed", ev("Employee confirmed the fix" + (csat ? ` (${csat}/5)` : ""), "أكد الموظف الحل" + (csat ? ` (${csat}/5)` : "")));
+        await patchTicket(t.id, { status: "Closed", closed_at: nowIso() });
+        await addEvent(t.id, viewer.id, "closed", ev("Employee closed the ticket", "أغلق الموظف التذكرة"));
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
       }
 
+      // Employee: "it's still not fixed" → the ticket is escalated to the person the admin chose
+      // (Admin Console → General). Previous technician is told too.
       if (action === "reopen") {
-        if (!mine) return fail(res, 403, "Only the employee who raised the ticket can reopen it.");
-        if (t.status !== "Resolved") return fail(res, 400, "Only a resolved ticket can be reopened.");
-        await addMessage(t.id, viewer.id, "🔄 " + (str(body.text, 2000).trim() || "Reopened: the issue is still happening. / أُعيد الفتح: المشكلة ما زالت قائمة."), false);
-        await patchTicket(t.id, { status: "In Progress", resolved_at: null });
-        await addEvent(t.id, viewer.id, "reopened", ev("Employee reopened the ticket", "أعاد الموظف فتح التذكرة"));
+        if (!mine) return fail(res, 403, "Only the employee who raised the ticket can escalate it.");
+        if (t.status !== "Resolved") return fail(res, 400, "Only a resolved ticket can be escalated.");
+        const reason = str(body.text, 2000).trim();
+        if (!reason) return fail(res, 400, "Please say what is still not working.");
+        const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
+        const target = IT.pickEmployeeEscalationTarget(settings, members);
+        const prev = t.assignee_id || null;
+        await addMessage(t.id, viewer.id, "⬆ " + reason, false);
+        const patch = { status: "In Progress", resolved_at: null };
+        if (target && target !== prev) Object.assign(patch, { assignee_id: target, escalated_at: nowIso(), escalated_by: viewer.id, escalated_from: prev, escalation_reason: reason });
+        await patchTicket(t.id, patch);
+        await addEvent(t.id, viewer.id, "escalated", target && target !== prev
+          ? ev(`Employee says it's not fixed; escalated to ${nameOf(members, target)}: ${short(reason)}`, `قال الموظف إن المشكلة لم تُحل؛ صُعّدت إلى ${nameOf(members, target)}: ${short(reason)}`)
+          : ev(`Employee says it's not fixed: ${short(reason)}`, `قال الموظف إن المشكلة لم تُحل: ${short(reason)}`));
         const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
-        await IT.notify("reopened", fresh, ctx, [(ctx.assignee && ctx.assignee.email) || ctx.fallback, ctx.supportCc]);
+        if (target && target !== prev) {
+          await IT.notify("escalated", fresh, ctx, [ctx.assignee && ctx.assignee.email, ctx.supportCc], { text: reason, by: me.name }, "escalated");
+          const pu = members.find(m => m.id === prev);
+          if (pu) await IT.notify("reopened", fresh, ctx, pu.email, { text: reason, to: nameOf(members, target) });
+        } else {
+          await IT.notify("reopened", fresh, ctx, [(ctx.assignee && ctx.assignee.email) || ctx.fallback, ctx.supportCc], { text: reason });
+        }
         return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
       }
 

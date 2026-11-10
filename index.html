@@ -68,7 +68,7 @@ const S = {
   not_found_raise:["Didn't find it? Raise a ticket","لم تجد الحل؟ افتح تذكرة"], need_help:["What do you need help with?","بماذا تحتاج المساعدة؟"],
   incident:["Incident","عطل"], request:["Request","طلب"], needs_approval:["needs manager approval","يتطلب موافقة المدير"],
   my_active:["My active requests ({n})","طلباتي النشطة ({n})"], view_all:["View all →","عرض الكل ←"], opened:["opened {x}","فُتحت {x}"], with_x:["with {name}","مع {name}"],
-  resolved_confirm_hint:["IT marked this resolved. Please confirm or reopen.","حدد فريق التقنية هذه التذكرة كمحلولة. يُرجى التأكيد أو إعادة الفتح."],
+  resolved_confirm_hint:["IT marked this resolved. Please close it, or escalate it if it's still not fixed.","حدد فريق التقنية هذه التذكرة كمحلولة. يُرجى إغلاقها، أو تصعيدها إذا لم تُحل المشكلة."],
   no_active:["No active requests","لا توجد طلبات نشطة"], popular:["Popular quick fixes","حلول سريعة شائعة"], just_now:["just now","الآن"], hrs:["h","ساعة"], days:["days","يوم"],
   raise_title:["Raise an IT ticket","فتح تذكرة تقنية"], requires_approval:["Requires manager approval","يتطلب موافقة المدير"], change_cat:["Change category","تغيير الفئة"],
   f_title:["Short title","عنوان مختصر"], f_title_ph:["e.g. Outlook won't open","مثال: البريد لا يفتح"], kb_suggest:["These articles might solve it right away:","قد تحل هذه المقالات مشكلتك فورًا:"],
@@ -90,8 +90,8 @@ const S = {
   waiting_approval_any:["Waiting for approval. IT starts after approval.","بانتظار الموافقة. يبدأ فريق التقنية العمل بعد الموافقة."],
   approved_by:["Approved by {name}","تمت الموافقة من {name}"], rejected_by:["Rejected by {name}","رُفض من {name}"],
   resolved_q:["IT marked this as resolved. Is it fixed?","حدد فريق التقنية هذه التذكرة كمحلولة. هل تم الإصلاح؟"], rate:["Rate the support:","قيّم الدعم:"],
-  yes_close:["✓ Yes, close it","✓ نعم، أغلقها"], still_broken:["✕ Still broken, reopen","✕ المشكلة قائمة، أعد الفتح"],
-  toast_closed:["Thanks! Ticket closed.","شكرًا! تم إغلاق التذكرة."], toast_reopened:["Reopened. IT has been notified.","أُعيد الفتح وتم إبلاغ فريق التقنية."],
+  yes_close:["✓ Yes, close it","✓ نعم، أغلقها"], still_broken:["⬆ Not fixed – escalate","⬆ لم تُحل – تصعيد"],
+  toast_closed:["Ticket closed.","تم إغلاق التذكرة."], toast_reopened:["Reopened. IT has been notified.","أُعيد الفتح وتم إبلاغ فريق التقنية."],
   assignee:["Assignee","المسؤول"], unassigned:["Unassigned","غير مُسندة"], take_it:["✋ Take it","✋ استلام"], resolve:["✓ Resolve","✓ حل"],
   declare_major:["🚨 Declare major incident","🚨 إعلان عطل رئيسي"], clear_major:["Clear major incident","إلغاء العطل الرئيسي"],
   toast_major:["Major incident declared. Banner shown to all staff.","تم إعلان عطل رئيسي وظهر التنبيه لجميع الموظفين."],
@@ -103,7 +103,7 @@ const S = {
   ph_internal:["Note visible to IT only…","ملاحظة يراها فريق التقنية فقط…"], ph_reply:["Reply to {name}…","اكتب ردًا إلى {name}…"], ph_req:["Add a message for IT…","أضف رسالة لفريق التقنية…"],
   send:["Send","إرسال"], toast_note:["Internal note added","تمت إضافة ملاحظة داخلية"], toast_reply:["Reply sent. They'll get an email.","تم إرسال الرد وسيصلهم بريد إلكتروني."],
   resolve_title:["Resolve {id}","حل {id}"], fix_q:["What was the fix? (sent to the employee)","ما الحل الذي تم؟ (يُرسل إلى الموظف)"], fix_ph:["e.g. Replaced display cable and tested.","مثال: تم استبدال كابل الشاشة واختباره."],
-  fix_hint:["The employee will be asked to confirm and rate the fix.","سيُطلب من الموظف تأكيد الحل وتقييمه."], mark_resolved:["Mark resolved","تحديد كمحلولة"], toast_resolved:["Resolved. The employee was emailed.","تم الحل وإبلاغ الموظف بالبريد."],
+  fix_hint:["The employee will be asked to close the ticket, or escalate it if it's still not fixed.","سيُطلب من الموظف إغلاق التذكرة، أو تصعيدها إذا لم تُحل المشكلة."], mark_resolved:["Mark resolved","تحديد كمحلولة"], toast_resolved:["Resolved. The employee was emailed.","تم الحل وإبلاغ الموظف بالبريد."],
   appr_intro:["Requests that need approval wait here before IT starts work. Approvers are also emailed.","الطلبات التي تحتاج موافقة تنتظر هنا قبل أن يبدأ فريق التقنية العمل، ويصل للمعتمد بريد إلكتروني أيضًا."],
   requested_by:["requested by {name} ({dept})","طلبها {name} ({dept})"], approve:["✓ Approve","✓ موافقة"], reject:["✕ Reject","✕ رفض"],
   no_approvals:["No approvals waiting","لا توجد موافقات معلقة"], decided:["Decided","تم البت فيها"], approved:["Approved","تمت الموافقة"], rejected:["Rejected","مرفوضة"],
@@ -140,18 +140,18 @@ const S = {
   depts_note:["Departments are used on tickets, on the dashboard and to group people. A department in use can't be deleted.","تُستخدم الأقسام في التذاكر ولوحة المتابعة وتجميع الأشخاص. لا يمكن حذف قسم مستخدم."],
   g_support:["IT support mailbox","صندوق بريد الدعم الفني"], g_support_d:["New tickets in categories with the support copy on are emailed here. To change or remove it, edit IT_SUPPORT_EMAIL in Vercel.","تُرسل إليه التذاكر الجديدة في الفئات التي فُعّلت لها نسخة الدعم. لتغييره أو إزالته عدّل IT_SUPPORT_EMAIL في Vercel."],
   g_support_off:["No support mailbox","لا يوجد صندوق بريد للدعم"], g_support_off_d:["Every ticket is emailed to its assigned person. New tickets that nobody is assigned to, and replies on them, go to {name} (the escalation contact).","تُرسل كل تذكرة إلى المسؤول عنها. التذاكر الجديدة غير المُسندة والردود عليها تُرسل إلى {name} (مستقبل التصعيد)."],
-  g_cc:["Also copy the support mailbox on resolve, reopen and approval decisions","إرسال نسخة لصندوق الدعم أيضًا عند الحل وإعادة الفتح وقرارات الموافقة"],
+  g_cc:["Also copy the support mailbox on resolve, escalations and approval decisions","إرسال نسخة لصندوق الدعم أيضًا عند الحل والتصعيد وقرارات الموافقة"],
   g_auto:["Auto-assign new tickets by category","إسناد التذاكر الجديدة تلقائيًا حسب الفئة"], g_auto_d:["When off, every ticket arrives unassigned and the IT team picks it up from the queue.","عند الإيقاف تصل كل تذكرة دون إسناد ويستلمها الفريق من القائمة."],
   g_approval:["Who approves requests","من يوافق على الطلبات"], g_mode_dm:["The employee's manager (set in Users & roles)","مدير الموظف (يُحدد في المستخدمون والأدوار)"], g_mode_fixed:["Always the person below","دائمًا الشخص المحدد أدناه"],
   g_approver:["Fallback / fixed approver","المعتمد الاحتياطي / الثابت"], g_kb:["Suggest articles while employees type","اقتراح مقالات أثناء كتابة الموظف"], g_csat:["Ask employees to rate resolved tickets","طلب تقييم التذاكر المحلولة"],
   general_texts:["Text shown on the Help Center","النصوص الظاهرة في مركز المساعدة"], g_greeting:["Greeting (use {name} for the first name)","التحية (استخدم {name} للاسم الأول)"], g_hero_sub:["Line under the greeting","السطر أسفل التحية"],
   none_opt:["— None —","— لا أحد —"],
-  escalate:["⬆ Escalate to manager","⬆ تصعيد إلى المدير"], escalate_title:["Escalate {id} to {name}","تصعيد {id} إلى {name}"],
+  escalate:["⬆ Escalate to manager / admin","⬆ تصعيد إلى المدير / المسؤول"], escalate_title:["Escalate {id} to {name}","تصعيد {id} إلى {name}"],
   escalate_reason:["Why are you escalating? (seen by IT only)","لماذا التصعيد؟ (يراه فريق التقنية فقط)"], escalate_ph:["e.g. Needs a purchase decision, or beyond my access","مثال: يحتاج قرار شراء، أو خارج صلاحياتي"],
   escalate_hint:["The ticket moves to {name}, who gets an email with your reason. The employee isn't notified.","تنتقل التذكرة إلى {name} ويصله بريد بالسبب. لا يتم إشعار الموظف."],
   escalate_btn:["Escalate","تصعيد"], toast_escalated:["Escalated to {name}","تم التصعيد إلى {name}"], escalated:["⬆ Escalated","⬆ مُصعّدة"],
   escalated_by:["Escalated by {by} {x}: {reason}","صعّدها {by} {x}: {reason}"], q_escalated:["Escalated","المُصعّدة"], k_escalated:["Escalated (open)","مُصعّدة (مفتوحة)"],
-  g_escalate:["Escalations go to","يُرسل التصعيد إلى"], g_escalate_d:["When a technician presses Escalate, the ticket is reassigned to this person, who gets an email.","عند ضغط الفني على «تصعيد» تُسند التذكرة لهذا الشخص ويصله بريد إلكتروني."],
+  g_escalate:["Escalations go to","يُرسل التصعيد إلى"], g_escalate_d:["The default person when a technician presses Escalate (they can also pick another IT manager or admin). The ticket is reassigned to them and they get an email.","الشخص الافتراضي عند ضغط الفني على «تصعيد» (ويمكنه اختيار مدير أو مسؤول آخر). تُسند التذكرة إليه ويصله بريد."],
   first_mgr:["— First IT manager —","— أول مدير تقنية —"], cat_support:["Email the support mailbox for new tickets in this category","إرسال نسخة لصندوق الدعم عند فتح تذكرة في هذه الفئة"],
   h_support:["Support mailbox","صندوق الدعم"], esc_to_line:["Escalations go to {name}","يُرسل التصعيد إلى {name}"], esc_none:["Nobody is set to receive escalations yet.","لم يُحدد بعد من يستقبل التصعيد."],
   email_to:["Emailed to","يُرسل البريد إلى"],
@@ -200,6 +200,15 @@ const S = {
   impact_order_note:["Listed from smallest to biggest impact (2–5 answers).","مرتبة من الأقل تأثيرًا إلى الأكبر (2–5 إجابات)."], urgency_order_note:["Listed from least to most urgent (2–5 answers).","مرتبة من الأقل إلحاحًا إلى الأكثر (2–5 إجابات)."],
   status_note2:["The 🔒 built-in statuses drive the ticket workflow (approval, resolve, close), so they can be renamed and recoloured but not deleted. Statuses you add count as “open” and IT can set them on a ticket (for example “On hold – waiting for parts”). A status that tickets are in can't be deleted.","الحالات الأساسية 🔒 تتحكم في سير التذكرة (الموافقة، الحل، الإغلاق)، لذا يمكن إعادة تسميتها وتغيير لونها دون حذفها. الحالات التي تضيفها تُعتبر «مفتوحة» ويمكن لفريق التقنية اختيارها للتذكرة (مثل «معلّقة – بانتظار قطع غيار»). لا يمكن حذف حالة توجد بها تذاكر."],
   builtin:["Built-in","أساسية"], builtin_d:["Needed by the ticket workflow","مطلوبة لسير عمل التذاكر"],
+  emp_esc_title:["{id}: still not fixed","{id}: لم تُحل المشكلة"], emp_esc_q:["What is still not working?","ما الذي ما زال لا يعمل؟"],
+  emp_esc_ph:["e.g. The printer worked for an hour, then stopped again","مثال: عملت الطابعة لساعة ثم توقفت مجددًا"],
+  emp_esc_hint:["Your ticket will be escalated to {name}, who gets an email with your message.","ستُصعّد تذكرتك إلى {name} ويصله بريد برسالتك."],
+  emp_esc_hint_any:["Your ticket will be reopened and IT will be notified.","ستُعاد فتح تذكرتك وسيتم إبلاغ فريق التقنية."],
+  toast_emp_escalated:["Escalated. IT has been notified.","تم التصعيد وإبلاغ فريق التقنية."],
+  escalate_to_lbl:["Escalate to","التصعيد إلى"], default_lbl:["default","الافتراضي"],
+  g_emp_escalate:["When an employee says a resolved ticket is still not fixed, escalate to","عندما يقول الموظف إن التذكرة المحلولة لم تُحل، تُصعّد إلى"],
+  g_emp_escalate_d:["The ticket is reopened and reassigned to this person, who gets an email with the employee's message. The previous technician is told too.","يُعاد فتح التذكرة وتُسند لهذا الشخص ويصله بريد برسالة الموظف. ويتم إبلاغ الفني السابق أيضًا."],
+  same_as_it_esc:["— Same as IT escalations —","— نفس جهة تصعيد فريق التقنية —"],
   no_match_filters:["Nothing matches these filters.","لا توجد نتائج مطابقة لهذه الفلاتر."],
   toast_device_saved:["Device saved","تم حفظ الجهاز"], toast_device_deleted:["Device deleted","تم حذف الجهاز"], confirm_delete_device:["Delete device {id}?","حذف الجهاز {id}؟"], none_dash:["— None —","— لا يوجد —"], history:["History ({n})","السجل ({n})"], system:["System","النظام"], close:["Close","إغلاق"], menu:["Menu","القائمة"],
   nav_stock:["Stock","المخزون"], title_stock:["IT Stock Register","سجل مخزون تقنية المعلومات"], nav_pr:["Purchase Requests","طلبات الشراء"],
@@ -421,11 +430,11 @@ function Queue({me,role,tickets,onOpen,selId}){
 function Drawer({tk,me,role,onClose,onChanged,toast}){
   const agent=isITRole(role), mine=tk.req===me;
   const [reply,setReply]=useState(""), [internal,setInternal]=useState(false), [busy,setBusy]=useState(false);
-  const [resolveOpen,setResolveOpen]=useState(false), [resNote,setResNote]=useState(""), [rating,setRating]=useState(0);
+  const [resolveOpen,setResolveOpen]=useState(false), [resNote,setResNote]=useState(""), [empEsc,setEmpEsc]=useState(false), [empEscText,setEmpEscText]=useState("");
   const [rej,setRej]=useState(false), [reason,setReason]=useState("");
-  const [escOpen,setEscOpen]=useState(false), [escReason,setEscReason]=useState("");
-  const escTo=CFG.escalateTarget, canEscalate=agent&&isOpen(tk)&&tk.status!=="Pending Approval"&&escTo&&escTo!==me&&tk.assignee!==escTo;
-  useEffect(()=>{setReply("");setInternal(false);setRating(0);},[tk.id]);
+  const [escOpen,setEscOpen]=useState(false), [escReason,setEscReason]=useState(""), [escPick,setEscPick]=useState("");
+  const escTo=CFG.escalateTarget, leadsToEscalate=CFG.people.filter(p=>p.active!==false&&isLeadRole(p.role)&&p.id!==me&&p.id!==tk.assignee), canEscalate=agent&&isOpen(tk)&&tk.status!=="Pending Approval"&&leadsToEscalate.length>0;
+  useEffect(()=>{setReply("");setInternal(false);setEmpEsc(false);setEmpEscText("");setEscPick("");},[tk.id]);
   const c=cat(tk.cat), rq=person(tk.req)||{name:"—",dept:tk.dept};
   const run=async(action,data,okMsg)=>{ setBusy(true); try{ const r=await api(action,{id:tk.id,...data}); onChanged(r.ticket); if(okMsg) toast(okMsg); return true; }catch(x){ toast(x.message,"error"); return false; } finally{ setBusy(false); } };
   const send=async()=>{ if(!reply.trim())return; if(await run("reply",{text:reply.trim(),internal:agent&&internal},internal?t("toast_note"):t("toast_reply"))) setReply(""); };
@@ -445,8 +454,7 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
           e("div",null,ap.state==="pending"?"⏳ "+(ap.by?t("waiting_approval",{name:pname(ap.by)}):t("waiting_approval_any")):ap.state==="approved"?"✓ "+t("approved_by",{name:pname(ap.by)}):"✕ "+t("rejected_by",{name:pname(ap.by)})+(ap.reason?": "+ap.reason:"")),
           canDecide&&e("div",{style:{display:"flex",gap:8,marginTop:10}},e("button",{disabled:busy,onClick:()=>run("approve",{},t("toast_approved")),style:{...BP,background:"#059669",padding:"7px 14px"}},t("approve")),e("button",{disabled:busy,onClick:()=>setRej(true),style:{...BS,padding:"7px 14px"}},t("reject")))),
         mine&&tk.status==="Resolved"&&e("div",{style:{background:"#064E3B44",border:"1px solid #34D39966",borderRadius:10,padding:14,marginBottom:14}},e("div",{style:{fontWeight:700,marginBottom:8}},t("resolved_q")),
-          CFG.csat&&e("div",{style:{display:"flex",gap:4,marginBottom:10,alignItems:"center"}},e("span",{style:{fontSize:"0.8rem",color:"#8A8583",marginInlineEnd:6}},t("rate")),[1,2,3,4,5].map(n=>e("button",{key:n,onClick:()=>setRating(n),"aria-label":n+" / 5","aria-pressed":n<=rating,style:{background:"none",border:"none",fontSize:"1.4rem",color:n<=rating?"#FACC15":"#3A3231",padding:0}},"★"))),
-          e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},e("button",{disabled:busy,onClick:()=>run("confirm",{csat:rating||null},t("toast_closed")),style:{...BP,background:"#059669"}},t("yes_close")),e("button",{disabled:busy,onClick:()=>run("reopen",{},t("toast_reopened")),style:BS},t("still_broken")))),
+          e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},e("button",{id:"close-ticket",disabled:busy,onClick:()=>run("confirm",{},t("toast_closed")),style:{...BP,background:"#059669"}},t("yes_close")),e("button",{id:"emp-escalate",disabled:busy,onClick:()=>setEmpEsc(true),style:{...BS,color:"#FCD34D",borderColor:"#A16207"}},t("still_broken")))),
         agent&&isOpen(tk)&&e("div",{className:"g3",style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}},
           e("div",null,e("label",{style:LS,htmlFor:"d-asg"},t("assignee")),e("select",{id:"d-asg",disabled:busy,value:tk.assignee||"",onChange:ev=>run("update-ticket",{assignee:ev.target.value||null},t("toast_saved_t")),style:IS},e("option",{value:""},t("unassigned")),CFG.people.filter(p=>isITRole(p.role)&&(p.active!==false||p.id===tk.assignee)).map(a=>e("option",{key:a.id,value:a.id},a.name)))),
           e("div",null,e("label",{style:LS,htmlFor:"d-st"},t("status")),e("select",{id:"d-st",disabled:busy||tk.status==="Pending Approval",value:tk.status,onChange:ev=>run("update-ticket",{status:ev.target.value},t("toast_saved_t")),style:IS},["New","Assigned","In Progress","Waiting on User"].concat(customSts()).concat(tk.status==="Pending Approval"?["Pending Approval"]:[]).map(x=>e("option",{key:x,value:x},stLabel(x))))),
@@ -468,8 +476,7 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
                 e("option",{value:""},t("none_dash")),ASSETS.filter(x=>x.status!=="retired"||x.id===tk.asset).sort((x,y)=>(y.owner===tk.req)-(x.owner===tk.req)).map(x=>e("option",{key:x.id,value:x.id},(x.owner===tk.req?"★ ":"")+assetLabel(x)))),
               warn&&e("span",{style:{color:"#F59E0B",fontSize:"0.78rem"}},warn)); })()),
           row(t("opened_on"),fmtDate(tk.created)),
-          tk.link&&/^https?:\/\//i.test(tk.link)&&row(t("attachment"),e("a",{href:tk.link,target:"_blank",rel:"noopener noreferrer",style:{color:"#F16A6F"}},t("open_link"))),
-          tk.csat&&row(t("satisfaction"),"★".repeat(tk.csat)+"☆".repeat(5-tk.csat))),
+          tk.link&&/^https?:\/\//i.test(tk.link)&&row(t("attachment"),e("a",{href:tk.link,target:"_blank",rel:"noopener noreferrer",style:{color:"#F16A6F"}},t("open_link")))),
         agent&&(tk.history||[]).length>0&&e("details",{style:{...card,padding:"10px 14px",marginBottom:14}},
           e("summary",{style:{cursor:"pointer",fontSize:"0.85rem",fontWeight:700,color:"#C9C6C4"}},t("history",{n:tk.history.length})),
           e("ol",{style:{listStyle:"none",marginTop:10}},tk.history.map((h,i)=>e("li",{key:i,style:{display:"flex",gap:10,padding:"6px 0",borderTop:i?"1px solid #231F1E":"none",fontSize:"0.82rem"}},
@@ -487,8 +494,15 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
         e("div",{style:{display:"flex",gap:8}},e("textarea",{id:"composer","aria-label":t("send"),rows:2,maxLength:5000,value:reply,onChange:ev=>setReply(ev.target.value),placeholder:agent?(internal?t("ph_internal"):t("ph_reply",{name:rq.name.split(" ")[0]})):t("ph_req"),style:{...IS,resize:"none",flex:1,borderColor:internal?"#A16207":"#332C2B"}}),e("button",{id:"send-btn",disabled:busy||!reply.trim(),onClick:send,style:{...BP,alignSelf:"stretch",background:internal?"#A16207":"#E11A22"}},t("send"))))),
     resolveOpen&&e(Modal,{title:t("resolve_title",{id:tk.id}),onClose:()=>setResolveOpen(false),w:480},e("label",{style:LS,htmlFor:"fix-note"},t("fix_q")+" *"),e("textarea",{id:"fix-note",rows:4,value:resNote,onChange:ev=>setResNote(ev.target.value),placeholder:t("fix_ph"),style:{...IS,marginBottom:12}}),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},t("fix_hint")),
       e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setResolveOpen(false),style:BS},t("cancel")),e("button",{disabled:busy||!resNote.trim(),onClick:async()=>{ if(await run("resolve",{note:resNote.trim()},t("toast_resolved"))){setResolveOpen(false);setResNote("");} },style:{...BP,background:"#059669"}},t("mark_resolved")))),
-    escOpen&&e(Modal,{title:t("escalate_title",{id:tk.id,name:pname(escTo)}),onClose:()=>setEscOpen(false),w:480},e("label",{style:LS,htmlFor:"esc-reason"},t("escalate_reason")+" *"),e("textarea",{id:"esc-reason",rows:3,value:escReason,onChange:ev=>setEscReason(ev.target.value),placeholder:t("escalate_ph"),style:{...IS,marginBottom:12}}),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},t("escalate_hint",{name:pname(escTo)})),
-      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setEscOpen(false),style:BS},t("cancel")),e("button",{id:"esc-confirm",disabled:busy||!escReason.trim(),onClick:async()=>{ if(await run("escalate",{reason:escReason.trim()},t("toast_escalated",{name:pname(escTo)}))){setEscOpen(false);setEscReason("");} },style:{...BP,background:"#A16207"}},t("escalate_btn")))),
+    empEsc&&e(Modal,{title:t("emp_esc_title",{id:tk.id}),onClose:()=>setEmpEsc(false),w:480},
+      e("label",{style:LS,htmlFor:"emp-esc-text"},t("emp_esc_q")+" *"),e("textarea",{id:"emp-esc-text",rows:3,value:empEscText,onChange:ev=>setEmpEscText(ev.target.value),placeholder:t("emp_esc_ph"),style:{...IS,marginBottom:12}}),
+      e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},CFG.employeeEscalateTarget?t("emp_esc_hint",{name:pname(CFG.employeeEscalateTarget)}):t("emp_esc_hint_any")),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setEmpEsc(false),style:BS},t("cancel")),e("button",{id:"emp-esc-go",disabled:busy||!empEscText.trim(),onClick:async()=>{ if(await run("reopen",{text:empEscText.trim()},t("toast_emp_escalated"))){setEmpEsc(false);setEmpEscText("");} },style:{...BP,background:"#A16207"}},t("escalate_btn")))),
+    escOpen&&(()=>{ const target=escPick&&leadsToEscalate.some(p=>p.id===escPick)?escPick:(leadsToEscalate.some(p=>p.id===escTo)?escTo:leadsToEscalate[0].id);
+      return e(Modal,{title:t("escalate_title",{id:tk.id,name:pname(target)}),onClose:()=>setEscOpen(false),w:480},
+      e("label",{style:LS,htmlFor:"esc-to"},t("escalate_to_lbl")),e("select",{id:"esc-to",value:target,onChange:ev=>setEscPick(ev.target.value),style:{...IS,marginBottom:12}},leadsToEscalate.map(p=>e("option",{key:p.id,value:p.id},p.name+" · "+t("role_"+p.role)+(p.id===escTo?" ("+t("default_lbl")+")":"")))),
+      e("label",{style:LS,htmlFor:"esc-reason"},t("escalate_reason")+" *"),e("textarea",{id:"esc-reason",rows:3,value:escReason,onChange:ev=>setEscReason(ev.target.value),placeholder:t("escalate_ph"),style:{...IS,marginBottom:12}}),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},t("escalate_hint",{name:pname(target)})),
+      e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setEscOpen(false),style:BS},t("cancel")),e("button",{id:"esc-confirm",disabled:busy||!escReason.trim(),onClick:async()=>{ if(await run("escalate",{reason:escReason.trim(),to:target},t("toast_escalated",{name:pname(target)}))){setEscOpen(false);setEscReason("");setEscPick("");} },style:{...BP,background:"#A16207"}},t("escalate_btn")))); })(),
     rej&&e(Modal,{title:t("reject_title",{id:tk.id}),onClose:()=>setRej(false),w:440},e("label",{style:LS,htmlFor:"rej-reason"},t("reason_lbl")),e("textarea",{id:"rej-reason",rows:3,value:reason,onChange:ev=>setReason(ev.target.value),style:{...IS,marginBottom:14}}),
       e("div",{style:{display:"flex",justifyContent:"flex-end",gap:10}},e("button",{onClick:()=>setRej(false),style:BS},t("cancel")),e("button",{disabled:busy,onClick:async()=>{ if(await run("reject",{reason},t("toast_rejected"))){setRej(false);setReason("");} },style:BP},t("reject")))));
 }
@@ -687,26 +701,25 @@ function HBars({data}){ const [hov,setHov]=useState(null); const max=Math.max(1,
 function Dashboard({tickets}){
   const open=tickets.filter(isOpen), done=tickets.filter(x=>x.resolved);
   const avg=done.length?done.reduce((a,x)=>a+(x.resolved-x.created),0)/done.length:0;
-  const rated=tickets.filter(x=>x.csat), csat=rated.length?rated.reduce((a,x)=>a+x.csat,0)/rated.length:0;
+
   const urgent=open.filter(x=>urgentPrios().includes(x.priority)).length, wk=Date.now()-7*DAY;
   const kpi=(l,v,sub,tone)=>e("div",{key:l,style:{...card,padding:16}},e("div",{style:{fontSize:"0.75rem",color:"#8A8583",marginBottom:6}},l),e("div",{style:{fontSize:"1.8rem",fontWeight:800,fontVariantNumeric:"tabular-nums"}},e("bdi",{dir:"ltr"},v)),sub&&e("div",{style:{fontSize:"0.72rem",color:tone||"#8A8583",marginTop:4}},sub));
   const byCat=CFG.cats.map(c=>({k:c.icon+" "+L(c.n),v:tickets.filter(x=>x.cat===c.id).length})).filter(d=>d.v).sort((a,b)=>b.v-a.v);
   const byDept=Object.keys(CFG.depts).map(k=>({k:deptName(k),v:tickets.filter(x=>x.dept===k).length})).filter(d=>d.v).sort((a,b)=>b.v-a.v);
-  const team=CFG.people.filter(p=>isITRole(p.role)&&p.active!==false).map(a=>({a,open:open.filter(x=>x.assignee===a.id).length,done:done.filter(x=>x.assignee===a.id).length,csat:(r=>r.length?(r.reduce((s,x)=>s+x.csat,0)/r.length).toFixed(1):"—")(tickets.filter(x=>x.assignee===a.id&&x.csat))}));
+  const team=CFG.people.filter(p=>isITRole(p.role)&&p.active!==false).map(a=>({a,open:open.filter(x=>x.assignee===a.id).length,done:done.filter(x=>x.assignee===a.id).length}));
   return e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
     e("div",{className:"g4",style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}},
       kpi(t("k_open"),open.length,t("k_unassigned_sub",{n:open.filter(x=>!x.assignee).length})),
       kpi(t("k_urgent",{p:urgentPrios().join("–")}),urgent,urgent?"⚠ "+t("attention"):"✓ "+t("all_good"),urgent?"#F59E0B":"#34D399"),
       kpi(t("k_resolved7"),done.filter(x=>x.resolved>=wk).length),
       kpi(t("k_avg"),done.length?dur(avg):"—"),
-      kpi(t("k_csat"),csat?csat.toFixed(1)+" / 5":"—",t("k_ratings",{n:rated.length})),
       kpi(t("k_pending"),tickets.filter(x=>x.status==="Pending Approval").length),
       kpi(t("k_waiting"),tickets.filter(x=>x.status==="Waiting on User").length),
       kpi(t("k_escalated"),open.filter(x=>x.escalated).length)),
     e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},e(Section,{title:t("by_cat")},e(HBars,{data:byCat})),e(Section,{title:t("by_dept")},e(HBars,{data:byDept}))),
     e(Section,{title:t("workload")},e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:520}},
-      e("div",{style:{display:"grid",gridTemplateColumns:"1.6fr 90px 90px 90px",gap:12,padding:"8px 4px",...HEAD}},[t("h_member"),t("h_open"),t("h_resolved"),t("h_csat")].map(h=>e("span",{key:h},h))),
-      team.map(r=>e("div",{key:r.a.id,style:{display:"grid",gridTemplateColumns:"1.6fr 90px 90px 90px",gap:12,padding:"10px 4px",borderTop:"1px solid #231F1E",alignItems:"center",fontSize:"0.86rem",fontVariantNumeric:"tabular-nums"}},e("div",{style:{display:"flex",gap:8,alignItems:"center"}},e(Av,{id:r.a.id,size:26}),e("div",null,r.a.name,e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},t("role_"+r.a.role)))),e("span",{style:{fontWeight:700,color:r.open>=4?"#F59E0B":"#EDEBEA"}},r.open),e("span",null,r.done),e("span",null,r.csat==="—"?"—":"★ "+r.csat)))))));
+      e("div",{style:{display:"grid",gridTemplateColumns:"1.6fr 90px 90px",gap:12,padding:"8px 4px",...HEAD}},[t("h_member"),t("h_open"),t("h_resolved")].map(h=>e("span",{key:h},h))),
+      team.map(r=>e("div",{key:r.a.id,style:{display:"grid",gridTemplateColumns:"1.6fr 90px 90px",gap:12,padding:"10px 4px",borderTop:"1px solid #231F1E",alignItems:"center",fontSize:"0.86rem",fontVariantNumeric:"tabular-nums"}},e("div",{style:{display:"flex",gap:8,alignItems:"center"}},e(Av,{id:r.a.id,size:26}),e("div",null,r.a.name,e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},t("role_"+r.a.role)))),e("span",{style:{fontWeight:700,color:r.open>=4?"#F59E0B":"#EDEBEA"}},r.open),e("span",null,r.done)))))));
 }
 
 function Matrix({value,setValue,impacts,urgencies,prio}){ const m=value||CFG.matrix, im=impacts||CFG.impacts, ur=urgencies||CFG.urgencies, pr=prio||CFG.prio;
@@ -821,7 +834,7 @@ function Admin({setCfg,toast,onKB}){
   const [tab,setTab]=useState("cats");
   const [ed,setEd]=useState(null), [del,setDel]=useState(null), [busy,setBusy]=useState(false), [err,setErr]=useState("");
   const [draft,setDraft]=useState(()=>clone({prio:CFG.prio,impacts:CFG.impacts,urgencies:CFG.urgencies,matrix:CFG.matrix,statuses:CFG.statuses,
-    autoAssign:CFG.autoAssign,approvalMode:CFG.approvalMode,approverId:CFG.approver,escalateTo:CFG.escalateTo,kbSuggest:CFG.kbSuggest,csat:CFG.csat,supportCcUpdates:CFG.supportCcUpdates,greeting:CFG.greeting,heroSub:CFG.heroSub}));
+    autoAssign:CFG.autoAssign,approvalMode:CFG.approvalMode,approverId:CFG.approver,escalateTo:CFG.escalateTo,employeeEscalateTo:CFG.employeeEscalateTo,kbSuggest:CFG.kbSuggest,supportCcUpdates:CFG.supportCcUpdates,greeting:CFG.greeting,heroSub:CFG.heroSub}));
   const dset=(k,v)=>setDraft(d=>({...d,[k]:v}));
   const call=async(action,data,closeEd)=>{ setBusy(true); setErr(""); try{ const cfg=await api(action,data); setCfg(cfg); if(closeEd) setEd(null); toast(t("saved")); return true; }catch(x){ setErr(x.message); toast(x.message,"error"); return false; } finally{ setBusy(false); } };
   const saveKeys=keys=>call("admin-save-settings",{values:Object.fromEntries(keys.map(k=>[k,draft[k]]))});
@@ -907,9 +920,10 @@ function Admin({setCfg,toast,onKB}){
           e("div",{style:{flex:"1 1 220px"}},e("label",{style:LS,htmlFor:"g-appr"},t("g_approver")),e("select",{id:"g-appr",value:draft.approverId||"",onChange:ev=>dset("approverId",ev.target.value||null),style:IS},e("option",{value:""},t("none_opt")),CFG.people.filter(p=>p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name))))),
         e("div",{style:rowS},e("div",{style:{flex:"1 1 260px"}},e("label",{style:LS,htmlFor:"g-esc"},t("g_escalate")),e("select",{id:"g-esc",value:draft.escalateTo||"",onChange:ev=>dset("escalateTo",ev.target.value||null),style:IS},e("option",{value:""},t("first_mgr")),CFG.people.filter(p=>p.active!==false&&isLeadRole(p.role)).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
           e("div",{style:{flex:"1 1 260px",fontSize:"0.8rem",color:"#8A8583"}},t("g_escalate_d"))),
+        e("div",{style:rowS},e("div",{style:{flex:"1 1 260px"}},e("label",{style:LS,htmlFor:"g-emp-esc"},t("g_emp_escalate")),e("select",{id:"g-emp-esc",value:draft.employeeEscalateTo||"",onChange:ev=>dset("employeeEscalateTo",ev.target.value||null),style:IS},e("option",{value:""},t("same_as_it_esc")),CFG.people.filter(p=>p.active!==false&&isLeadRole(p.role)).map(p=>e("option",{key:p.id,value:p.id},p.name+" · "+t("role_"+p.role))))),
+          e("div",{style:{flex:"1 1 260px",fontSize:"0.8rem",color:"#8A8583"}},t("g_emp_escalate_d"))),
         e("div",{style:rowS},e(Switch,{on:draft.kbSuggest,label:t("g_kb"),set:v=>dset("kbSuggest",v)}),e("div",{style:{fontWeight:600}},t("g_kb"))),
-        e("div",{style:rowS},e(Switch,{on:draft.csat,label:t("g_csat"),set:v=>dset("csat",v)}),e("div",{style:{fontWeight:600}},t("g_csat"))),
-        e(SaveBar,{keys:["supportCcUpdates","autoAssign","approvalMode","approverId","escalateTo","kbSuggest","csat"]})),
+        e(SaveBar,{keys:["supportCcUpdates","autoAssign","approvalMode","approverId","escalateTo","employeeEscalateTo","kbSuggest"]})),
       e(Section,{title:t("general_texts")},e(Bi,{label:t("g_greeting"),val:draft.greeting,set:v=>dset("greeting",v)}),e(Bi,{label:t("g_hero_sub"),val:draft.heroSub,set:v=>dset("heroSub",v)}),e(SaveBar,{keys:["greeting","heroSub"]})));
   }
   const kbFields=[{k:"t",label:t("title_lbl"),kind:"bi"},{k:"cat",label:t("category"),kind:"select",opts:CFG.cats.map(c=>[c.id,c.icon+" "+L(c.n)])},{k:"body",label:t("steps"),kind:"bilines"}];

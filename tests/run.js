@@ -181,7 +181,7 @@ async function tests() {
   ok(r.body.cats.find(c => c.id === "hardware").owner === null, "non-IT person can't own a category");
   await call("hany@dar.test", "admin-save-category", { category: { ...hw, owner: P["karim@dar.test"].id } });
   ok((await call("hany@dar.test", "admin-save-settings", { values: { matrix: [["P1"]] } })).status === 400, "invalid priority matrix refused");
-  r = await call("hany@dar.test", "admin-save-settings", { values: { greeting: { en: "Hello {name}", ar: "أهلًا {name}" }, csat: true } });
+  r = await call("hany@dar.test", "admin-save-settings", { values: { greeting: { en: "Hello {name}", ar: "أهلًا {name}" } } });
   ok(r.status === 200 && r.body.greeting.en === "Hello {name}", "settings saved");
 
   console.log("Tickets — every new ticket emails the support mailbox");
@@ -215,10 +215,14 @@ async function tests() {
   ok(r.body.ticket.status === "In Progress" && mails.some(m => m.to === "habiba@dar.test" && /New reply from IT/.test(m.subject)), "public reply → In Progress, employee emailed");
   ok((await call("karim@dar.test", "resolve", { id: t1.id, note: "" })).status === 400, "resolve needs a fix note");
   await call("karim@dar.test", "resolve", { id: t1.id, note: "Replaced cable" });
-  ok((await call("habiba@dar.test", "reopen", { id: t1.id })).body.ticket.status === "In Progress", "employee can reopen");
-  await call("karim@dar.test", "resolve", { id: t1.id, note: "Replaced cable again" });
+  ok((await call("habiba@dar.test", "reopen", { id: t1.id })).status === 400, "escalating a resolved ticket needs a message from the employee");
+  const nEsc = mails.length;
+  r = await call("habiba@dar.test", "reopen", { id: t1.id, text: "Still no network after an hour" });
+  ok(r.body.ticket.status === "In Progress" && r.body.ticket.assignee === P["omar@dar.test"].id && r.body.ticket.escalated, "not fixed → employee escalates; the ticket goes to the escalation contact (IT manager)");
+  ok(mails.slice(nEsc).some(m => m.to === "omar@dar.test" && /escalated/i.test(m.subject) && m.text.includes("Still no network")) && mails.slice(nEsc).some(m => m.to === "karim@dar.test" && /reopened/.test(m.subject)), "…who is emailed the employee's message; the previous technician is told too");
+  await call("omar@dar.test", "resolve", { id: t1.id, note: "Replaced cable again" });
   r = await call("habiba@dar.test", "confirm", { id: t1.id, csat: 5 });
-  ok(r.body.ticket.status === "Closed" && r.body.ticket.csat === 5, "employee confirms & rates → Closed ★5");
+  ok(r.body.ticket.status === "Closed" && !("csat" in r.body.ticket) && (await call("omar@dar.test", "list-tickets")).body.find(x => x.id === t1.id).history.some(h => h.d.en === "Employee closed the ticket"), "employee closes the ticket (no rating step)");
 
   console.log("Approvals");
   ok((await call("habiba@dar.test", "approve", { id: t2.id })).status === 403, "can't approve own request");
@@ -323,7 +327,7 @@ async function tests() {
   const hwT = r.body.ticket;
   ok(mails.slice(n0).some(m => m.to === "karim@dar.test" && /assigned to you/.test(m.subject)) && !mails.slice(n0).some(m => m.to === "omar@dar.test"), "owned category: only the technician is emailed (manager not disturbed)");
   await call("karim@dar.test", "resolve", { id: hwT.id, note: "Replaced power cable" });
-  await call("sara@dar.test", "reopen", { id: hwT.id });
+  await call("sara@dar.test", "reopen", { id: hwT.id, text: "Screen still black" });
   ok(mails.slice(n0).some(m => m.to === "karim@dar.test" && /reopened/.test(m.subject)), "reopen goes to the assigned technician");
   const after = mails.slice(noSupport0);
   ok(after.length > 0 && !after.some(m => /support@|company\.com/i.test(m.to)), "nothing is sent to any support / company.com address once it's removed");
@@ -467,7 +471,7 @@ async function tests() {
 
   // ── Admin Console saves (General with empty choices, Priority, Statuses, Canned replies) ──
   let gc = (await call("hany@dar.test", "bootstrap")).body;
-  r = await call("hany@dar.test", "admin-save-settings", { values: { supportCcUpdates: false, autoAssign: true, approvalMode: "direct_manager", approverId: null, escalateTo: null, kbSuggest: true, csat: true } });
+  r = await call("hany@dar.test", "admin-save-settings", { values: { supportCcUpdates: false, autoAssign: true, approvalMode: "direct_manager", approverId: null, escalateTo: null, kbSuggest: true } });
   ok(r.status === 200 && r.body.autoAssign === true, "General tab saves when Approver / Escalations are left empty (no setup_required error)");
   r = await call("hany@dar.test", "admin-save-settings", { values: { escalateTo: PP["omar@dar.test"].id } });
   ok(r.status === 200 && r.body.escalateTo === PP["omar@dar.test"].id, "…and a chosen escalation contact is saved");
@@ -629,6 +633,26 @@ async function tests() {
   ok((await call("hany@dar.test", "admin-save-settings", { values: { statuses: noHold } })).status === 200, "…once empty, it can be deleted");
   r = await call("omar@dar.test", "update-ticket", { id: tinyId, major: true });
   ok(r.body.ticket.priority === "P2", "a major incident takes the top priority level (P2 after reordering)");
+
+  // ── Escalation choices ───────────────────────────────────────
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "Esc pick test", description: "x" } });
+  const ep = r.body.ticket.id;
+  await call("karim@dar.test", "update-ticket", { id: ep, assignee: PP["karim@dar.test"].id });
+  ok((await call("karim@dar.test", "escalate", { id: ep, reason: "x", to: PP["sara@dar.test"].id })).status === 400, "agents can only escalate to an IT manager or admin");
+  n0 = mails.length;
+  r = await call("karim@dar.test", "escalate", { id: ep, reason: "Needs admin rights", to: PP["hany@dar.test"].id });
+  ok(r.status === 200 && r.body.ticket.assignee === PP["hany@dar.test"].id && mails.slice(n0).some(m => m.to === "hany@dar.test" && /escalated/i.test(m.subject)), "the agent can choose which manager / admin to escalate to (here: the admin)");
+  r = await call("hany@dar.test", "admin-save-settings", { values: { employeeEscalateTo: PP["hany@dar.test"].id } });
+  ok(r.status === 200 && r.body.employeeEscalateTarget === PP["hany@dar.test"].id && r.body.escalateTarget !== PP["hany@dar.test"].id, "admin chooses who gets employee escalations (separate from IT escalations)");
+  ok((await call("hany@dar.test", "admin-save-settings", { values: { employeeEscalateTo: PP["sara@dar.test"].id } })).body.employeeEscalateTo === null, "…only an IT manager or admin can be chosen");
+  await call("hany@dar.test", "admin-save-settings", { values: { employeeEscalateTo: PP["hany@dar.test"].id } });
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "Emp esc test", description: "x" } });
+  const ee = r.body.ticket.id;
+  await call("karim@dar.test", "update-ticket", { id: ee, assignee: PP["karim@dar.test"].id });
+  await call("karim@dar.test", "resolve", { id: ee, note: "Done" });
+  r = await call("sara@dar.test", "reopen", { id: ee, text: "Not working" });
+  ok(r.body.ticket.assignee === PP["hany@dar.test"].id && r.body.ticket.status === "In Progress", "employee escalation goes to the person the admin chose");
+  ok((await call("karim@dar.test", "reopen", { id: ee, text: "x" })).status === 403, "only the employee who raised it can escalate a resolved ticket");
 }
 
 (async () => {
