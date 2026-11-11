@@ -30,6 +30,13 @@ async function getUser(req) {
       await supabase.from("sessions").delete().eq("token", token);
       return null;
     }
+    // Sliding session: while someone keeps using the help desk, push the expiry forward
+    // (at most once an hour), so it only runs out after SESSION_HOURS of not using it.
+    if (new Date(s.expires_at) - Date.now() < (SESSION_HOURS - 1) * 3600 * 1000) {
+      const expires = new Date(Date.now() + SESSION_HOURS * 3600 * 1000);
+      await supabase.from("sessions").update({ expires_at: expires.toISOString() }).eq("token", token);
+      req.renewSessionCookie = cookie(COOKIE, token, SESSION_HOURS * 3600);
+    }
     const { data: u } = await supabase.from("users")
       .select("id, email, name, dept_id, manager_id, role, active").eq("id", s.user_id).maybeSingle();
     if (!u || u.active === false) return null;

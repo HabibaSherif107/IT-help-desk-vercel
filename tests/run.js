@@ -703,6 +703,25 @@ async function tests() {
   await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
   const after1000 = (await call("karim@dar.test", "list-prs")).body.map(p => p.id);
   ok(after1000.includes("PR-999") && after1000.includes("PR-1000"), "running schema.sql again leaves PR-999 and PR-1000 alone");
+
+  // ── Editing a stock item's minimum level ─────────────────────
+  let st = (await call("karim@dar.test", "list-stock")).body.find(i => i.name === "HDMI cable 2m");
+  r = await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...st, min: "20" } });
+  ok(r.status === 200 && r.body.find(i => i.id === st.id).min === 20 && r.body.find(i => i.id === st.id).status === "low", "editing the minimum level saves (and the status follows it)");
+  r = await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...st, min: "" } });
+  ok(r.status === 200 && r.body.find(i => i.id === st.id).min === null, "the minimum level can be cleared");
+
+  // ── Sessions renew while in use; an expired one gives a clear message ──
+  const tok = jar["karim@dar.test"];
+  await pool.query("update sessions set expires_at = now() + interval '30 minutes' where token = $1", [tok]);
+  r = await call("karim@dar.test", "list-stock");
+  const left = (await pool.query("select extract(epoch from expires_at - now())/3600 h from sessions where token = $1", [tok])).rows[0].h;
+  ok(r.status === 200 && left > 11.9, "using the help desk pushes the sign-in expiry forward (12 hours from now)");
+  await pool.query("update sessions set expires_at = now() - interval '1 minute' where token = $1", [tok]);
+  r = await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...st, min: "5" } });
+  ok(r.status === 401 && /session has expired/.test(r.body.error), "after 12 idle hours the session ends with a clear “please sign in again” message");
+  await signIn("karim@dar.test");
+  ok((await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...st, min: "5" } })).status === 200, "…and after signing in again saving works");
 }
 
 (async () => {

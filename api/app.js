@@ -158,7 +158,8 @@ function cleanCategory(c, members) {
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return fail(res, 405, "Method not allowed");
   const viewer = await getUser(req);
-  if (!viewer) return fail(res, 401, "Not authenticated");
+  if (!viewer) return fail(res, 401, "Your session has expired. Please sign in again.");
+  if (req.renewSessionCookie && res.setHeader) res.setHeader("Set-Cookie", req.renewSessionCookie);
   const body = req.body || {};
   const action = body.action;
 

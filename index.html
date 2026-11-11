@@ -57,6 +57,7 @@ const S = {
   role_requester:["Employee","موظف"], role_agent:["IT Agent","فني تقنية معلومات"], role_manager:["IT Manager","مدير تقنية المعلومات"], role_admin:["Admin","مسؤول النظام"],
   loading:["Loading the help desk…","جارٍ تحميل مكتب الدعم…"], login_title:["Sign in to the IT Help Desk","سجّل الدخول إلى مكتب الدعم"],
   login_sub:["Use your Zoho work account to raise and follow IT tickets.","استخدم حساب Zoho الخاص بالعمل لفتح تذاكر الدعم الفني ومتابعتها."],
+  err_session:["Your session expired, so you were signed out. Please sign in again.","انتهت جلستك فتم تسجيل خروجك. يُرجى تسجيل الدخول مرة أخرى."],
   err_denied:["Sign-in was cancelled.","تم إلغاء تسجيل الدخول."], err_expired:["The sign-in link expired. Please try again.","انتهت صلاحية رابط الدخول. حاول مرة أخرى."],
   err_not_registered:["Your email isn't registered for the IT Help Desk. Ask IT to add you.","بريدك غير مسجل في مكتب الدعم. اطلب من فريق التقنية إضافتك."],
   err_disabled:["Your account is turned off. Contact IT.","حسابك موقوف. تواصل مع فريق التقنية."], err_server:["Something went wrong while signing in. Please try again.","حدث خطأ أثناء تسجيل الدخول. حاول مرة أخرى."],
@@ -259,6 +260,8 @@ async function api(action, data){
   try { r = await fetch("/api/app",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...(data||{}),...(VIEW_AS?{viewAs:VIEW_AS}:{})})}); }
   catch(_){ throw new ApiError(AR()?"تعذّر الاتصال بالخادم.":"Couldn't reach the server. Check your connection.",0); }
   let j=null; try{ j=await r.json(); }catch(_){}
+  /* Signed out (session expired) in the middle of using the page: go to the sign-in screen with a clear message. */
+  if(r.status===401&&action!=="bootstrap"){ location.href="/?error=session"; throw new ApiError(t("err_session"),401); }
   if(!r.ok) throw new ApiError((j&&j.error)||("Error "+r.status), r.status);
   return j;
 }
