@@ -253,6 +253,7 @@ const t = (k,v) => { let s=(S[k]||[k,k])[AR()?1:0]; if(v) for(const x in v) s=s.
 /* ═════════ API ═════════ */
 class ApiError extends Error { constructor(msg,status){ super(msg); this.status=status; } }
 /* "View as" preview (admins only): every request carries the role being previewed; the server applies it. Kept for this tab only. */
+let SIGNED_IN = false;   /* set once the help desk has loaded for a signed-in person */
 let VIEW_AS = (()=>{ try{ return sessionStorage.getItem("ithd_viewas")||""; }catch(_){ return ""; } })();
 const setViewAs = r => { VIEW_AS=r||""; try{ if(VIEW_AS) sessionStorage.setItem("ithd_viewas",VIEW_AS); else sessionStorage.removeItem("ithd_viewas"); }catch(_){} };
 async function api(action, data){
@@ -261,7 +262,9 @@ async function api(action, data){
   catch(_){ throw new ApiError(AR()?"تعذّر الاتصال بالخادم.":"Couldn't reach the server. Check your connection.",0); }
   let j=null; try{ j=await r.json(); }catch(_){}
   /* Signed out (session expired) in the middle of using the page: go to the sign-in screen with a clear message. */
-  if(r.status===401&&action!=="bootstrap"){ location.href="/?error=session"; throw new ApiError(t("err_session"),401); }
+  /* Only when this page WAS signed in (the session ran out while using it). Someone who isn't signed in at all
+     just gets the normal sign-in screen; redirecting them would reload the page over and over. */
+  if(r.status===401&&SIGNED_IN){ SIGNED_IN=false; location.href="/?error=session"; throw new ApiError(t("err_session"),401); }
   if(!r.ok) throw new ApiError((j&&j.error)||("Error "+r.status), r.status);
   return j;
 }
@@ -1209,7 +1212,7 @@ function App(){
   const toast=(text,kind)=>{ setToastS({text,kind}); clearTimeout(window.__tt); window.__tt=setTimeout(()=>setToastS(null),kind==="error"?5000:2800); };
   const load=useCallback(async()=>{
     setPhase("loading");
-    try{ const [c,ts]=await Promise.all([api("bootstrap"),api("list-tickets")]); setCfg(c); setTickets(ts);
+    try{ const [c,ts]=await Promise.all([api("bootstrap"),api("list-tickets")]); SIGNED_IN=true; setCfg(c); setTickets(ts);
       if(isITRole(c.me.role)){ const [as,st,pr]=await Promise.all([api("list-assets").catch(()=>[]),api("list-stock").catch(()=>[]),api("list-prs").catch(()=>[])]); setAssets(as); setStock(st); setPrs(pr); }
       setPhase("ready"); }
     catch(x){ if(x.status===401) setPhase("login"); else if(x.status===503) setPhase("setup"); else { setLoadErr(x.message); setPhase("error"); } }
