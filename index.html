@@ -47,6 +47,12 @@ const applyDir = () => { document.documentElement.dir = LANG==="ar"?"rtl":"ltr";
 applyDir();
 const AR = () => LANG==="ar";
 const L = o => o==null ? "" : typeof o==="string" ? o : (o[LANG] || o.en || o.ar || "");
+// Links to the other Dar El Salam systems (shown in the sidebar)
+const PORTAL_URL = "https://portal.dar-elsalam.org";
+const OTHER_SYSTEMS = [
+  {icon:"📋", name:{en:"Taskflow", ar:"تاسك فلو"},     url:"https://taskflow.dar-elsalam.org"},
+  {icon:"📊", name:{en:"KPI",      ar:"مؤشرات الأداء"}, url:"https://kpi.dar-elsalam.org"},
+];
 
 const S = {
   app_sub:["Dar El Salam United","شركة دار السلام المتحدة"], new_ticket_btn:["+ New IT ticket","+ تذكرة تقنية جديدة"],
@@ -1262,6 +1268,10 @@ function App(){
       navItems.map(([k,ic,l])=>e("button",{key:k,id:"nav-"+k,onClick:()=>go(k),"aria-current":cur===k?"page":undefined,style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 12px",borderRadius:8,border:"none",background:cur===k?"#E11A2222":"transparent",color:cur===k?"#F16A6F":"#C9C6C4",fontWeight:cur===k?700:500,marginBottom:2,textAlign:"start"}},e("span",null,ic),e("span",{style:{flex:1}},t(l)),
         k==="approvals"&&pending>0&&e("span",{style:{fontSize:"0.7rem",background:"#A78BFA",color:"#fff",borderRadius:10,padding:"1px 7px"}},pending),k==="purchases"&&prWaiting>0&&e("span",{style:{fontSize:"0.7rem",background:"#A78BFA",color:"#fff",borderRadius:10,padding:"1px 7px"}},prWaiting),k==="queue"&&unassigned>0&&e("span",{style:{fontSize:"0.7rem",background:"#E11A22",color:"#fff",borderRadius:10,padding:"1px 7px"}},unassigned))),
       null),
+    e("div",{style:{padding:"10px 14px",borderTop:"1px solid #332C2B"}},
+      e("div",{style:{fontSize:"0.68rem",color:"#8A8583",textTransform:"uppercase",letterSpacing:1,marginBottom:4}},L({en:"Other systems",ar:"أنظمة أخرى"})),
+      OTHER_SYSTEMS.map(o=>e("a",{key:o.url,href:o.url,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:7,color:"#C9C6C4",textDecoration:"none",fontSize:"0.85rem"},onMouseEnter:ev=>ev.currentTarget.style.background="#231F1E",onMouseLeave:ev=>ev.currentTarget.style.background="transparent"},e("span",null,o.icon),L(o.name))),
+      e("a",{href:PORTAL_URL,style:{display:"block",padding:"7px 10px",color:"#F16A6F",textDecoration:"none",fontSize:"0.8rem",fontWeight:600}},"▦ "+L({en:"All systems",ar:"جميع الأنظمة"}))),
     CFG.me.realRole==="admin"&&e("div",{style:{padding:"10px 14px",borderTop:"1px solid #332C2B"}},
       e("label",{htmlFor:"view-as",style:{...LS,marginBottom:4}},"👁 "+t("view_as")),
       e("select",{id:"view-as",value:CFG.me.viewAs||"",onChange:ev=>switchView(ev.target.value),style:{...IS,padding:"7px 10px",fontSize:"0.85rem"}},
