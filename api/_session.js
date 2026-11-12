@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const { supabase } = require("./_db");
 
 const COOKIE = "ithd_session";
-const SESSION_HOURS = 12;
+const SESSION_HOURS = 24 * 7;   // everyone signs in once a week (fixed: counted from sign-in, not renewed)
 
 function readCookie(req, name) {
   const header = (req.headers && req.headers.cookie) || "";
@@ -29,13 +29,6 @@ async function getUser(req) {
     if (new Date(s.expires_at) < new Date()) {
       await supabase.from("sessions").delete().eq("token", token);
       return null;
-    }
-    // Sliding session: while someone keeps using the help desk, push the expiry forward
-    // (at most once an hour), so it only runs out after SESSION_HOURS of not using it.
-    if (new Date(s.expires_at) - Date.now() < (SESSION_HOURS - 1) * 3600 * 1000) {
-      const expires = new Date(Date.now() + SESSION_HOURS * 3600 * 1000);
-      await supabase.from("sessions").update({ expires_at: expires.toISOString() }).eq("token", token);
-      req.renewSessionCookie = cookie(COOKIE, token, SESSION_HOURS * 3600);
     }
     const { data: u } = await supabase.from("users")
       .select("id, email, name, dept_id, manager_id, role, active").eq("id", s.user_id).maybeSingle();

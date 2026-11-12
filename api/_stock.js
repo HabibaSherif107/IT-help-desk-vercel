@@ -20,7 +20,7 @@ const money = n => Number(n || 0).toLocaleString("en-US", { minimumFractionDigit
 
 function shapeItem(r) {
   const min = r.min_level == null ? null : Number(r.min_level);
-  return { id: r.id, category: r.category, name: r.name, model: r.model || "", quantity: Number(r.quantity), min,
+  return { id: r.id, category: r.category, name: r.name, model: r.model || "", serial: r.serial || "", quantity: Number(r.quantity), min,
     notes: r.notes || "", status: stockStatus(Number(r.quantity), min), updated: ms(r.updated_at) };
 }
 async function listStock() {
@@ -113,7 +113,7 @@ async function handle(action, { body, viewer, role, me }) {
     if (!IT.inList(await IT.loadSettings(), "stockCategories", it.category)) return bad("Choose a category.");
     let min = null;
     if (it.min !== "" && it.min != null) { min = int(it.min); if (!Number.isInteger(min) || min < 0 || min > 100000) return bad("The minimum level must be a whole number (0 or more)."); }
-    const row = { name, category: it.category, model: str(it.model, 120).trim() || null, min_level: min, notes: str(it.notes, 500).trim() || null, updated_at: nowIso() };
+    const row = { name, category: it.category, model: str(it.model, 120).trim() || null, serial: str(it.serial, 80).trim() || null, min_level: min, notes: str(it.notes, 500).trim() || null, updated_at: nowIso() };
     if (body.isNew) {
       const q = it.quantity === "" || it.quantity == null ? 0 : int(it.quantity);
       if (!Number.isInteger(q) || q < 0 || q > 1000000) return bad("The quantity must be a whole number (0 or more).");

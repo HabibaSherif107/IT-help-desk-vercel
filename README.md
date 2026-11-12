@@ -45,6 +45,8 @@ Same columns as the sheet: **Category · Item name · Brand / Model · Quantity 
 - **Status works like the sheet's formula.** Quantity 0 shows *Out of Stock*. At or below the minimum level it shows *Low Stock*. Otherwise it shows *In Stock*. The top of the page counts items, units, low stock and out of stock.
 - **Quantities only change through "Adjust quantity"** (add or take out, plus a reason such as "Given to Sara"). Every change is saved in the item's **Quantity history** with who made it and when.
 - **Request more** opens a new purchase request with that item already filled in.
+- **🧾 Restock low items** (top of the Stock page) opens one purchase request with every *Low* / *Out of Stock* item already filled in: name and model, a suggested quantity (back to twice the minimum level), and the link to the stock item so receiving it adds to stock. Add prices and submit as usual.
+- Each stock item can have an optional **serial number**; it stays empty unless you fill it in.
 
 ### Purchase Requests (replaces the "IT Purchase Request" sheet)
 Same layout as the sheet: **# · Item name · Product link · Quantity · Unit price (EGP) · Total price (EGP)**, with the **Grand total** worked out automatically. Each request gets its own running number that is never reused: `PR-001` … `PR-999`, then `PR-1000`, `PR-1001` …. Requests made with earlier formats are converted once when `schema.sql` is run (`PR-00001` → `PR-001`; month-based ones such as `PR-1126` get the next running numbers).
@@ -118,7 +120,7 @@ Every email is in Arabic and English and is recorded in a log (`email_log`). IT 
 | `api/auth-login.js` → `api/auth-callback.js` | Zoho OAuth sign-in with a `state` check. Creates or updates the user and starts a session. |
 | `api/auth-logout.js` | Ends the session. |
 | `api/_core.js` | Defaults (categories, priorities, statuses…), permissions, config loading/seeding, ticket shaping, bilingual email texts |
-| `api/_session.js` | Sessions: random 64-hex token in the HttpOnly `ithd_session` cookie, 12 hours |
+| `api/_session.js` | Sessions: random 64-hex token in the HttpOnly `ithd_session` cookie, 7 days from sign-in (everyone signs in once a week) |
 | `api/_email.js` | SMTP sending via nodemailer, HTML-escaped bilingual template, writes `email_log` |
 | `api/_db.js` | Supabase client using the service key, server-side only |
 | `schema.sql` | All tables. RLS is on with no policies, so only the server (service key) can read or write. |

@@ -710,16 +710,26 @@ async function tests() {
   ok(r.status === 200 && r.body.find(i => i.id === st.id).min === 20 && r.body.find(i => i.id === st.id).status === "low", "editing the minimum level saves (and the status follows it)");
   r = await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...st, min: "" } });
   ok(r.status === 200 && r.body.find(i => i.id === st.id).min === null, "the minimum level can be cleared");
+  r = await call("karim@dar.test", "save-stock-item", { isNew: true, item: { name: "USB headset", category: "accessories", quantity: 3, serial: "  " } });
+  ok(r.body.find(i => i.name === "USB headset").serial === "", "a stock item's serial number stays empty when not filled in");
+  const hs = r.body.find(i => i.name === "USB headset");
+  r = await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...hs, serial: "SN-HS-77" } });
+  ok(r.body.find(i => i.id === hs.id).serial === "SN-HS-77", "…and is saved when filled in");
+  r = await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "monitor", model: "No-serial monitor", status: "in_stock", serial: "" } });
+  ok(r.body.find(a => a.model === "No-serial monitor").serial === "", "a device's serial number stays empty when not filled in");
 
   // ── Sessions renew while in use; an expired one gives a clear message ──
+  await signIn("karim@dar.test");
   const tok = jar["karim@dar.test"];
+  const days = (await pool.query("select extract(epoch from expires_at - now())/86400 d from sessions where token = $1", [tok])).rows[0].d;
+  ok(days > 6.99 && days <= 7, "a sign-in lasts one week");
   await pool.query("update sessions set expires_at = now() + interval '30 minutes' where token = $1", [tok]);
   r = await call("karim@dar.test", "list-stock");
   const left = (await pool.query("select extract(epoch from expires_at - now())/3600 h from sessions where token = $1", [tok])).rows[0].h;
-  ok(r.status === 200 && left > 11.9, "using the help desk pushes the sign-in expiry forward (12 hours from now)");
+  ok(r.status === 200 && left < 1, "…counted from sign-in: using the help desk doesn't extend it");
   await pool.query("update sessions set expires_at = now() - interval '1 minute' where token = $1", [tok]);
   r = await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...st, min: "5" } });
-  ok(r.status === 401 && /session has expired/.test(r.body.error), "after 12 idle hours the session ends with a clear “please sign in again” message");
+  ok(r.status === 401 && /session has expired/.test(r.body.error), "after the week the session ends with a clear “please sign in again” message");
   await signIn("karim@dar.test");
   ok((await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...st, min: "5" } })).status === 200, "…and after signing in again saving works");
 }

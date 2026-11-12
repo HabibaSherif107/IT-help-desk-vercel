@@ -356,3 +356,8 @@ begin
     update email_log set ticket_id = nid where ticket_id = r.id;
   end loop;
 end $$;
+
+-- ════════════════════════════════════════════════════════════
+-- 23. Optional serial number on stock items (upgrade-safe). Empty unless filled in.
+-- ════════════════════════════════════════════════════════════
+alter table stock_items add column if not exists serial text;

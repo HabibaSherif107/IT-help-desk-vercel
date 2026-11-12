@@ -211,6 +211,9 @@ const S = {
   g_emp_escalate:["When an employee says a resolved ticket is still not fixed, escalate to","عندما يقول الموظف إن التذكرة المحلولة لم تُحل، تُصعّد إلى"],
   g_emp_escalate_d:["The ticket is reopened and reassigned to this person, who gets an email with the employee's message. The previous technician is told too.","يُعاد فتح التذكرة وتُسند لهذا الشخص ويصله بريد برسالة الموظف. ويتم إبلاغ الفني السابق أيضًا."],
   same_as_it_esc:["— Same as IT escalations —","— نفس جهة تصعيد فريق التقنية —"],
+  restock:["🧾 Restock low items","🧾 إعادة طلب الناقص"], restock_d:["Opens a purchase request with the {n} low / out-of-stock items","يفتح طلب شراء بالأصناف المنخفضة / النافدة ({n})"],
+  restock_none:["Nothing is low or out of stock","لا توجد أصناف منخفضة أو نافدة"], restock_note:["Restock: low / out-of-stock items","إعادة تزويد: أصناف منخفضة / نافدة من المخزون"],
+  serial_opt:["Serial number (optional)","الرقم التسلسلي (اختياري)"],
   manager_short:["Manager","المدير"],
   search_people:["Search name, email or department…","ابحث بالاسم أو البريد أو الإدارة…"], u_signin:["Sign-in","تسجيل الدخول"],
   u_signed_in:["Signed in","سجّل الدخول"], u_never:["Not signed in yet","لم يسجّل الدخول بعد"], u_last:["last {d}","آخر مرة {d}"],
@@ -654,7 +657,7 @@ function AssetEditor({a0,isNew,onSave,onClose,busy,err}){
     e("div",{className:"g2",style:grid},
       field("ae-type",t("a_type")+" *",e("select",{id:"ae-type",value:a.type,onChange:ev=>set("type",ev.target.value),style:IS},Object.keys(CFG.assetTypes).map(k=>e("option",{key:k,value:k},L(CFG.assetTypes[k]))))),
       field("ae-model",t("a_model")+" *",e("input",{id:"ae-model",dir:"ltr",value:a.model,placeholder:t("a_model_ph"),onChange:ev=>set("model",ev.target.value),style:IS})),
-      field("ae-serial",t("a_serial"),e("input",{id:"ae-serial",dir:"ltr",value:a.serial,onChange:ev=>set("serial",ev.target.value),style:IS})),
+      field("ae-serial",t("serial_opt"),e("input",{id:"ae-serial",dir:"ltr",value:a.serial||"",onChange:ev=>set("serial",ev.target.value),style:IS})),
       field("ae-status",t("status")+" *",e("select",{id:"ae-status",value:a.status,onChange:ev=>set("status",ev.target.value),style:IS},Object.keys(CFG.assetStatuses).map(k=>e("option",{key:k,value:k},L(CFG.assetStatuses[k].n))))),
       field("ae-owner",t("a_owner"),e("select",{id:"ae-owner",value:a.owner||"",onChange:ev=>{const v=ev.target.value||null;setA(x=>({...x,owner:v,received:v&&v===x.owner?x.received:"",empPriority:v?x.empPriority:"",status:v&&x.status==="in_stock"?"in_use":x.status}));},style:IS},e("option",{value:""},t("none_dash")),CFG.people.filter(p=>p.active!==false||p.id===a.owner).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
       a.owner&&field("ae-prio",t("emp_prio"),e("select",{id:"ae-prio",value:a.empPriority||"",onChange:ev=>set("empPriority",ev.target.value),style:IS},e("option",{value:""},t("emp_prio_none")),Object.keys(CFG.empPriorities||{}).map(k=>e("option",{key:k,value:k},L(CFG.empPriorities[k]))))),
@@ -978,10 +981,10 @@ function StockStatus({s}){ const x=(CFG.stockStatuses||{})[s]||{n:{en:s},c:"#647
 const stockCat = k => L((CFG.stockCategories||{})[k]) || k;
 function KTile({label,value,tone}){ return e("div",{style:{...card,padding:14}},e("div",{style:{fontSize:"1.6rem",fontWeight:800,fontVariantNumeric:"tabular-nums",color:tone||"#EDEBEA"}},value),e("div",{style:{fontSize:"0.75rem",color:"#8A8583",lineHeight:1.35}},label)); }
 
-function StockView({items,onOpen,onAdd}){
+function StockView({items,onOpen,onAdd,onRestock}){
   const [q,setQ]=useState(""), [fc,setFc]=useState(""), [fs,setFs]=useState("");
   const ql=q.toLowerCase();
-  const rows=items.filter(i=>(!fc||i.category===fc)&&(!fs||i.status===fs)&&(!q||[i.name,i.model,i.notes,stockCat(i.category)].join(" ").toLowerCase().includes(ql)));
+  const rows=items.filter(i=>(!fc||i.category===fc)&&(!fs||i.status===fs)&&(!q||[i.name,i.model,i.serial,i.notes,stockCat(i.category)].join(" ").toLowerCase().includes(ql)));
   const low=items.filter(i=>i.status==="low").length, out=items.filter(i=>i.status==="out").length;
   const cols="minmax(190px,2.2fr) minmax(120px,1.2fr) minmax(80px,.7fr) minmax(80px,.7fr) minmax(110px,1fr)";
   const cell={minWidth:0,overflowWrap:"anywhere"};
@@ -993,12 +996,13 @@ function StockView({items,onOpen,onAdd}){
       e("input",{id:"st-search","aria-label":t("search_stock"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("search_stock"),style:{...IS,flex:"1 1 220px",maxWidth:340}}),
       e("select",{"aria-label":t("all_categories"),value:fc,onChange:ev=>setFc(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_categories")),Object.keys(CFG.stockCategories||{}).map(k=>e("option",{key:k,value:k},stockCat(k)))),
       e("select",{"aria-label":t("all_statuses"),value:fs,onChange:ev=>setFs(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_statuses")),Object.keys(CFG.stockStatuses||{}).map(k=>e("option",{key:k,value:k},L(CFG.stockStatuses[k].n)))),
-      e("button",{id:"add-stock",onClick:onAdd,style:{...BP,marginInlineStart:"auto"}},t("add_item"))),
+      e("button",{id:"restock",disabled:!(low+out),title:low+out?t("restock_d",{n:low+out}):t("restock_none"),onClick:()=>onRestock(items.filter(i=>i.status!=="in")),style:{...BS,marginInlineStart:"auto"}},t("restock")+(low+out?" ("+(low+out)+")":"")),
+      e("button",{id:"add-stock",onClick:onAdd,style:BP},t("add_item"))),
     !items.length?e(Empty,{text:t("no_stock")}):
     e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:620}},
       e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:14,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_item"),t("h_category"),t("h_qty"),t("h_min"),t("status")].map((h,i)=>e("span",{key:i,style:cell},h))),
       rows.map((i,n)=>e("button",{key:i.id,className:"hov",onClick:()=>onOpen(i.id),style:{display:"grid",width:"100%",textAlign:"start",color:"inherit",border:"none",gridTemplateColumns:cols,gap:14,padding:"12px 14px",alignItems:"center",background:n%2?"#181514":"#1A1717",fontSize:"0.85rem"}},
-        e("div",{style:cell},e("div",{style:{fontWeight:600}},i.name),(i.model||i.notes)&&e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},[i.model,i.notes].filter(Boolean).join(" · "))),
+        e("div",{style:cell},e("div",{style:{fontWeight:600}},i.name),(i.model||i.serial||i.notes)&&e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},[i.model,i.serial?"SN "+i.serial:"",i.notes].filter(Boolean).join(" · "))),
         e("span",{style:cell},stockCat(i.category)),
         e("span",{style:{...cell,fontWeight:700,fontVariantNumeric:"tabular-nums",color:i.status==="out"?"#EF4444":i.status==="low"?"#F59E0B":"#EDEBEA"}},i.quantity),
         e("span",{style:{...cell,fontVariantNumeric:"tabular-nums",color:"#8A8583"}},i.min==null?"—":i.min),
@@ -1012,7 +1016,7 @@ function StockModal({it,role,onClose,onEdit,onDelete,onAdjust,onRequest}){
   const row=(k,v)=>e("div",{style:{display:"flex",justifyContent:"space-between",gap:10,padding:"7px 0",borderBottom:"1px solid #231F1E",fontSize:"0.86rem"}},e("span",{style:{color:"#8A8583",flexShrink:0}},k),e("span",{style:{textAlign:"end",minWidth:0,overflowWrap:"anywhere"}},v));
   const save=async()=>{ setBusy(true); setErr(""); try{ await onAdjust(dir*(parseInt(n,10)||0),why); setN(""); setWhy(""); }catch(x){ setErr(x.message); } finally{ setBusy(false); } };
   return e(Modal,{title:"📦 "+it.name,onClose,w:620},
-    row(t("h_category"),stockCat(it.category)),row(t("s_model"),it.model||"—"),
+    row(t("h_category"),stockCat(it.category)),row(t("s_model"),it.model||"—"),row(t("a_serial"),it.serial||"—"),
     row(t("s_qty"),e("b",{style:{fontVariantNumeric:"tabular-nums"}},it.quantity)),row(t("s_min"),it.min==null?"—":it.min),
     row(t("status"),e(StockStatus,{s:it.status})),it.notes?row(t("a_notes"),it.notes):null,
     e("div",{style:{...card,background:"#151211",padding:"12px 14px",margin:"16px 0"}},
@@ -1043,6 +1047,7 @@ function StockEditor({i0,isNew,onSave,onClose,busy,err}){
       field("se-name",t("s_name")+" *",e("input",{id:"se-name",value:it.name,onChange:ev=>set("name",ev.target.value),style:IS})),
       field("se-cat",t("h_category")+" *",e("select",{id:"se-cat",value:it.category,onChange:ev=>set("category",ev.target.value),style:IS},Object.keys(CFG.stockCategories||{}).map(k=>e("option",{key:k,value:k},stockCat(k))))),
       field("se-model",t("s_model"),e("input",{id:"se-model",value:it.model,onChange:ev=>set("model",ev.target.value),style:IS})),
+      field("se-serial",t("serial_opt"),e("input",{id:"se-serial",dir:"ltr",value:it.serial||"",onChange:ev=>set("serial",ev.target.value),style:IS})),
       isNew?field("se-qty",t("s_qty"),e("input",{id:"se-qty",type:"number",min:0,inputMode:"numeric",value:it.quantity,onChange:ev=>set("quantity",ev.target.value),style:IS}))
            :field("se-qty",t("s_qty"),e("input",{id:"se-qty",value:it.quantity,disabled:true,style:{...IS,opacity:.6}}),t("qty_edit_note")),
       field("se-min",t("s_min"),e("input",{id:"se-min",type:"number",min:0,inputMode:"numeric",value:it.min==null?"":it.min,onChange:ev=>set("min",ev.target.value),style:IS}),t("s_min_hint"))),
@@ -1272,7 +1277,9 @@ function App(){
   else if(cur==="dash") body=e(Dashboard,{tickets});
   else if(cur==="rules") body=e(Rules);
   else if(cur==="assets") body=e(Assets,{assets,tickets,onOpenAsset:setAssetSel,onAdd:()=>{setAErr("");setAssetEd({isNew:true,item:{id:"",type:"laptop",model:"",serial:"",owner:null,location:"",received:"",empPriority:"",status:"in_stock",purchased:"",hasWarranty:false,warranty:"",notes:""}});}});
-  else if(cur==="stock") body=e(StockView,{items:stock,onOpen:setStockSel,onAdd:()=>{setAErr("");setStockEd({isNew:true,item:{id:null,name:"",category:"hardware",model:"",quantity:0,min:"",notes:""}});}});
+  else if(cur==="stock") body=e(StockView,{items:stock,onOpen:setStockSel,
+    onRestock:list=>{ if(!list.length) return; setAErr(""); go("purchases");
+      setPrEd({item:{id:null,notes:t("restock_note"),lines:list.map(i=>({name:i.name+(i.model?" — "+i.model:""),link:"",qty:i.min!=null?Math.max(1,i.min*2-i.quantity):1,price:"",stock:i.id}))}}); },onAdd:()=>{setAErr("");setStockEd({isNew:true,item:{id:null,name:"",category:"hardware",model:"",serial:"",quantity:0,min:"",notes:""}});}});
   else if(cur==="purchases") body=e(PRView,{prs,me,role,onOpen:setPrSel,onNew:()=>{setAErr("");setPrEd({item:{id:null,notes:"",lines:[]}});}});
   else if(cur==="admin") body=e(Admin,{setCfg,toast,onKB:setKb});
 
