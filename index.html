@@ -230,6 +230,8 @@ const S = {
   cnt_queue:["{n} open tickets ({u} unassigned)","{n} تذكرة مفتوحة ({u} غير مُسندة)"], cnt_appr:["{n} waiting for approval","{n} بانتظار الموافقة"],
   cnt_mine:["{n} of your requests are still open","{n} من طلباتك ما زالت مفتوحة"], cnt_pr:["{n} purchase requests still open ({w} waiting for your approval)","{n} طلبات شراء مفتوحة ({w} بانتظار موافقتك)"],
   kind_tel:["Phone number","رقم هاتف"], kind_email:["Email address","بريد إلكتروني"], show_when:["Show only when","يظهر فقط عندما"], show_always:["Always shown","يظهر دائمًا"],
+  cat_prio:["Priority","الأولوية"], cat_prio_ask:["Ask the employee (impact / urgency questions)","يسأل الموظف (أسئلة التأثير / الاستعجال)"],
+  cat_prio_top:["Always the highest priority (no urgency question)","دائمًا أعلى أولوية (بدون سؤال الاستعجال)"], cat_prio_fixed:["Always {p} (no urgency question)","دائمًا {p} (بدون سؤال الاستعجال)"],
   manager_short:["Manager","المدير"],
   search_people:["Search name, email or department…","ابحث بالاسم أو البريد أو الإدارة…"], u_signin:["Sign-in","تسجيل الدخول"],
   u_signed_in:["Signed in","سجّل الدخول"], u_never:["Not signed in yet","لم يسجّل الدخول بعد"], u_last:["last {d}","آخر مرة {d}"],
@@ -411,7 +413,9 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
   const c=cat(f.cat), incident=c.type==="incident";
   /* Questions with a "show only when" rule appear (and are required) only for the matching answer. */
   const shown=(c.fields||[]).filter(fd=>!fd.when||f.fields[fd.when.k]===fd.when.v);
-  const p=(CFG.matrix[(incident?f.impact:1)-1]||[])[f.urgency-1]||prioKeys().slice(-1)[0];
+  /* Fixed-priority categories (e.g. Joiner / Leaver = highest) skip the "how urgent" questions. */
+  const fixedP=c.fixedPrio==="top"?prioKeys()[0]:(c.fixedPrio&&CFG.prio[c.fixedPrio]?c.fixedPrio:null);
+  const p=fixedP||(CFG.matrix[(incident?f.impact:1)-1]||[])[f.urgency-1]||prioKeys().slice(-1)[0];
   const words=f.title.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(x=>x.length>3);
   const sugg=CFG.kbSuggest&&f.title.trim().length>2?CFG.kb.filter(a=>a.cat===f.cat||words.some(w=>((a.t.en||"")+" "+(a.t.ar||"")).toLowerCase().includes(w))).slice(0,3):[];
   const submit=async()=>{ if(!f.title.trim())return setErr(t("err_title")); if(!f.desc.trim())return setErr(t("err_desc"));
@@ -431,8 +435,8 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
       shown.length>0&&e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}},shown.map(fd=>{ const v=f.fields[fd.k]; const setV=val=>set("fields",{...f.fields,[fd.k]:val}); const id="nt-f-"+fd.k; return e("div",{key:fd.k},e("label",{style:LS,htmlFor:id},L(fd.label)+" *"),
         fd.kind==="select"?e("select",{id,value:v==null?"":v,onChange:ev=>setV(ev.target.value===""?null:+ev.target.value),style:IS},e("option",{value:""},t("select")),(fd.opts||[]).map((o,i)=>e("option",{key:i,value:i},L(o)))):
         e("input",{id,type:fd.kind==="date"?"date":fd.kind==="tel"?"tel":fd.kind==="email"?"email":"text",inputMode:fd.kind==="tel"?"tel":fd.kind==="email"?"email":undefined,dir:(fd.kind==="tel"||fd.kind==="email")&&v?"ltr":undefined,value:v||"",placeholder:L(fd.ph),onChange:ev=>setV(ev.target.value),style:IS})); })),
-      incident&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("who_affected")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.impacts.map((x,i)=>e(Opt,{key:i,sel:f.impact===i+1,onClick:()=>set("impact",i+1)},L(x))))),
-      e("div",{style:{marginBottom:14}},e("div",{style:LS},t("how_urgent")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.urgencies.map((x,i)=>e(Opt,{key:i,sel:f.urgency===i+1,onClick:()=>set("urgency",i+1)},L(x))))),
+      !fixedP&&incident&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("who_affected")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.impacts.map((x,i)=>e(Opt,{key:i,sel:f.impact===i+1,onClick:()=>set("impact",i+1)},L(x))))),
+      !fixedP&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("how_urgent")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.urgencies.map((x,i)=>e(Opt,{key:i,sel:f.urgency===i+1,onClick:()=>set("urgency",i+1)},L(x))))),
       (CFG.myAssets||[]).length>0&&e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-asset"},t("related_device")),e("select",{id:"nt-asset",value:f.asset,onChange:ev=>set("asset",ev.target.value),style:IS},e("option",{value:""},t("none_dash")),CFG.myAssets.map(a=>e("option",{key:a.id,value:a.id},assetLabel(a))))),
       e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-link"},t("file_link")),e("input",{id:"nt-link",value:f.link,onChange:ev=>set("link",ev.target.value),placeholder:t("file_link_ph"),dir:"ltr",style:IS})),
       e("div",{style:{background:"#151211",border:"1px solid #231F1E",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",fontSize:"0.82rem",color:"#C9C6C4"}},e("span",null,t("calc_prio")),e(PrioB,{p}),e("span",{style:{color:"#8A8583"}},"· "+route+(CFG.supportEnabled&&c.notifySupport!==false?" · "+t("support_note"):""))),
@@ -821,6 +825,8 @@ function CatEditor({c0,onSave,onClose,busy,err}){
       e("div",null,e("label",{style:LS,htmlFor:"ce-type"},t("type")),e("select",{id:"ce-type",value:c.type,onChange:ev=>set("type",ev.target.value),style:IS},e("option",{value:"incident"},t("incident")),e("option",{value:"request"},t("request")))),
       e("div",null,e("label",{style:LS,htmlFor:"ce-owner"},t("owner")),e("select",{id:"ce-owner",value:c.owner||"",onChange:ev=>set("owner",ev.target.value||null),style:IS},e("option",{value:""},t("nobody_triage")),CFG.people.filter(p=>isITRole(p.role)&&p.active!==false).map(p=>e("option",{key:p.id,value:p.id},p.name)))),
       e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",paddingBottom:10}},e(Switch,{on:c.approval,set:v=>set("approval",v),label:t("needs_appr_lbl")}),t("needs_appr_lbl"))),
+    e("div",{style:{marginBottom:14,maxWidth:420}},e("label",{style:LS,htmlFor:"ce-prio"},t("cat_prio")),e("select",{id:"ce-prio",value:c.fixedPrio||"ask",onChange:ev=>set("fixedPrio",ev.target.value),style:IS},
+      e("option",{value:"ask"},t("cat_prio_ask")),e("option",{value:"top"},t("cat_prio_top")),Object.keys(CFG.prio).map(k=>e("option",{key:k,value:k},t("cat_prio_fixed",{p:prioLabel(k)}))))),
     CFG.supportEnabled&&e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",marginBottom:14}},e(Switch,{on:c.notifySupport!==false,set:v=>set("notifySupport",v),label:t("cat_support")}),t("cat_support")),
     e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"8px 0 10px"}},t("form_fields")),
     c.fields.map((f,i)=>e("div",{key:f.k,style:{...card,background:"#151211",padding:14,marginBottom:10}},

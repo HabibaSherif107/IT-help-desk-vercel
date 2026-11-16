@@ -154,6 +154,7 @@ function cleanCategory(c, members) {
     id, icon: str(c.icon || "❔", 8), name, description: bi(c.d, 200),
     type: c.type === "request" ? "request" : "incident", owner_id: owner,
     needs_approval: !!c.approval, notify_support: c.notifySupport !== false, fields, active: c.active !== false,
+    fixed_prio: c.fixedPrio === "top" || /^P\d{1,2}$/.test(c.fixedPrio || "") ? c.fixedPrio : "ask",
   };
 }
 
@@ -320,7 +321,11 @@ module.exports = async function handler(req, res) {
       }
       const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
       const clamp = (n, max) => Math.min(max, Math.max(1, parseInt(n, 10) || 1));
-      const impact = cat.type === "incident" ? clamp(t.impact, settings.impacts.length) : 1, urgency = clamp(t.urgency || 2, settings.urgencies.length);
+      // A category can have a fixed priority (e.g. New Joiner / Leaver = always the highest): no urgency question then.
+      const pkeys = Object.keys(settings.prio);
+      const fixedPrio = cat.fixed_prio === "top" ? pkeys[0] : (cat.fixed_prio && pkeys.includes(cat.fixed_prio) ? cat.fixed_prio : null);
+      const impact = fixedPrio ? 1 : cat.type === "incident" ? clamp(t.impact, settings.impacts.length) : 1;
+      const urgency = fixedPrio ? settings.urgencies.length : clamp(t.urgency || 2, settings.urgencies.length);
       const link = str(t.link, 500).trim();
       let assetId = null;
       if (t.asset_id) {
@@ -339,7 +344,7 @@ module.exports = async function handler(req, res) {
 
       const row = {
         id, category_id: cat.id, title, description, requester_id: viewer.id, dept_id: me.dept_id || null,
-        impact, urgency, priority: (settings.matrix[impact - 1] || [])[urgency - 1] || Object.keys(settings.prio).slice(-1)[0],
+        impact, urgency, priority: fixedPrio || (settings.matrix[impact - 1] || [])[urgency - 1] || Object.keys(settings.prio).slice(-1)[0],
         status: needsApproval ? "Pending Approval" : owner ? "Assigned" : "New",
         assignee_id: owner, fields, attachment_url: link || null, asset_id: assetId,
         approval_state: needsApproval ? "pending" : null, approver_id: approver,

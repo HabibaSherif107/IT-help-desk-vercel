@@ -127,7 +127,7 @@ const DEFAULT_CATEGORIES = [
     description: B("Buy or install a paid application", "شراء أو تثبيت برنامج مدفوع"),
     fields: [{ k: "app", kind: "text", label: B("Software name", "اسم البرنامج"), ph: B("e.g. Adobe Acrobat Pro", "مثال: Adobe Acrobat Pro") },
              { k: "why", kind: "text", label: B("Business reason", "سبب الحاجة للعمل"), ph: B("Why do you need it?", "لماذا تحتاجه؟") }] },
-  { id: "onboard", icon: "🧑‍💼", type: "request", needs_approval: true, name: B("New Joiner / Leaver", "موظف جديد / مغادر"),
+  { id: "onboard", icon: "🧑‍💼", type: "request", needs_approval: true, fixed_prio: "top", name: B("New Joiner / Leaver", "موظف جديد / مغادر"),
     description: B("Set up or remove laptop, email and accounts", "تجهيز أو سحب اللابتوب والبريد والحسابات"),
     // Joiner or leaver first; then only the matching questions are shown and required ("when").
     fields: [{"k": "kind", "kind": "select", "label": {"en": "Joiner or leaver?", "ar": "انضمام أم مغادرة؟"}, "opts": [{"en": "Joiner", "ar": "موظف جديد (انضمام)"}, {"en": "Leaver", "ar": "موظف مغادر"}]}, {"k": "j_name", "kind": "text", "label": {"en": "Full name", "ar": "الاسم الكامل"}, "ph": {"en": "New employee's full name", "ar": "الاسم الكامل للموظف الجديد"}, "when": {"k": "kind", "v": 0}}, {"k": "j_job", "kind": "text", "label": {"en": "Job position", "ar": "المسمى الوظيفي"}, "when": {"k": "kind", "v": 0}}, {"k": "j_mobile", "kind": "tel", "label": {"en": "Mobile number", "ar": "رقم الموبايل"}, "ph": {"en": "e.g. 01012345678", "ar": "مثال: 01012345678"}, "when": {"k": "kind", "v": 0}}, {"k": "j_start", "kind": "date", "label": {"en": "Start date", "ar": "تاريخ البدء"}, "when": {"k": "kind", "v": 0}}, {"k": "l_email", "kind": "email", "label": {"en": "Email", "ar": "البريد الإلكتروني"}, "ph": {"en": "name@dar-elsalam.org", "ar": "name@dar-elsalam.org"}, "when": {"k": "kind", "v": 1}}, {"k": "l_job", "kind": "text", "label": {"en": "Job position", "ar": "المسمى الوظيفي"}, "when": {"k": "kind", "v": 1}}, {"k": "l_device", "kind": "text", "label": {"en": "Device", "ar": "الجهاز"}, "ph": {"en": "e.g. Dell Latitude 5440, SN 123…", "ar": "مثال: Dell Latitude 5440، الرقم التسلسلي…"}, "when": {"k": "kind", "v": 1}}, {"k": "l_last", "kind": "date", "label": {"en": "Last working day", "ar": "آخر يوم عمل"}, "when": {"k": "kind", "v": 1}}] },
@@ -265,7 +265,7 @@ async function loadConfig(viewer, roleOverride) {
       id: u.id, name: u.name, dept: u.dept_id, sector: u.sector || null, role: itRoleOf(u), active: u.active !== false,
       ...(role === "admin" ? { email: u.email, manager: u.manager_id, lastLogin: u.last_login_at ? new Date(u.last_login_at).getTime() : null, added: u.created_at ? new Date(u.created_at).getTime() : null } : {}),
     })),
-    cats: (catRows || []).map(c => ({ id: c.id, icon: c.icon, active: c.active !== false, type: c.type, owner: c.owner_id, approval: !!c.needs_approval, notifySupport: c.notify_support !== false, n: c.name, d: c.description || B("", ""), fields: c.fields || [] })),
+    cats: (catRows || []).map(c => ({ id: c.id, icon: c.icon, active: c.active !== false, type: c.type, owner: c.owner_id, approval: !!c.needs_approval, notifySupport: c.notify_support !== false, fixedPrio: c.fixed_prio || "ask", n: c.name, d: c.description || B("", ""), fields: c.fields || [] })),
     canned: isIT(role) ? (cannedRows || []).map(c => ({ id: c.id, l: c.title, t: c.body })) : [],
     kb: (kbRows || []).map(k => ({ id: k.id, cat: k.category_id, views: k.views || 0, t: k.title, body: k.steps || { en: [], ar: [] } })),
   };

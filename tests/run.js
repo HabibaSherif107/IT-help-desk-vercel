@@ -757,6 +757,9 @@ async function tests() {
   ok((await ob({ kind: 1, l_email: "omar.x@dar-elsalam.org", l_job: "Driver", l_last: "2026-11-30" })).status === 400, "leaver: the device is required");
   r = await ob({ kind: 1, l_email: "omar.x@dar-elsalam.org", l_job: "Driver", l_device: "Dell 5440 SN 99", l_last: "2026-11-30" });
   ok(r.status === 201 && r.body.ticket.fields.l_device === "Dell 5440 SN 99" && !("j_name" in r.body.ticket.fields), "leaver ticket saves the leaver answers");
+  const topP = Object.keys((await call("sara@dar.test", "bootstrap")).body.prio)[0];
+  ok(r.body.ticket.priority === topP, "joiner / leaver tickets always get the highest priority level (" + topP + ")");
+  ok((await call("sara@dar.test", "bootstrap")).body.cats.find(c => c.id === "onboard").fixedPrio === "top", "…so the form doesn't ask how urgent it is");
   // schema.sql upgrades an old Joiner/Leaver form once
   await pool.query(`update categories set fields = '[{"k":"emp","kind":"text","label":{"en":"Employee name","ar":"اسم الموظف"}}]' where id = 'onboard'`);
   await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
@@ -766,7 +769,16 @@ async function tests() {
   const obc = cfg.cats.find(c => c.id === "onboard");
   r = await call("hany@dar.test", "admin-save-category", { category: { ...obc, fields: [...obc.fields, { k: "x1", kind: "text", label: { en: "Bad rule", ar: "" }, when: { k: "nope", v: 0 } }] } });
   const saved = r.body.cats.find(c => c.id === "onboard").fields;
-  ok(r.status === 200 && saved.find(f => f.k === "j_mobile").when.v === 0 && saved.find(f => f.k === "j_mobile").kind === "tel" && !saved.find(f => f.k === "x1").when, "admins can edit the form; valid rules are kept, broken ones removed");
+  // fixed priority per category: an admin's choice sticks, even after running schema.sql again
+  r = await call("hany@dar.test", "admin-save-category", { category: { ...cfg.cats.find(c => c.id === "other"), fixedPrio: "P3" } });
+  ok(r.body.cats.find(c => c.id === "other").fixedPrio === "P3", "admins can give any category a fixed priority");
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "Fixed prio", description: "x", impact: 4, urgency: 3 } });
+  ok(r.body.ticket.priority === "P3", "…and its tickets get it, whatever is answered");
+  await call("hany@dar.test", "admin-save-category", { category: { ...cfg.cats.find(c => c.id === "onboard"), fixedPrio: "ask" } });
+  await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
+  ok((await call("hany@dar.test", "bootstrap")).body.cats.find(c => c.id === "onboard").fixedPrio === "ask", "switching Joiner / Leaver back to “ask” isn't undone by running schema.sql");
+  r = await call("hany@dar.test", "admin-save-category", { category: { ...obc, fields: [...obc.fields, { k: "x1", kind: "text", label: { en: "Bad rule", ar: "" }, when: { k: "nope", v: 0 } }] } });
+  ok(r.status === 200 && r.body.cats.find(c => c.id === "onboard").fields.find(f => f.k === "j_mobile").when.v === 0 && saved.find(f => f.k === "j_mobile").kind === "tel" && !saved.find(f => f.k === "x1").when, "admins can edit the form; valid rules are kept, broken ones removed");
 }
 
 (async () => {

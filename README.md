@@ -86,6 +86,8 @@ The employee first chooses **Joiner** or **Leaver**; only the matching questions
 - **Joiner:** full name, job position, mobile number (checked to look like a phone number), start date.
 - **Leaver:** email (checked to be a valid address), job position, device, last working day.
 
+Joiner / Leaver tickets always get the **highest priority level**, so the form doesn't ask *How urgent is it?*. Any category can be set this way in **Categories & forms → Priority**: *Ask the employee*, *Always the highest priority*, or *Always* a specific level.
+
 Admins can build the same kind of form for any category in **Categories & forms**: each question can be *Text, Dropdown, Date, Phone number or Email address*, and can be set to **Show only when** an earlier dropdown has a certain answer.
 
 ### Help categories
