@@ -757,6 +757,16 @@ async function tests() {
   ok((await ob({ kind: 1, l_email: "omar.x@dar-elsalam.org", l_job: "Driver", l_last: "2026-11-30" })).status === 400, "leaver: the device is required");
   r = await ob({ kind: 1, l_email: "omar.x@dar-elsalam.org", l_job: "Driver", l_device: "Dell 5440 SN 99", l_last: "2026-11-30" });
   ok(r.status === 201 && r.body.ticket.fields.l_device === "Dell 5440 SN 99" && !("j_name" in r.body.ticket.fields), "leaver ticket saves the leaver answers");
+  // the leaver's devices are looked up by email (from Assets)
+  await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "laptop", model: "Leaver Laptop", serial: "LV-1", owner: PP["mona@dar.test"].id, status: "in_use" } });
+  await call("karim@dar.test", "save-asset", { isNew: true, asset: { type: "monitor", model: "Old Screen", owner: PP["mona@dar.test"].id, status: "retired" } });
+  const devLook = await call("sara@dar.test", "devices-for-email", { email: "MONA@dar.test" });
+  const monaDevs = devLook.body.devices.map(d => d.model);
+  ok(devLook.status === 200 && devLook.body.found && monaDevs.includes("Leaver Laptop") && !monaDevs.includes("Old Screen") && devLook.body.devices.find(d => d.model === "Leaver Laptop").serial === "LV-1" && devLook.body.devices[0].type.en, "typing the leaver's email finds their devices in Assets (retired ones left out)");
+  ok(!("owner" in devLook.body.devices[0]) && !("notes" in devLook.body.devices[0]), "…only type, model and serial are shared");
+  ok((await call("sara@dar.test", "devices-for-email", { email: "nobody@dar.test" })).body.found === false, "an unknown email finds nothing");
+  ok((await call(null, "devices-for-email", { email: "mona@dar.test" })).status === 401, "only signed-in people can look devices up");
+  ok((await call("sara@dar.test", "bootstrap")).body.cats.find(c => c.id === "onboard").fields.find(f => f.k === "l_device").fill === "devices", "the leaver Device question is marked to be filled automatically");
   const topP = Object.keys((await call("sara@dar.test", "bootstrap")).body.prio)[0];
   ok(r.body.ticket.priority === topP, "joiner / leaver tickets always get the highest priority level (" + topP + ")");
   ok((await call("sara@dar.test", "bootstrap")).body.cats.find(c => c.id === "onboard").fixedPrio === "top", "…so the form doesn't ask how urgent it is");
@@ -764,6 +774,7 @@ async function tests() {
   await pool.query(`update categories set fields = '[{"k":"emp","kind":"text","label":{"en":"Employee name","ar":"اسم الموظف"}}]' where id = 'onboard'`);
   await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
   ok((await call("sara@dar.test", "bootstrap")).body.cats.find(c => c.id === "onboard").fields.filter(f => f.when).length === 8, "running schema.sql replaces an old Joiner/Leaver form with the new one");
+  ok((await call("sara@dar.test", "bootstrap")).body.cats.find(c => c.id === "onboard").fields.find(f => f.k === "l_device").fill === "devices", "…including the automatic device filling");
   // the editor keeps "show only when" rules, and drops ones that point nowhere
   cfg = (await call("hany@dar.test", "bootstrap")).body;
   const obc = cfg.cats.find(c => c.id === "onboard");

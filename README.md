@@ -84,7 +84,7 @@ In **Admin Console → Users & roles** you can search people and filter **Signed
 ### New Joiner / Leaver form
 The employee first chooses **Joiner** or **Leaver**; only the matching questions then appear, and all of them are required:
 - **Joiner:** full name, job position, mobile number (checked to look like a phone number), start date.
-- **Leaver:** email (checked to be a valid address), job position, device, last working day.
+- **Leaver:** email (checked to be a valid address), job position, device, last working day. When the email is typed, **Device** fills in automatically with every device assigned to that person in Assets (type · model · serial; retired devices left out). It can still be edited, and it never overwrites something typed by hand. If the person has no devices, or the email isn't registered, a note asks to type the device.
 
 Joiner / Leaver tickets always get the **highest priority level**, so the form doesn't ask *How urgent is it?*. Any category can be set this way in **Categories & forms → Priority**: *Ask the employee*, *Always the highest priority*, or *Always* a specific level.
 

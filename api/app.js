@@ -144,6 +144,7 @@ function cleanCategory(c, members) {
     if (!out.label.en && !out.label.ar) throw new Error("Every question needs a label.");
     if (kind === "select" && !out.opts.length) throw new Error("Every dropdown needs at least one option.");
     if (f.when && typeof f.when.k === "string" && Number.isInteger(Number(f.when.v))) out.when = { k: f.when.k, v: Number(f.when.v) };   // "show only when …"
+    if (kind === "text" && f.fill === "devices") out.fill = "devices";   // filled with the devices of the email asked above
     return out;
   });
   // A "show only when" rule must point at an earlier dropdown question and one of its options.
@@ -289,6 +290,18 @@ module.exports = async function handler(req, res) {
       check(await supabase.from("assets").delete().eq("id", tag));
       const rows = check(await supabase.from("assets").select("*").order("id")) || [];
       return res.status(200).json(rows.map(IT.shapeAsset));
+    }
+
+    // Leaver form: the devices currently assigned (in Assets) to the person with this email,
+    // so the "Device" answer can be filled in automatically. Only type / model / serial are returned.
+    if (action === "devices-for-email") {
+      const email = str(body.email, 200).trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(200).json({ found: false, devices: [] });
+      const u = (await IT.loadUsers()).find(m => (m.email || "").toLowerCase() === email);
+      if (!u) return res.status(200).json({ found: false, devices: [] });
+      const st = await IT.loadSettings();
+      const rows = (check(await supabase.from("assets").select("id, type, model, serial, status").eq("owner_id", u.id)) || []).filter(a => a.status !== "retired");
+      return res.status(200).json({ found: true, name: u.name, devices: rows.map(a => ({ id: a.id, type: IT.listLabel(st, "assetTypes", a.type) || { en: a.type, ar: a.type }, model: a.model || "", serial: a.serial || "" })) });
     }
 
     if (action === "kb-view") {

@@ -377,3 +377,12 @@ update categories set fields = '[{"k": "kind", "kind": "select", "label": {"en":
 -- ════════════════════════════════════════════════════════════
 alter table categories add column if not exists fixed_prio text;
 update categories set fixed_prio = 'top' where id = 'onboard' and fixed_prio is null;
+
+-- ════════════════════════════════════════════════════════════
+-- 26. Leaver form: the "Device" answer is filled automatically with the devices assigned
+--     (in Assets) to the email entered above. Applied once; still editable in the Admin Console.
+-- ════════════════════════════════════════════════════════════
+update categories
+   set fields = (select jsonb_agg(case when f->>'k' = 'l_device' then f || '{"fill":"devices"}'::jsonb else f end order by n)
+                   from jsonb_array_elements(fields) with ordinality as x(f, n))
+ where id = 'onboard' and fields::text like '%"l_device"%' and fields::text not like '%"fill"%';

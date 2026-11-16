@@ -232,6 +232,10 @@ const S = {
   kind_tel:["Phone number","رقم هاتف"], kind_email:["Email address","بريد إلكتروني"], show_when:["Show only when","يظهر فقط عندما"], show_always:["Always shown","يظهر دائمًا"],
   cat_prio:["Priority","الأولوية"], cat_prio_ask:["Ask the employee (impact / urgency questions)","يسأل الموظف (أسئلة التأثير / الاستعجال)"],
   cat_prio_top:["Always the highest priority (no urgency question)","دائمًا أعلى أولوية (بدون سؤال الاستعجال)"], cat_prio_fixed:["Always {p} (no urgency question)","دائمًا {p} (بدون سؤال الاستعجال)"],
+  dev_fill_ok:["✓ Filled from Assets: {n} device(s) assigned to {name}. You can edit this.","✓ تم الملء من سجل الأجهزة: {n} جهاز مُسلَّم إلى {name}. يمكنك التعديل."],
+  dev_fill_none:["No devices are registered to {name} in Assets. Please type the device(s).","لا توجد أجهزة مسجلة باسم {name} في سجل الأجهزة. يُرجى كتابة الجهاز."],
+  dev_fill_unknown:["This email isn't registered in the help desk. Please type the device(s).","هذا البريد غير مسجل في مكتب الدعم. يُرجى كتابة الجهاز."],
+  fill_devices_lbl:["Fill in automatically with the devices of the email asked above (from Assets)","املأ تلقائيًا بأجهزة البريد المذكور أعلاه (من سجل الأجهزة)"],
   manager_short:["Manager","المدير"],
   search_people:["Search name, email or department…","ابحث بالاسم أو البريد أو الإدارة…"], u_signin:["Sign-in","تسجيل الدخول"],
   u_signed_in:["Signed in","سجّل الدخول"], u_never:["Not signed in yet","لم يسجّل الدخول بعد"], u_last:["last {d}","آخر مرة {d}"],
@@ -413,6 +417,17 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
   const c=cat(f.cat), incident=c.type==="incident";
   /* Questions with a "show only when" rule appear (and are required) only for the matching answer. */
   const shown=(c.fields||[]).filter(fd=>!fd.when||f.fields[fd.when.k]===fd.when.v);
+  /* "Fill with devices": once a valid email is typed above, fill the answer with that person's devices from Assets. */
+  const fillFd=shown.find(fd=>fd.fill==="devices"), emailFd=fillFd&&shown.slice(0,shown.indexOf(fillFd)).reverse().find(fd=>fd.kind==="email");
+  const emailV=emailFd?String(f.fields[emailFd.k]||"").trim():"";
+  const [devNote,setDevNote]=useState(null), lastAuto=useRef("");
+  useEffect(()=>{ if(!fillFd) return; if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailV)){ setDevNote(null); return; }
+    let stop=false; const tm=setTimeout(async()=>{ try{ const r=await api("devices-for-email",{email:emailV}); if(stop) return;
+      const txt=(r.devices||[]).map(d=>[L(d.type),d.model,d.serial?"SN "+d.serial:""].filter(Boolean).join(" · ")).join("; ");
+      setF(x=>{ const cur=String(x.fields[fillFd.k]||""); if(cur&&cur!==lastAuto.current) return x; lastAuto.current=txt; return {...x,fields:{...x.fields,[fillFd.k]:txt}}; });
+      setDevNote(!r.found?t("dev_fill_unknown"):r.devices.length?t("dev_fill_ok",{n:r.devices.length,name:r.name}):t("dev_fill_none",{name:r.name}));
+    }catch(_){ if(!stop) setDevNote(null); } },450);
+    return()=>{ stop=true; clearTimeout(tm); }; },[emailV,fillFd&&fillFd.k]);
   /* Fixed-priority categories (e.g. Joiner / Leaver = highest) skip the "how urgent" questions. */
   const fixedP=c.fixedPrio==="top"?prioKeys()[0]:(c.fixedPrio&&CFG.prio[c.fixedPrio]?c.fixedPrio:null);
   const p=fixedP||(CFG.matrix[(incident?f.impact:1)-1]||[])[f.urgency-1]||prioKeys().slice(-1)[0];
@@ -434,6 +449,8 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
       e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-desc"},t("f_desc")+" *"),e("textarea",{id:"nt-desc",rows:3,maxLength:5000,value:f.desc,onChange:ev=>set("desc",ev.target.value),placeholder:t("f_desc_ph"),style:{...IS,resize:"vertical"}})),
       shown.length>0&&e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}},shown.map(fd=>{ const v=f.fields[fd.k]; const setV=val=>set("fields",{...f.fields,[fd.k]:val}); const id="nt-f-"+fd.k; return e("div",{key:fd.k},e("label",{style:LS,htmlFor:id},L(fd.label)+" *"),
         fd.kind==="select"?e("select",{id,value:v==null?"":v,onChange:ev=>setV(ev.target.value===""?null:+ev.target.value),style:IS},e("option",{value:""},t("select")),(fd.opts||[]).map((o,i)=>e("option",{key:i,value:i},L(o)))):
+        fd.fill==="devices"?e("div",null,e("textarea",{id,rows:2,value:v||"",placeholder:L(fd.ph),onChange:ev=>setV(ev.target.value),style:{...IS,resize:"vertical"}}),
+          devNote&&e("div",{className:"dev-note",style:{fontSize:"0.75rem",color:"#8A8583",marginTop:4,lineHeight:1.4}},devNote)):
         e("input",{id,type:fd.kind==="date"?"date":fd.kind==="tel"?"tel":fd.kind==="email"?"email":"text",inputMode:fd.kind==="tel"?"tel":fd.kind==="email"?"email":undefined,dir:(fd.kind==="tel"||fd.kind==="email")&&v?"ltr":undefined,value:v||"",placeholder:L(fd.ph),onChange:ev=>setV(ev.target.value),style:IS})); })),
       !fixedP&&incident&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("who_affected")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.impacts.map((x,i)=>e(Opt,{key:i,sel:f.impact===i+1,onClick:()=>set("impact",i+1)},L(x))))),
       !fixedP&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("how_urgent")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.urgencies.map((x,i)=>e(Opt,{key:i,sel:f.urgency===i+1,onClick:()=>set("urgency",i+1)},L(x))))),
@@ -836,6 +853,8 @@ function CatEditor({c0,onSave,onClose,busy,err}){
             e("option",{value:""},t("show_always")),srcs.flatMap(x=>(x.opts||[]).map((o,oi)=>e("option",{key:x.k+oi,value:x.k+"|"+oi},L(x.label)+" = "+L(o)))))); })(),
         e("button",{onClick:()=>setC(x=>({...x,fields:x.fields.filter((_,j)=>j!==i)})),style:{...BSm,color:"#FCA5A5"}},t("remove"))),
       e(Bi,{label:t("field_label"),val:f.label,set:v=>setField(i,{label:v})}),
+      f.kind==="text"&&c.fields.slice(0,i).some(x=>x.kind==="email")&&e("label",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.82rem",marginBottom:8,cursor:"pointer"}},
+        e("input",{type:"checkbox",checked:f.fill==="devices",onChange:ev=>setField(i,{fill:ev.target.checked?"devices":undefined}),style:{width:18,height:18,accentColor:"#E11A22"}}),t("fill_devices_lbl")),
       f.kind==="select"&&e("div",null,e("div",{style:LS},t("options")),e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},["en","ar"].map(l=>e("textarea",{key:l,"aria-label":t("options")+" "+l,rows:Math.max(3,(f.opts||[]).length),dir:l==="ar"?"rtl":"ltr",value:optsText(f,l),onChange:ev=>setOpts(i,l,ev.target.value),placeholder:l==="en"?"English":"العربية",style:{...IS,resize:"vertical"}})))))),
     e("button",{onClick:()=>set("fields",[...c.fields,{k:"f"+Date.now().toString(36),kind:"text",label:{en:"",ar:""}}]),style:{...BS,marginBottom:18}},t("add_field")),
     e(ErrBox,{text:err}),
