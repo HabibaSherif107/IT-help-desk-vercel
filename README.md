@@ -23,7 +23,7 @@ Nothing is shared, so changes in one can never affect the other.
 |---|---|---|
 | 👤 **Employee** | Help Center, My Requests, Knowledge Base | Search quick fixes, raise tickets, chat with IT, close a resolved ticket, or escalate it if it's still not fixed |
 | 🛠️ **IT Agent** | Ticket Queue, Assets, Stock, Purchase Requests, My Requests, Knowledge Base | Take tickets, reply, write private notes, change status/priority, resolve, **escalate to the IT manager**, add and update devices, update stock, raise purchase requests |
-| 👑 **IT Manager** | Everything an agent sees, plus Dashboard, Approvals, Auto-assignment | Approve or reject requests and purchase requests, declare a major incident, delete stock items |
+| 👑 **IT Manager** | Everything an agent sees, plus Dashboard, Approvals, Auto-assignment | Approve or reject requests and purchase requests, delete stock items |
 | 🛡️ **Admin** | Admin Console, plus everything above | Everything an IT manager can do (approvals, escalations, purchase approvals, auto-assignment), plus manage people, departments, categories, questions, priorities, statuses, replies, articles, dropdown lists and settings |
 | *Any manager* | Approvals (when someone they manage asks for something) | Approve or reject that person's requests |
 
@@ -57,7 +57,7 @@ Same layout as the sheet: **# · Item name · Product link · Quantity · Unit p
 - **Print** gives a printable page with the same look as the sheet, including signature lines.
 
 ### Priorities, questions and statuses (Admin Console)
-- **Priority & questions:** add (up to 8), remove, rename, recolour and reorder priority levels. The top level is the most urgent: the top two count as *Urgent* in the queue and dashboard, and a major incident takes the top level. Add or remove answers to *Who is affected?* and *How urgent is it?* (2–5 each). The priority matrix grows or shrinks to match, and new cells start at the least urgent level. A priority level that tickets use can't be deleted.
+- **Priority & questions:** add (up to 8), remove, rename, recolour and reorder priority levels. The top level is the most urgent: the top two count as *Urgent* in the queue and dashboard. Add or remove answers to *Who is affected?* and *How urgent is it?* (2–5 each). The priority matrix grows or shrinks to match, and new cells start at the least urgent level. A priority level that tickets use can't be deleted.
 - **Statuses:** the 8 built-in statuses (🔒) drive the ticket workflow, so they can be renamed and recoloured but not deleted. You can add up to 10 of your own (for example *On hold – waiting for parts*). They count as open, and IT can set them on a ticket. A status that tickets are in can't be deleted.
 
 ### "View as" (admins only)
@@ -80,6 +80,13 @@ In **Admin Console → Users & roles** you can search people and filter **Signed
 - **Date filters everywhere there are dates:** Ticket Queue, My Requests, Approvals, Assets, Stock, Purchase Requests and Users & roles each have a 📅 filter: *Any date*, *On a day* or *Between dates*. Where a list has several dates you choose which one (e.g. a device's purchase date, received date or warranty end; a purchase request's created, submitted, approved/rejected or received date; a person's added or last sign-in date).
 - Other filters: users by department, company sector and role; purchase requests by text (number, item, notes) and by who created them; My Requests by text.
 - **Menu counts:** Ticket Queue shows the number of open tickets, Approvals the number waiting, My Requests your open requests, and Purchase Requests the ones still open (waiting approval, approved or ordered). Hover a count for details.
+
+### New Joiner / Leaver form
+The employee first chooses **Joiner** or **Leaver**; only the matching questions then appear, and all of them are required:
+- **Joiner:** full name, job position, mobile number (checked to look like a phone number), start date.
+- **Leaver:** email (checked to be a valid address), job position, device, last working day.
+
+Admins can build the same kind of form for any category in **Categories & forms**: each question can be *Text, Dropdown, Date, Phone number or Email address*, and can be set to **Show only when** an earlier dropdown has a certain answer.
 
 ### Help categories
 Request Hardware · Internet & Connectivity · Email & Accounts · New Software / License Purchase *(needs approval)* · New Joiner / Leaver *(needs approval)* · Something Else.
@@ -143,7 +150,7 @@ Files starting with `_` are helpers, not endpoints. The app uses **4 serverless 
 
 ### Rules enforced on the server
 - **Employees** see only their own tickets, plus tickets waiting for their approval. IT sees all tickets. **Internal notes are removed** before anything is sent to a non-IT user.
-- Only IT can change status, assignee or priority. Only the IT manager or admin can declare a major incident.
+- Only IT can change status, assignee or priority.
 - Only the approver, the IT manager or an admin can approve or reject, and never their own request.
 - Tickets can be assigned only to active IT staff.
 - An admin can't remove their own admin role or turn themselves off.

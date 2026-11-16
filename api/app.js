@@ -136,15 +136,18 @@ function cleanSetting(key, v, members) {
 function cleanCategory(c, members) {
   const id = String(c.id || "").trim();
   const owner = c.owner && members.some(m => m.id === c.owner && m.active !== false && isIT(itRoleOf(m))) ? c.owner : null;
-  const fields = (Array.isArray(c.fields) ? c.fields : []).slice(0, 10).map((f, i) => {
-    const kind = ["text", "select", "date"].includes(f.kind) ? f.kind : "text";
+  const fields = (Array.isArray(c.fields) ? c.fields : []).slice(0, 15).map((f, i) => {
+    const kind = ["text", "select", "date", "tel", "email"].includes(f.kind) ? f.kind : "text";
     const out = { k: /^[A-Za-z0-9_]{1,40}$/.test(f.k || "") ? f.k : "f" + i + "_" + Date.now().toString(36), kind, label: bi(f.label, 120) };
     if (kind === "select") out.opts = (Array.isArray(f.opts) ? f.opts : []).slice(0, 30).map(o => bi(o, 80)).filter(o => o.en || o.ar);
     if (f.ph) out.ph = bi(f.ph, 120);
     if (!out.label.en && !out.label.ar) throw new Error("Every question needs a label.");
     if (kind === "select" && !out.opts.length) throw new Error("Every dropdown needs at least one option.");
+    if (f.when && typeof f.when.k === "string" && Number.isInteger(Number(f.when.v))) out.when = { k: f.when.k, v: Number(f.when.v) };   // "show only when …"
     return out;
   });
+  // A "show only when" rule must point at an earlier dropdown question and one of its options.
+  fields.forEach((f, i) => { if (f.when) { const src = fields.slice(0, i).find(x => x.k === f.when.k && x.kind === "select"); if (!src || f.when.v < 0 || f.when.v >= src.opts.length) delete f.when; } });
   const name = bi(c.n, 80);
   if (!name.en && !name.ar) throw new Error("The category needs a name.");
   return {
@@ -303,9 +306,16 @@ module.exports = async function handler(req, res) {
       if (!description) return fail(res, 400, "Please describe the problem.");
       const fields = {};
       for (const fd of cat.fields || []) {
+        if (fd.when && fields[fd.when.k] !== fd.when.v) continue;   // question not shown for this answer (e.g. leaver questions for a joiner)
         let v = (t.fields || {})[fd.k];
-        if (fd.kind === "select") { v = Number(v); if (!Number.isInteger(v) || v < 0 || v >= (fd.opts || []).length) return fail(res, 400, "Please fill in: " + (fd.label.en || fd.label.ar)); }
-        else { v = str(v, 300).trim(); if (!v) return fail(res, 400, "Please fill in: " + (fd.label.en || fd.label.ar)); }
+        const label = fd.label.en || fd.label.ar;
+        if (fd.kind === "select") { v = Number(v); if (!Number.isInteger(v) || v < 0 || v >= (fd.opts || []).length) return fail(res, 400, "Please fill in: " + label); }
+        else {
+          v = str(v, 300).trim(); if (!v) return fail(res, 400, "Please fill in: " + label);
+          if (fd.kind === "tel" && !/^\+?[0-9][0-9 ()-]{6,19}$/.test(v)) return fail(res, 400, "Please enter a valid mobile number for: " + label);
+          if (fd.kind === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return fail(res, 400, "Please enter a valid email address for: " + label);
+          if (fd.kind === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return fail(res, 400, "Please enter a valid date for: " + label);
+        }
         fields[fd.k] = v;
       }
       const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);

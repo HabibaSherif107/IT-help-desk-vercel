@@ -361,3 +361,11 @@ end $$;
 -- 23. Optional serial number on stock items (upgrade-safe). Empty unless filled in.
 -- ════════════════════════════════════════════════════════════
 alter table stock_items add column if not exists serial text;
+
+-- ════════════════════════════════════════════════════════════
+-- 24. New Joiner / Leaver form: choose Joiner or Leaver, then the matching required questions
+--     (joiner: name, job position, mobile, start date; leaver: email, job position, device, last day).
+--     Applied once (only if the form doesn't have these questions yet); admins can still edit it after.
+-- ════════════════════════════════════════════════════════════
+update categories set fields = '[{"k": "kind", "kind": "select", "label": {"en": "Joiner or leaver?", "ar": "انضمام أم مغادرة؟"}, "opts": [{"en": "Joiner", "ar": "موظف جديد (انضمام)"}, {"en": "Leaver", "ar": "موظف مغادر"}]}, {"k": "j_name", "kind": "text", "label": {"en": "Full name", "ar": "الاسم الكامل"}, "ph": {"en": "New employee''s full name", "ar": "الاسم الكامل للموظف الجديد"}, "when": {"k": "kind", "v": 0}}, {"k": "j_job", "kind": "text", "label": {"en": "Job position", "ar": "المسمى الوظيفي"}, "when": {"k": "kind", "v": 0}}, {"k": "j_mobile", "kind": "tel", "label": {"en": "Mobile number", "ar": "رقم الموبايل"}, "ph": {"en": "e.g. 01012345678", "ar": "مثال: 01012345678"}, "when": {"k": "kind", "v": 0}}, {"k": "j_start", "kind": "date", "label": {"en": "Start date", "ar": "تاريخ البدء"}, "when": {"k": "kind", "v": 0}}, {"k": "l_email", "kind": "email", "label": {"en": "Email", "ar": "البريد الإلكتروني"}, "ph": {"en": "name@dar-elsalam.org", "ar": "name@dar-elsalam.org"}, "when": {"k": "kind", "v": 1}}, {"k": "l_job", "kind": "text", "label": {"en": "Job position", "ar": "المسمى الوظيفي"}, "when": {"k": "kind", "v": 1}}, {"k": "l_device", "kind": "text", "label": {"en": "Device", "ar": "الجهاز"}, "ph": {"en": "e.g. Dell Latitude 5440, SN 123…", "ar": "مثال: Dell Latitude 5440، الرقم التسلسلي…"}, "when": {"k": "kind", "v": 1}}, {"k": "l_last", "kind": "date", "label": {"en": "Last working day", "ar": "آخر يوم عمل"}, "when": {"k": "kind", "v": 1}}]'::jsonb
+ where id = 'onboard' and fields::text not like '%j_mobile%';

@@ -229,7 +229,7 @@ async function tests() {
   ok((await call("karim@dar.test", "approve", { id: t2.id })).status === 403, "agent can't approve");
   r = await call("mona@dar.test", "approve", { id: t2.id });
   ok(r.body.ticket.approval.state === "approved" && r.body.ticket.status === "New", "manager approves");
-  r = await call("habiba@dar.test", "create-ticket", { ticket: { category_id: "onboard", title: "Leaver", description: "Collect laptop", fields: { kind: 1, emp: "K M", date: "2026-12-01" } } });
+  r = await call("habiba@dar.test", "create-ticket", { ticket: { category_id: "onboard", title: "Leaver", description: "Collect laptop", fields: { kind: 1, l_email: "k.m@dar.test", l_job: "Driver", l_device: "Laptop", l_last: "2026-12-01" } } });
   r = await call("omar@dar.test", "reject", { id: r.body.ticket.id, reason: "Duplicate" });
   ok(r.body.ticket.status === "Rejected", "IT manager can reject with a reason");
 
@@ -743,6 +743,30 @@ async function tests() {
   ok(r.status === 401 && /session has expired/.test(r.body.error), "after the week the session ends with a clear “please sign in again” message");
   await signIn("karim@dar.test");
   ok((await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...st, min: "5" } })).status === 200, "…and after signing in again saving works");
+
+  // ── New Joiner / Leaver form ─────────────────────────────────
+  const ob = (fields) => call("sara@dar.test", "create-ticket", { ticket: { category_id: "onboard", title: "People change", description: "x", fields } });
+  ok((await ob({})).status === 400, "joiner / leaver must be chosen");
+  r = await ob({ kind: 0, j_name: "Nour Ali", j_job: "Accountant", j_start: "2026-12-01" });
+  ok(r.status === 400 && /Mobile number/.test(r.body.error), "joiner: every joiner question is required (mobile missing)");
+  ok((await ob({ kind: 0, j_name: "Nour Ali", j_job: "Accountant", j_mobile: "call me", j_start: "2026-12-01" })).status === 400, "joiner: the mobile number must look like a phone number");
+  r = await ob({ kind: 0, j_name: "Nour Ali", j_job: "Accountant", j_mobile: "+20 101 234 5678", j_start: "2026-12-01", l_email: "ignored@x.y" });
+  ok(r.status === 201 && Object.keys(r.body.ticket.fields).sort().join() === "j_job,j_mobile,j_name,j_start,kind", "joiner ticket saves only the joiner answers (leaver questions are ignored)");
+  r = await ob({ kind: 1, l_email: "not-an-email", l_job: "Driver", l_device: "Dell 5440", l_last: "2026-11-30" });
+  ok(r.status === 400 && /valid email/.test(r.body.error), "leaver: the email must be a valid address");
+  ok((await ob({ kind: 1, l_email: "omar.x@dar-elsalam.org", l_job: "Driver", l_last: "2026-11-30" })).status === 400, "leaver: the device is required");
+  r = await ob({ kind: 1, l_email: "omar.x@dar-elsalam.org", l_job: "Driver", l_device: "Dell 5440 SN 99", l_last: "2026-11-30" });
+  ok(r.status === 201 && r.body.ticket.fields.l_device === "Dell 5440 SN 99" && !("j_name" in r.body.ticket.fields), "leaver ticket saves the leaver answers");
+  // schema.sql upgrades an old Joiner/Leaver form once
+  await pool.query(`update categories set fields = '[{"k":"emp","kind":"text","label":{"en":"Employee name","ar":"اسم الموظف"}}]' where id = 'onboard'`);
+  await pool.query(fs.readFileSync(ROOT + "/schema.sql", "utf8"));
+  ok((await call("sara@dar.test", "bootstrap")).body.cats.find(c => c.id === "onboard").fields.filter(f => f.when).length === 8, "running schema.sql replaces an old Joiner/Leaver form with the new one");
+  // the editor keeps "show only when" rules, and drops ones that point nowhere
+  cfg = (await call("hany@dar.test", "bootstrap")).body;
+  const obc = cfg.cats.find(c => c.id === "onboard");
+  r = await call("hany@dar.test", "admin-save-category", { category: { ...obc, fields: [...obc.fields, { k: "x1", kind: "text", label: { en: "Bad rule", ar: "" }, when: { k: "nope", v: 0 } }] } });
+  const saved = r.body.cats.find(c => c.id === "onboard").fields;
+  ok(r.status === 200 && saved.find(f => f.k === "j_mobile").when.v === 0 && saved.find(f => f.k === "j_mobile").kind === "tel" && !saved.find(f => f.k === "x1").when, "admins can edit the form; valid rules are kept, broken ones removed");
 }
 
 (async () => {

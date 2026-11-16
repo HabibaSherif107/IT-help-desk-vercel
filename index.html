@@ -204,7 +204,7 @@ const S = {
   view_as:["View as","العرض كـ"], view_as_me:["Admin (me)","مسؤول النظام (أنا)"], viewing_as:["👁 Preview: you're seeing the help desk as {r}.","👁 معاينة: أنت ترى مكتب الدعم كـ {r}."],
   viewing_as_note:["Anything you do here is real and is recorded under your name.","أي إجراء تقوم به هنا حقيقي ويُسجَّل باسمك."], back_admin:["Back to Admin","العودة لمسؤول النظام"],
   add_prio:["+ Add priority level","+ إضافة مستوى أولوية"], add_answer:["+ Add answer","+ إضافة إجابة"], add_status:["+ Add status","+ إضافة حالة"], new_status:["New status","حالة جديدة"],
-  prio_order_note:["Top = most urgent. The top two levels count as “Urgent” in the queue and dashboard, and a major incident uses the top level. 2–8 levels; a level that tickets still use can't be deleted.","الأعلى = الأكثر إلحاحًا. أعلى مستويين يُعتبران «عاجلة» في القائمة ولوحة المتابعة، والعطل الرئيسي يأخذ أعلى مستوى. من 2 إلى 8 مستويات؛ لا يمكن حذف مستوى تستخدمه تذاكر."],
+  prio_order_note:["Top = most urgent. The top two levels count as “Urgent” in the queue and dashboard,. 2–8 levels; a level that tickets still use can't be deleted.","الأعلى = الأكثر إلحاحًا. أعلى مستويين يُعتبران «عاجلة» في القائمة ولوحة المتابعة. من 2 إلى 8 مستويات؛ لا يمكن حذف مستوى تستخدمه تذاكر."],
   impact_order_note:["Listed from smallest to biggest impact (2–5 answers).","مرتبة من الأقل تأثيرًا إلى الأكبر (2–5 إجابات)."], urgency_order_note:["Listed from least to most urgent (2–5 answers).","مرتبة من الأقل إلحاحًا إلى الأكثر (2–5 إجابات)."],
   status_note2:["The 🔒 built-in statuses drive the ticket workflow (approval, resolve, close), so they can be renamed and recoloured but not deleted. Statuses you add count as “open” and IT can set them on a ticket (for example “On hold – waiting for parts”). A status that tickets are in can't be deleted.","الحالات الأساسية 🔒 تتحكم في سير التذكرة (الموافقة، الحل، الإغلاق)، لذا يمكن إعادة تسميتها وتغيير لونها دون حذفها. الحالات التي تضيفها تُعتبر «مفتوحة» ويمكن لفريق التقنية اختيارها للتذكرة (مثل «معلّقة – بانتظار قطع غيار»). لا يمكن حذف حالة توجد بها تذاكر."],
   builtin:["Built-in","أساسية"], builtin_d:["Needed by the ticket workflow","مطلوبة لسير عمل التذاكر"],
@@ -229,6 +229,7 @@ const S = {
   mv_received:["Received from purchase request {id}","تم الاستلام من طلب الشراء {id}"], mv_opening:["Opening stock","رصيد افتتاحي"],
   cnt_queue:["{n} open tickets ({u} unassigned)","{n} تذكرة مفتوحة ({u} غير مُسندة)"], cnt_appr:["{n} waiting for approval","{n} بانتظار الموافقة"],
   cnt_mine:["{n} of your requests are still open","{n} من طلباتك ما زالت مفتوحة"], cnt_pr:["{n} purchase requests still open ({w} waiting for your approval)","{n} طلبات شراء مفتوحة ({w} بانتظار موافقتك)"],
+  kind_tel:["Phone number","رقم هاتف"], kind_email:["Email address","بريد إلكتروني"], show_when:["Show only when","يظهر فقط عندما"], show_always:["Always shown","يظهر دائمًا"],
   manager_short:["Manager","المدير"],
   search_people:["Search name, email or department…","ابحث بالاسم أو البريد أو الإدارة…"], u_signin:["Sign-in","تسجيل الدخول"],
   u_signed_in:["Signed in","سجّل الدخول"], u_never:["Not signed in yet","لم يسجّل الدخول بعد"], u_last:["last {d}","آخر مرة {d}"],
@@ -382,7 +383,7 @@ function HelpHome({me,tickets,onNew,onOpen,onKB,go}){
   const mine=tickets.filter(x=>x.req===me), open=mine.filter(x=>isOpen(x)||x.status==="Resolved");
   const ql=q.toLowerCase();
   const hits=q.trim().length>1?CFG.kb.filter(a=>[L(a.t),a.t.en,a.t.ar,...(a.body.en||[]),...(a.body.ar||[])].join(" ").toLowerCase().includes(ql)).slice(0,4):[];
-  const major=tickets.find(x=>x.major&&isOpen(x));
+  const major=null;   /* major incidents were removed */
   const first=(person(me)||{name:""}).name.split(" ")[0];
   return e("div",{style:{display:"flex",flexDirection:"column",gap:20}},
     major&&e("div",{style:{background:"#7F1D1D44",border:"1px solid #EF444466",borderRadius:10,padding:"12px 16px",display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}},e("span",{style:{fontSize:"1.3rem"}},"⚠️"),e("div",{style:{flex:1,minWidth:200}},e("b",{style:{color:"#FCA5A5"}},t("known_issue")+" "),major.title+". "+t("known_issue_tail")),e("button",{onClick:()=>onOpen(major),style:BSm},t("follow"))),
@@ -408,13 +409,15 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
   const [err,setErr]=useState(""), [busy,setBusy]=useState(false);
   const set=(k,v)=>setF(x=>({...x,[k]:v}));
   const c=cat(f.cat), incident=c.type==="incident";
+  /* Questions with a "show only when" rule appear (and are required) only for the matching answer. */
+  const shown=(c.fields||[]).filter(fd=>!fd.when||f.fields[fd.when.k]===fd.when.v);
   const p=(CFG.matrix[(incident?f.impact:1)-1]||[])[f.urgency-1]||prioKeys().slice(-1)[0];
   const words=f.title.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(x=>x.length>3);
   const sugg=CFG.kbSuggest&&f.title.trim().length>2?CFG.kb.filter(a=>a.cat===f.cat||words.some(w=>((a.t.en||"")+" "+(a.t.ar||"")).toLowerCase().includes(w))).slice(0,3):[];
   const submit=async()=>{ if(!f.title.trim())return setErr(t("err_title")); if(!f.desc.trim())return setErr(t("err_desc"));
-    for(const fd of c.fields){ const v=f.fields[fd.k]; if(v==null||String(v).trim()==="") return setErr(t("err_field",{f:L(fd.label)})); }
+    for(const fd of shown){ const v=f.fields[fd.k]; if(v==null||String(v).trim()==="") return setErr(t("err_field",{f:L(fd.label)})); }
     setBusy(true); setErr("");
-    try{ const r=await api("create-ticket",{ticket:{asset_id:f.asset||null,category_id:f.cat,title:f.title,description:f.desc,impact:f.impact,urgency:f.urgency,fields:f.fields,link:f.link}}); onCreated(r.ticket); }
+    try{ const r=await api("create-ticket",{ticket:{asset_id:f.asset||null,category_id:f.cat,title:f.title,description:f.desc,impact:f.impact,urgency:f.urgency,fields:Object.fromEntries(shown.map(fd=>[fd.k,f.fields[fd.k]])),link:f.link}}); onCreated(r.ticket); }
     catch(x){ setErr(x.message); setBusy(false); } };
   const Opt=({sel,onClick,children})=>e("button",{onClick,"aria-pressed":sel,style:{flex:"1 1 120px",padding:"10px 8px",borderRadius:8,fontSize:"0.82rem",background:sel?"#E11A2222":"#1A1717",border:"1px solid "+(sel?"#E11A22":"#332C2B"),color:sel?"#F16A6F":"#C9C6C4",fontWeight:sel?700:500}},children);
   const route=c.approval?t("route_approval"):(CFG.autoAssign&&c.owner&&person(c.owner)?t("route_to",{name:pname(c.owner)}):t("route_triage"));
@@ -425,9 +428,9 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
       e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-title"},t("f_title")+" *"),e("input",{id:"nt-title",maxLength:200,value:f.title,onChange:ev=>set("title",ev.target.value),placeholder:t("f_title_ph"),style:IS})),
       sugg.length>0&&e("div",{style:{background:"#0C2A3A55",border:"1px solid #38BDF844",borderRadius:10,padding:"10px 14px",marginBottom:14}},e("div",{style:{fontSize:"0.78rem",color:"#7DD3FC",fontWeight:700,marginBottom:6}},"💡 "+t("kb_suggest")),sugg.map(a=>e("button",{key:a.id,onClick:()=>onKB(a),style:{display:"block",background:"none",border:"none",fontSize:"0.85rem",color:"#BAE6FD",padding:"3px 0",textDecoration:"underline",textAlign:"start"}},L(a.t)))),
       e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-desc"},t("f_desc")+" *"),e("textarea",{id:"nt-desc",rows:3,maxLength:5000,value:f.desc,onChange:ev=>set("desc",ev.target.value),placeholder:t("f_desc_ph"),style:{...IS,resize:"vertical"}})),
-      c.fields.length>0&&e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}},c.fields.map(fd=>{ const v=f.fields[fd.k]; const setV=val=>set("fields",{...f.fields,[fd.k]:val}); const id="nt-f-"+fd.k; return e("div",{key:fd.k},e("label",{style:LS,htmlFor:id},L(fd.label)+" *"),
+      shown.length>0&&e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}},shown.map(fd=>{ const v=f.fields[fd.k]; const setV=val=>set("fields",{...f.fields,[fd.k]:val}); const id="nt-f-"+fd.k; return e("div",{key:fd.k},e("label",{style:LS,htmlFor:id},L(fd.label)+" *"),
         fd.kind==="select"?e("select",{id,value:v==null?"":v,onChange:ev=>setV(ev.target.value===""?null:+ev.target.value),style:IS},e("option",{value:""},t("select")),(fd.opts||[]).map((o,i)=>e("option",{key:i,value:i},L(o)))):
-        e("input",{id,type:fd.kind==="date"?"date":"text",value:v||"",placeholder:L(fd.ph),onChange:ev=>setV(ev.target.value),style:IS})); })),
+        e("input",{id,type:fd.kind==="date"?"date":fd.kind==="tel"?"tel":fd.kind==="email"?"email":"text",inputMode:fd.kind==="tel"?"tel":fd.kind==="email"?"email":undefined,dir:(fd.kind==="tel"||fd.kind==="email")&&v?"ltr":undefined,value:v||"",placeholder:L(fd.ph),onChange:ev=>setV(ev.target.value),style:IS})); })),
       incident&&e("div",{style:{marginBottom:14}},e("div",{style:LS},t("who_affected")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.impacts.map((x,i)=>e(Opt,{key:i,sel:f.impact===i+1,onClick:()=>set("impact",i+1)},L(x))))),
       e("div",{style:{marginBottom:14}},e("div",{style:LS},t("how_urgent")),e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},CFG.urgencies.map((x,i)=>e(Opt,{key:i,sel:f.urgency===i+1,onClick:()=>set("urgency",i+1)},L(x))))),
       (CFG.myAssets||[]).length>0&&e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-asset"},t("related_device")),e("select",{id:"nt-asset",value:f.asset,onChange:ev=>set("asset",ev.target.value),style:IS},e("option",{value:""},t("none_dash")),CFG.myAssets.map(a=>e("option",{key:a.id,value:a.id},assetLabel(a))))),
@@ -474,7 +477,7 @@ function Queue({me,role,tickets,onOpen,selId}){
       e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:12,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_id"),t("h_subject"),t("h_req"),t("h_prio"),t("status"),t("h_opened"),""].map((h,i)=>e("span",{key:i},h))),
       rows.map((x,i)=>e("button",{key:x.id,className:"hov",onClick:()=>onOpen(x),style:{display:"grid",width:"100%",textAlign:"start",color:"inherit",border:"none",gridTemplateColumns:cols,gap:12,padding:"12px 14px",alignItems:"center",background:selId===x.id?"#3A1512":i%2?"#181514":"#1A1717",borderInlineStart:"3px solid "+(selId===x.id?"#E11A22":x.priority==="P1"&&isOpen(x)?"#EF4444":"transparent")}},
         e("span",{style:{fontFamily:"monospace",fontSize:"0.75rem",color:"#8A8583"}},x.id),
-        e("div",{style:{minWidth:0}},e("div",{style:{fontSize:"0.9rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(x.major?"🚨 ":"")+(x.escalated&&isOpen(x)?"⬆ ":"")+x.title),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},cat(x.cat).icon+" "+L(cat(x.cat).n))),
+        e("div",{style:{minWidth:0}},e("div",{style:{fontSize:"0.9rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(x.escalated&&isOpen(x)?"⬆ ":"")+x.title),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},cat(x.cat).icon+" "+L(cat(x.cat).n))),
         e("div",{style:{fontSize:"0.8rem"}},pname(x.req),e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},deptName(x.dept))),
         e(PrioB,{p:x.priority}),e(StatB,{s:x.status}),e("span",{style:{fontSize:"0.78rem",color:"#8A8583"}},ago(x.created)),e(Av,{id:x.assignee,size:26}))),
       rows.length===0&&e("div",{style:{padding:34,textAlign:"center",color:"#6B6563"}},tab==="unassigned"?t("nothing_unassigned")+" 👏":t("no_match")))));
@@ -499,7 +502,7 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
     e("div",{onClick:onClose,style:{position:"fixed",inset:0,background:"#00000066",zIndex:900}}),
     e("div",{className:"drawer",role:"dialog","aria-label":tk.id,style:{position:"fixed",top:0,bottom:0,insetInlineEnd:0,width:600,background:"#12100F",borderInlineStart:"1px solid #332C2B",zIndex:1000,display:"flex",flexDirection:"column",paddingBottom:"env(safe-area-inset-bottom, 0px)"}},
       e("div",{style:{padding:"18px 22px",borderBottom:"1px solid #332C2B"}},
-        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},e("div",{style:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}},e("span",{style:{fontFamily:"monospace",color:"#8A8583",fontSize:"0.8rem"}},tk.id),e(TypeB,{type:c.type}),tk.major&&e(Pill,{c:"#EF4444"},"🚨 "+t("major")),tk.escalated&&isOpen(tk)&&agent&&e(Pill,{c:"#F59E0B"},t("escalated"))),e("button",{onClick:onClose,"aria-label":t("close"),style:{background:"none",border:"none",color:"#8A8583",fontSize:"1.3rem"}},"✕")),
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},e("div",{style:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}},e("span",{style:{fontFamily:"monospace",color:"#8A8583",fontSize:"0.8rem"}},tk.id),e(TypeB,{type:c.type}),tk.escalated&&isOpen(tk)&&agent&&e(Pill,{c:"#F59E0B"},t("escalated"))),e("button",{onClick:onClose,"aria-label":t("close"),style:{background:"none",border:"none",color:"#8A8583",fontSize:"1.3rem"}},"✕")),
         e("div",{style:{fontSize:"1.2rem",fontWeight:700,marginBottom:10,overflowWrap:"anywhere"}},tk.title),
         e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},e(PrioB,{p:tk.priority}),e(StatB,{s:tk.status}),e(Pill,{c:"#C9C6C4"},c.icon+" "+L(c.n)))),
       e("div",{style:{flex:1,overflowY:"auto",padding:"18px 22px"}},
@@ -517,7 +520,7 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
           isOpen(tk)&&!tk.assignee&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{assignee:me},t("toast_took")),style:{...BP,padding:"8px 14px"}},t("take_it")),
           isOpen(tk)&&tk.status!=="Pending Approval"&&e("button",{disabled:busy,onClick:()=>setResolveOpen(true),style:{...BP,background:"#059669",padding:"8px 14px"}},t("resolve")),
           canEscalate&&e("button",{id:"escalate-btn",disabled:busy,onClick:()=>setEscOpen(true),style:{...BS,padding:"8px 14px",color:"#FCD34D",borderColor:"#A16207"}},t("escalate")),
-          isOpen(tk)&&isLeadRole(role)&&e("button",{disabled:busy,onClick:()=>run("update-ticket",{major:!tk.major},tk.major?t("toast_saved_t"):t("toast_major")),style:{...BS,padding:"8px 14px",color:"#FCA5A5"}},tk.major?t("clear_major"):t("declare_major"))),
+          null),
         agent&&tk.escalated&&e("div",{style:{background:"#42200633",border:"1px solid #A1620766",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:"0.85rem",color:"#FCD34D"}},"⬆ "+t("escalated_by",{by:pname(tk.escalated.by),x:ago(tk.escalated.at),reason:tk.escalated.reason||""})),
         e(Section,{title:t("details"),style:{marginBottom:14,padding:14}},
           e("div",{style:{fontSize:"0.88rem",lineHeight:1.6,color:"#D6D3D1",marginBottom:10,whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},tk.desc),
@@ -821,7 +824,10 @@ function CatEditor({c0,onSave,onClose,busy,err}){
     CFG.supportEnabled&&e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",marginBottom:14}},e(Switch,{on:c.notifySupport!==false,set:v=>set("notifySupport",v),label:t("cat_support")}),t("cat_support")),
     e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"8px 0 10px"}},t("form_fields")),
     c.fields.map((f,i)=>e("div",{key:f.k,style:{...card,background:"#151211",padding:14,marginBottom:10}},
-      e("div",{style:{display:"flex",gap:10,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}},e("div",{style:{flex:"1 1 160px"}},e("label",{style:LS},t("field_kind")),e("select",{value:f.kind,onChange:ev=>setField(i,{kind:ev.target.value,opts:ev.target.value==="select"?(f.opts&&f.opts.length?f.opts:[{en:"",ar:""}]):f.opts}),style:IS},e("option",{value:"text"},t("kind_text")),e("option",{value:"select"},t("kind_select")),e("option",{value:"date"},t("kind_date")))),
+      e("div",{style:{display:"flex",gap:10,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}},e("div",{style:{flex:"1 1 160px"}},e("label",{style:LS},t("field_kind")),e("select",{value:f.kind,onChange:ev=>setField(i,{kind:ev.target.value,opts:ev.target.value==="select"?(f.opts&&f.opts.length?f.opts:[{en:"",ar:""}]):f.opts}),style:IS},e("option",{value:"text"},t("kind_text")),e("option",{value:"select"},t("kind_select")),e("option",{value:"date"},t("kind_date")),e("option",{value:"tel"},t("kind_tel")),e("option",{value:"email"},t("kind_email")))),
+        (()=>{ const srcs=c.fields.slice(0,i).filter(x=>x.kind==="select"&&(x.opts||[]).length); if(!srcs.length) return null;
+          return e("div",{style:{flex:"1 1 220px"}},e("label",{style:LS},t("show_when")),e("select",{className:"ce-when",value:f.when?f.when.k+"|"+f.when.v:"",onChange:ev=>{const v=ev.target.value; setField(i,{when:v?{k:v.split("|")[0],v:+v.split("|")[1]}:undefined});},style:IS},
+            e("option",{value:""},t("show_always")),srcs.flatMap(x=>(x.opts||[]).map((o,oi)=>e("option",{key:x.k+oi,value:x.k+"|"+oi},L(x.label)+" = "+L(o)))))); })(),
         e("button",{onClick:()=>setC(x=>({...x,fields:x.fields.filter((_,j)=>j!==i)})),style:{...BSm,color:"#FCA5A5"}},t("remove"))),
       e(Bi,{label:t("field_label"),val:f.label,set:v=>setField(i,{label:v})}),
       f.kind==="select"&&e("div",null,e("div",{style:LS},t("options")),e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},["en","ar"].map(l=>e("textarea",{key:l,"aria-label":t("options")+" "+l,rows:Math.max(3,(f.opts||[]).length),dir:l==="ar"?"rtl":"ltr",value:optsText(f,l),onChange:ev=>setOpts(i,l,ev.target.value),placeholder:l==="en"?"English":"العربية",style:{...IS,resize:"vertical"}})))))),
