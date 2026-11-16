@@ -88,6 +88,8 @@ The employee first chooses **Joiner** or **Leaver**; only the matching questions
 
 Joiner / Leaver tickets always get the **highest priority level**, so the form doesn't ask *How urgent is it?*. Any category can be set this way in **Categories & forms → Priority**: *Ask the employee*, *Always the highest priority*, or *Always* a specific level.
 
+The two built-in questions, **Short title** and **What's happening?**, can be renamed (English / Arabic), given different example text, or removed per category under **Built-in questions**. When *Short title* is removed, the ticket title is made from the category and the first answers (e.g. *New Joiner / Leaver – Leaver – omar@…*).
+
 Admins can build the same kind of form for any category in **Categories & forms**: each question can be *Text, Dropdown, Date, Phone number or Email address*, and can be set to **Show only when** an earlier dropdown has a certain answer.
 
 ### Help categories

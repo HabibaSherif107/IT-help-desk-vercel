@@ -236,6 +236,10 @@ const S = {
   dev_fill_none:["No devices are registered to {name} in Assets. Please type the device(s).","لا توجد أجهزة مسجلة باسم {name} في سجل الأجهزة. يُرجى كتابة الجهاز."],
   dev_fill_unknown:["This email isn't registered in the help desk. Please type the device(s).","هذا البريد غير مسجل في مكتب الدعم. يُرجى كتابة الجهاز."],
   fill_devices_lbl:["Fill in automatically with the devices of the email asked above (from Assets)","املأ تلقائيًا بأجهزة البريد المذكور أعلاه (من سجل الأجهزة)"],
+  builtin_q:["Built-in questions","الأسئلة الأساسية"], builtin_shown:["Shown and required","ظاهر ومطلوب"], builtin_blank:["leave empty for the standard wording","اتركه فارغًا للصيغة القياسية"],
+  builtin_ph:["Example text in the box","النص التوضيحي داخل الخانة"], builtin_title_off:["Removed: the ticket title is made from the category and the first answers","مُزال: يُكوَّن عنوان التذكرة من الفئة وأول الإجابات"],
+  builtin_desc_off:["Removed: not asked","مُزال: لا يُسأل"],
+  no_desc:["(No description asked for this category; see the details above.)","(لا يُطلب وصف لهذه الفئة؛ راجع التفاصيل أعلاه.)"],
   manager_short:["Manager","المدير"],
   search_people:["Search name, email or department…","ابحث بالاسم أو البريد أو الإدارة…"], u_signin:["Sign-in","تسجيل الدخول"],
   u_signed_in:["Signed in","سجّل الدخول"], u_never:["Not signed in yet","لم يسجّل الدخول بعد"], u_last:["last {d}","آخر مرة {d}"],
@@ -417,6 +421,9 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
   const c=cat(f.cat), incident=c.type==="incident";
   /* Questions with a "show only when" rule appear (and are required) only for the matching answer. */
   const shown=(c.fields||[]).filter(fd=>!fd.when||f.fields[fd.when.k]===fd.when.v);
+  /* Built-in "Short title" / "What's happening?": wording and removal are set per category in the Admin Console. */
+  const bt=(c.basics||{}).title||{}, bd=(c.basics||{}).desc||{}, showT=bt.show!==false, showD=bd.show!==false;
+  const lblT=L(bt.label)||t("f_title"), lblD=L(bd.label)||t("f_desc");
   /* "Fill with devices": once a valid email is typed above, fill the answer with that person's devices from Assets. */
   const fillFd=shown.find(fd=>fd.fill==="devices"), emailFd=fillFd&&shown.slice(0,shown.indexOf(fillFd)).reverse().find(fd=>fd.kind==="email");
   const emailV=emailFd?String(f.fields[emailFd.k]||"").trim():"";
@@ -433,10 +440,10 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
   const p=fixedP||(CFG.matrix[(incident?f.impact:1)-1]||[])[f.urgency-1]||prioKeys().slice(-1)[0];
   const words=f.title.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(x=>x.length>3);
   const sugg=CFG.kbSuggest&&f.title.trim().length>2?CFG.kb.filter(a=>a.cat===f.cat||words.some(w=>((a.t.en||"")+" "+(a.t.ar||"")).toLowerCase().includes(w))).slice(0,3):[];
-  const submit=async()=>{ if(!f.title.trim())return setErr(t("err_title")); if(!f.desc.trim())return setErr(t("err_desc"));
+  const submit=async()=>{ if(showT&&!f.title.trim())return setErr(t("err_field",{f:lblT})); if(showD&&!f.desc.trim())return setErr(t("err_field",{f:lblD}));
     for(const fd of shown){ const v=f.fields[fd.k]; if(v==null||String(v).trim()==="") return setErr(t("err_field",{f:L(fd.label)})); }
     setBusy(true); setErr("");
-    try{ const r=await api("create-ticket",{ticket:{asset_id:f.asset||null,category_id:f.cat,title:f.title,description:f.desc,impact:f.impact,urgency:f.urgency,fields:Object.fromEntries(shown.map(fd=>[fd.k,f.fields[fd.k]])),link:f.link}}); onCreated(r.ticket); }
+    try{ const r=await api("create-ticket",{ticket:{asset_id:f.asset||null,category_id:f.cat,title:showT?f.title:"",description:showD?f.desc:"",impact:f.impact,urgency:f.urgency,fields:Object.fromEntries(shown.map(fd=>[fd.k,f.fields[fd.k]])),link:f.link}}); onCreated(r.ticket); }
     catch(x){ setErr(x.message); setBusy(false); } };
   const Opt=({sel,onClick,children})=>e("button",{onClick,"aria-pressed":sel,style:{flex:"1 1 120px",padding:"10px 8px",borderRadius:8,fontSize:"0.82rem",background:sel?"#E11A2222":"#1A1717",border:"1px solid "+(sel?"#E11A22":"#332C2B"),color:sel?"#F16A6F":"#C9C6C4",fontWeight:sel?700:500}},children);
   const route=c.approval?t("route_approval"):(CFG.autoAssign&&c.owner&&person(c.owner)?t("route_to",{name:pname(c.owner)}):t("route_triage"));
@@ -444,9 +451,9 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
     step===1?e("div",{className:"g3",style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}},CFG.cats.filter(x=>x.active).map(x=>e("button",{key:x.id,className:"tile",onClick:()=>{set("cat",x.id);setStep(2);},style:{...card,padding:14,textAlign:"center",color:"inherit"}},e("div",{style:{fontSize:"1.5rem",marginBottom:6}},x.icon),e("div",{style:{fontWeight:600,fontSize:"0.85rem"}},L(x.n))))):
     e("div",null,
       e("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:16,flexWrap:"wrap"}},e(TypeB,{type:c.type}),c.approval&&e(Pill,{c:"#A78BFA"},t("requires_approval")),e("button",{onClick:()=>setStep(1),style:{marginInlineStart:"auto",background:"none",border:"none",color:"#8A8583",fontSize:"0.8rem"}},t("change_cat"))),
-      e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-title"},t("f_title")+" *"),e("input",{id:"nt-title",maxLength:200,value:f.title,onChange:ev=>set("title",ev.target.value),placeholder:t("f_title_ph"),style:IS})),
+      showT&&e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-title"},lblT+" *"),e("input",{id:"nt-title",maxLength:200,value:f.title,onChange:ev=>set("title",ev.target.value),placeholder:L(bt.ph)||t("f_title_ph"),style:IS})),
       sugg.length>0&&e("div",{style:{background:"#0C2A3A55",border:"1px solid #38BDF844",borderRadius:10,padding:"10px 14px",marginBottom:14}},e("div",{style:{fontSize:"0.78rem",color:"#7DD3FC",fontWeight:700,marginBottom:6}},"💡 "+t("kb_suggest")),sugg.map(a=>e("button",{key:a.id,onClick:()=>onKB(a),style:{display:"block",background:"none",border:"none",fontSize:"0.85rem",color:"#BAE6FD",padding:"3px 0",textDecoration:"underline",textAlign:"start"}},L(a.t)))),
-      e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-desc"},t("f_desc")+" *"),e("textarea",{id:"nt-desc",rows:3,maxLength:5000,value:f.desc,onChange:ev=>set("desc",ev.target.value),placeholder:t("f_desc_ph"),style:{...IS,resize:"vertical"}})),
+      showD&&e("div",{style:{marginBottom:14}},e("label",{style:LS,htmlFor:"nt-desc"},lblD+" *"),e("textarea",{id:"nt-desc",rows:3,maxLength:5000,value:f.desc,onChange:ev=>set("desc",ev.target.value),placeholder:L(bd.ph)||t("f_desc_ph"),style:{...IS,resize:"vertical"}})),
       shown.length>0&&e("div",{className:"g2",style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}},shown.map(fd=>{ const v=f.fields[fd.k]; const setV=val=>set("fields",{...f.fields,[fd.k]:val}); const id="nt-f-"+fd.k; return e("div",{key:fd.k},e("label",{style:LS,htmlFor:id},L(fd.label)+" *"),
         fd.kind==="select"?e("select",{id,value:v==null?"":v,onChange:ev=>setV(ev.target.value===""?null:+ev.target.value),style:IS},e("option",{value:""},t("select")),(fd.opts||[]).map((o,i)=>e("option",{key:i,value:i},L(o)))):
         fd.fill==="devices"?e("div",null,e("textarea",{id,rows:2,value:v||"",placeholder:L(fd.ph),onChange:ev=>setV(ev.target.value),style:{...IS,resize:"vertical"}}),
@@ -562,7 +569,7 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
             e("span",{style:{flex:1,minWidth:0,overflowWrap:"anywhere"}},typeof h.d==="object"&&h.d?L(h.d):String(h.d||h.type)),
             e("span",{style:{color:"#8A8583",whiteSpace:"nowrap"}},(h.by?pname(h.by):t("system"))+" · "+ago(h.ts)))))),
         e("div",{style:{fontSize:"0.88rem",fontWeight:700,color:"#C9C6C4",margin:"6px 0 10px"}},t("conversation")),
-        e("div",{style:{display:"flex",gap:10,marginBottom:12}},e(Av,{id:tk.req,size:28}),e("div",{style:{flex:1,minWidth:0,background:"#1A1717",border:"1px solid #332C2B",borderRadius:10,padding:"10px 12px"}},e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginBottom:4}},t("opened_ticket",{name:rq.name})+" · "+ago(tk.created)),e("div",{style:{fontSize:"0.88rem",whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},tk.desc))),
+        e("div",{style:{display:"flex",gap:10,marginBottom:12}},e(Av,{id:tk.req,size:28}),e("div",{style:{flex:1,minWidth:0,background:"#1A1717",border:"1px solid #332C2B",borderRadius:10,padding:"10px 12px"}},e("div",{style:{fontSize:"0.72rem",color:"#8A8583",marginBottom:4}},t("opened_ticket",{name:rq.name})+" · "+ago(tk.created)),e("div",{style:{fontSize:"0.88rem",whiteSpace:"pre-wrap",overflowWrap:"anywhere",color:tk.desc?undefined:"#8A8583"}},tk.desc||t("no_desc")))),
         tk.thread.map((m,i)=>e("div",{key:i,style:{display:"flex",gap:10,marginBottom:12}},e(Av,{id:m.by,size:28}),e("div",{style:{flex:1,minWidth:0,background:m.internal?"#422006":"#1A1717",border:"1px solid "+(m.internal?"#A16207":"#332C2B"),borderRadius:10,padding:"10px 12px"}},e("div",{style:{fontSize:"0.72rem",color:m.internal?"#FCD34D":"#8A8583",marginBottom:4}},(m.internal?t("internal_note_lbl")+" · ":"")+pname(m.by)+" · "+ago(m.ts)),e("div",{style:{fontSize:"0.88rem",whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},m.text))))),
       canReply&&e("div",{style:{borderTop:"1px solid #332C2B",padding:"12px 22px",background:"#151211"}},
         agent&&e("div",{style:{display:"flex",gap:8,marginBottom:8,alignItems:"center",flexWrap:"wrap"}},
@@ -845,7 +852,15 @@ function CatEditor({c0,onSave,onClose,busy,err}){
     e("div",{style:{marginBottom:14,maxWidth:420}},e("label",{style:LS,htmlFor:"ce-prio"},t("cat_prio")),e("select",{id:"ce-prio",value:c.fixedPrio||"ask",onChange:ev=>set("fixedPrio",ev.target.value),style:IS},
       e("option",{value:"ask"},t("cat_prio_ask")),e("option",{value:"top"},t("cat_prio_top")),Object.keys(CFG.prio).map(k=>e("option",{key:k,value:k},t("cat_prio_fixed",{p:prioLabel(k)}))))),
     CFG.supportEnabled&&e("div",{style:{display:"flex",gap:8,alignItems:"center",fontSize:"0.85rem",marginBottom:14}},e(Switch,{on:c.notifySupport!==false,set:v=>set("notifySupport",v),label:t("cat_support")}),t("cat_support")),
-    e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"8px 0 10px"}},t("form_fields")),
+    e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"8px 0 10px"}},t("builtin_q")),
+    [["title","f_title","f_title_ph"],["desc","f_desc","f_desc_ph"]].map(([k,lk,pk])=>{ const b=((c.basics||{})[k])||{}, on=b.show!==false;
+      const setB=patch=>setC(x=>({...x,basics:{...(x.basics||{}),[k]:{...(((x.basics||{})[k])||{}),...patch}}}));
+      return e("div",{key:k,className:"basic-q",style:{...card,background:"#151211",padding:14,marginBottom:10,opacity:on?1:.75}},
+        e("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:on?10:0,flexWrap:"wrap"}},e(Switch,{on,set:v=>setB({show:v}),label:t("shown")}),
+          e("b",{style:{fontSize:"0.9rem"}},L(b.label)||t(lk)),e("span",{style:{fontSize:"0.75rem",color:"#8A8583"}},on?t("builtin_shown"):(k==="title"?t("builtin_title_off"):t("builtin_desc_off")))),
+        on&&e(Bi,{label:t("field_label")+" ("+t("builtin_blank")+")",val:b.label||{en:"",ar:""},set:v=>setB({label:v}),ph:{en:S[lk][0],ar:S[lk][1]}}),
+        on&&e(Bi,{label:t("builtin_ph"),val:b.ph||{en:"",ar:""},set:v=>setB({ph:v}),ph:{en:S[pk][0],ar:S[pk][1]}})); }),
+    e("div",{style:{...HEAD,fontSize:"0.75rem",fontWeight:700,margin:"14px 0 10px"}},t("form_fields")),
     c.fields.map((f,i)=>e("div",{key:f.k,style:{...card,background:"#151211",padding:14,marginBottom:10}},
       e("div",{style:{display:"flex",gap:10,alignItems:"flex-end",marginBottom:6,flexWrap:"wrap"}},e("div",{style:{flex:"1 1 160px"}},e("label",{style:LS},t("field_kind")),e("select",{value:f.kind,onChange:ev=>setField(i,{kind:ev.target.value,opts:ev.target.value==="select"?(f.opts&&f.opts.length?f.opts:[{en:"",ar:""}]):f.opts}),style:IS},e("option",{value:"text"},t("kind_text")),e("option",{value:"select"},t("kind_select")),e("option",{value:"date"},t("kind_date")),e("option",{value:"tel"},t("kind_tel")),e("option",{value:"email"},t("kind_email")))),
         (()=>{ const srcs=c.fields.slice(0,i).filter(x=>x.kind==="select"&&(x.opts||[]).length); if(!srcs.length) return null;

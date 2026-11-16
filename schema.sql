@@ -386,3 +386,9 @@ update categories
    set fields = (select jsonb_agg(case when f->>'k' = 'l_device' then f || '{"fill":"devices"}'::jsonb else f end order by n)
                    from jsonb_array_elements(fields) with ordinality as x(f, n))
  where id = 'onboard' and fields::text like '%"l_device"%' and fields::text not like '%"fill"%';
+
+-- ════════════════════════════════════════════════════════════
+-- 27. Per-category wording / removal of the two built-in questions (upgrade-safe):
+--     { "title": { "show", "label", "ph" }, "desc": { … } }. Empty = shown with the standard wording.
+-- ════════════════════════════════════════════════════════════
+alter table categories add column if not exists basics jsonb;

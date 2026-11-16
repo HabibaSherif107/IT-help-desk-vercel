@@ -155,6 +155,7 @@ function cleanCategory(c, members) {
     id, icon: str(c.icon || "❔", 8), name, description: bi(c.d, 200),
     type: c.type === "request" ? "request" : "incident", owner_id: owner,
     needs_approval: !!c.approval, notify_support: c.notifySupport !== false, fields, active: c.active !== false,
+    basics: Object.fromEntries(["title", "desc"].map(k => { const b = (c.basics || {})[k] || {}; return [k, { show: b.show !== false, label: bi(b.label, 80), ph: bi(b.ph, 160) }]; })),
     fixed_prio: c.fixedPrio === "top" || /^P\d{1,2}$/.test(c.fixedPrio || "") ? c.fixedPrio : "ask",
   };
 }
@@ -315,9 +316,12 @@ module.exports = async function handler(req, res) {
       const t = body.ticket || {};
       const cat = check(await supabase.from("categories").select("*").eq("id", str(t.category_id, 60)).maybeSingle());
       if (!cat || cat.active === false) return fail(res, 400, "Please choose a category.");
-      const title = str(t.title, 200).trim(), description = str(t.description, 5000).trim();
-      if (!title) return fail(res, 400, "Please give your request a short title.");
-      if (!description) return fail(res, 400, "Please describe the problem.");
+      // "Short title" and "What's happening?" can be renamed or removed per category (Admin Console).
+      const basics = cat.basics || {}, showTitle = !(basics.title && basics.title.show === false), showDesc = !(basics.desc && basics.desc.show === false);
+      let title = showTitle ? str(t.title, 200).trim() : "";
+      const description = showDesc ? str(t.description, 5000).trim() : "";
+      if (showTitle && !title) return fail(res, 400, "Please fill in: " + (((basics.title || {}).label || {}).en || "Short title"));
+      if (showDesc && !description) return fail(res, 400, "Please fill in: " + (((basics.desc || {}).label || {}).en || "What's happening?"));
       const fields = {};
       for (const fd of cat.fields || []) {
         if (fd.when && fields[fd.when.k] !== fd.when.v) continue;   // question not shown for this answer (e.g. leaver questions for a joiner)
@@ -331,6 +335,11 @@ module.exports = async function handler(req, res) {
           if (fd.kind === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return fail(res, 400, "Please enter a valid date for: " + label);
         }
         fields[fd.k] = v;
+      }
+      if (!showTitle) {   // no title asked: make one from the category and the first answers
+        const answers = (cat.fields || []).filter(fd => fd.k in fields).slice(0, 2)
+          .map(fd => fd.kind === "select" ? (((fd.opts || [])[fields[fd.k]]) || {}).en || "" : String(fields[fd.k]));
+        title = [(cat.name || {}).en || (cat.name || {}).ar || cat.id, ...answers.filter(Boolean)].join(" – ").slice(0, 200);
       }
       const [settings, members] = await Promise.all([IT.loadSettings(), IT.loadUsers()]);
       const clamp = (n, max) => Math.min(max, Math.max(1, parseInt(n, 10) || 1));

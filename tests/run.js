@@ -780,6 +780,21 @@ async function tests() {
   const obc = cfg.cats.find(c => c.id === "onboard");
   r = await call("hany@dar.test", "admin-save-category", { category: { ...obc, fields: [...obc.fields, { k: "x1", kind: "text", label: { en: "Bad rule", ar: "" }, when: { k: "nope", v: 0 } }] } });
   const saved = r.body.cats.find(c => c.id === "onboard").fields;
+  // built-in questions: rename or remove per category
+  const oc = cfg.cats.find(c => c.id === "onboard");
+  r = await call("hany@dar.test", "admin-save-category", { category: { ...oc, basics: { title: { show: false }, desc: { show: true, label: { en: "Anything else IT should know?", ar: "أي معلومات أخرى؟" }, ph: { en: "Optional details", ar: "" } } } } });
+  const ob2 = r.body.cats.find(c => c.id === "onboard").basics;
+  ok(r.status === 200 && ob2.title.show === false && ob2.desc.label.en === "Anything else IT should know?" && ob2.desc.ph.en === "Optional details", "admins can remove “Short title” and rename “What's happening?” per category");
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "onboard", description: "", fields: { kind: 1, l_email: "omar.x@dar-elsalam.org", l_job: "Driver", l_device: "Dell", l_last: "2026-11-30" } } });
+  ok(r.status === 400 && /Anything else IT should know/.test(r.body.error), "a renamed question is still required, and the message uses its new name");
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "onboard", title: "ignored", description: "Keys at reception", fields: { kind: 1, l_email: "omar.x@dar-elsalam.org", l_job: "Driver", l_device: "Dell", l_last: "2026-11-30" } } });
+  ok(r.status === 201 && r.body.ticket.title === "New Joiner / Leaver – Leaver – omar.x@dar-elsalam.org", "with no title question the title is made from the category and the first answers");
+  r = await call("hany@dar.test", "admin-save-category", { category: { ...oc, basics: { title: { show: false }, desc: { show: false } } } });
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "onboard", fields: { kind: 0, j_name: "Nour Ali", j_job: "Accountant", j_mobile: "01012345678", j_start: "2026-12-01" } } });
+  ok(r.status === 201 && r.body.ticket.desc === "" && r.body.ticket.title === "New Joiner / Leaver – Joiner – Nour Ali", "both built-in questions can be removed");
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "other", title: "", description: "x" } });
+  ok(r.status === 400, "other categories still ask for a short title");
+  await call("hany@dar.test", "admin-save-category", { category: { ...oc, basics: {} } });
   // fixed priority per category: an admin's choice sticks, even after running schema.sql again
   r = await call("hany@dar.test", "admin-save-category", { category: { ...cfg.cats.find(c => c.id === "other"), fixedPrio: "P3" } });
   ok(r.body.cats.find(c => c.id === "other").fixedPrio === "P3", "admins can give any category a fixed priority");

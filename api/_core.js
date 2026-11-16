@@ -265,7 +265,7 @@ async function loadConfig(viewer, roleOverride) {
       id: u.id, name: u.name, dept: u.dept_id, sector: u.sector || null, role: itRoleOf(u), active: u.active !== false,
       ...(role === "admin" ? { email: u.email, manager: u.manager_id, lastLogin: u.last_login_at ? new Date(u.last_login_at).getTime() : null, added: u.created_at ? new Date(u.created_at).getTime() : null } : {}),
     })),
-    cats: (catRows || []).map(c => ({ id: c.id, icon: c.icon, active: c.active !== false, type: c.type, owner: c.owner_id, approval: !!c.needs_approval, notifySupport: c.notify_support !== false, fixedPrio: c.fixed_prio || "ask", n: c.name, d: c.description || B("", ""), fields: c.fields || [] })),
+    cats: (catRows || []).map(c => ({ id: c.id, icon: c.icon, active: c.active !== false, type: c.type, owner: c.owner_id, approval: !!c.needs_approval, notifySupport: c.notify_support !== false, fixedPrio: c.fixed_prio || "ask", basics: c.basics || {}, n: c.name, d: c.description || B("", ""), fields: c.fields || [] })),
     canned: isIT(role) ? (cannedRows || []).map(c => ({ id: c.id, l: c.title, t: c.body })) : [],
     kb: (kbRows || []).map(k => ({ id: k.id, cat: k.category_id, views: k.views || 0, t: k.title, body: k.steps || { en: [], ar: [] } })),
   };
