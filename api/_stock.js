@@ -21,7 +21,7 @@ const money = n => Number(n || 0).toLocaleString("en-US", { minimumFractionDigit
 function shapeItem(r) {
   const min = r.min_level == null ? null : Number(r.min_level);
   return { id: r.id, category: r.category, name: r.name, model: r.model || "", serial: r.serial || "", quantity: Number(r.quantity), min,
-    notes: r.notes || "", status: stockStatus(Number(r.quantity), min), updated: ms(r.updated_at) };
+    notes: r.notes || "", status: stockStatus(Number(r.quantity), min), created: ms(r.created_at), updated: ms(r.updated_at) };
 }
 async function listStock() {
   const rows = check(await supabase.from("stock_items").select("*").order("name")) || [];
@@ -207,14 +207,30 @@ async function handle(action, { body, viewer, role, me }) {
   }
 
   if (action === "receive-pr") {
+    // Everything received goes into stock, exactly as listed on the request:
+    //  • a line linked to a stock item adds its quantity to that item;
+    //  • otherwise it's added to the stock item with the same name (if there is one),
+    //    or a new stock item is created ("Added from purchase request PR-…", in English and Arabic).
+    // Each change is logged in the item's quantity history with the request number.
     if (!["approved", "ordered"].includes(pr.status)) return bad("Only approved or ordered requests can be received.");
-    const lines = check(await supabase.from("purchase_request_lines").select("*").eq("pr_id", pr.id)) || [];
-    for (const l of lines.filter(x => x.stock_item_id)) {
-      const item = check(await supabase.from("stock_items").select("*").eq("id", l.stock_item_id).maybeSingle());
-      if (!item) continue;
+    const lines = (check(await supabase.from("purchase_request_lines").select("*").eq("pr_id", pr.id)) || []).sort((a, b) => a.line_no - b.line_no);
+    const settings = await IT.loadSettings();
+    const cats = (settings.lists.stockCategories || []).map(c => c.id);
+    const newCat = cats.includes("others") ? "others" : cats[cats.length - 1];
+    for (const l of lines) {
+      let item = l.stock_item_id ? check(await supabase.from("stock_items").select("*").eq("id", l.stock_item_id).maybeSingle()) : null;
+      if (!item) {
+        const all = check(await supabase.from("stock_items").select("*")) || [];
+        item = all.find(x => x.name.trim().toLowerCase() === l.item_name.trim().toLowerCase()) || null;
+      }
+      if (!item) {
+        item = check(await supabase.from("stock_items").insert({ name: l.item_name, category: newCat, quantity: 0, min_level: null,
+          notes: `Added from purchase request ${pr.id} / أُضيف من طلب الشراء ${pr.id}`, updated_at: nowIso() }).select("*").single());
+      }
       const after = Number(item.quantity) + Number(l.quantity);
       check(await supabase.from("stock_items").update({ quantity: after, updated_at: nowIso() }).eq("id", item.id));
       await supabase.from("stock_movements").insert({ item_id: item.id, change: Number(l.quantity), quantity_after: after, reason: "Received from " + pr.id, actor_id: viewer.id, pr_id: pr.id });
+      if (!l.stock_item_id) check(await supabase.from("purchase_request_lines").update({ stock_item_id: item.id }).eq("id", l.id));   // remember where it went
     }
     check(await supabase.from("purchase_requests").update({ status: "received", received_by: viewer.id, received_at: nowIso(), updated_at: nowIso() }).eq("id", pr.id));
     return { body: { prs: await listPRs(), items: await listStock() } };

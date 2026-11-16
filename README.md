@@ -53,7 +53,7 @@ Same layout as the sheet: **# · Item name · Product link · Quantity · Unit p
 - The paper signatures are now steps in the app: **Draft → Submit for approval → Approved / Rejected → Ordered → Received.** The *Submitted by* and *Approved by* boxes fill in automatically with names and dates.
 - When a request is submitted, the IT managers and admins get a bilingual email listing the items and the total. The person who submitted it is emailed the decision; a rejection includes the reason. A manager can't approve their own request.
 - A rejected request can be fixed and submitted again. Drafts and rejected requests can be deleted.
-- Each line can be linked to a stock item. When the request is marked **Received**, those quantities are added to stock automatically, and the stock history notes which request they came from.
+- When a request is marked **Received**, **every line goes into stock as listed**: a line linked to a stock item adds to it; any other line adds to the stock item with the same name, or becomes a new stock item (noted *Added from purchase request PR-… / أُضيف من طلب الشراء PR-…*). Each item's quantity history shows *Received from purchase request PR-…* in English or Arabic.
 - **Print** gives a printable page with the same look as the sheet, including signature lines.
 
 ### Priorities, questions and statuses (Admin Console)
@@ -75,6 +75,11 @@ Admins can add, rename, reorder and delete the options of these dropdowns, in En
 
 ### People: department and company sector
 In **Admin Console → Users & roles** you can search people and filter **Signed in** / **Not signed in yet** (with the last sign-in time). Each person has a **Department** and, next to it, a **Company sector** chosen from a fixed list: *Shell, Chipsy, Jammy*. The sector also shows as a column in the people table.
+
+### Filters and counts
+- **Date filters everywhere there are dates:** Ticket Queue, My Requests, Approvals, Assets, Stock, Purchase Requests and Users & roles each have a 📅 filter: *Any date*, *On a day* or *Between dates*. Where a list has several dates you choose which one (e.g. a device's purchase date, received date or warranty end; a purchase request's created, submitted, approved/rejected or received date; a person's added or last sign-in date).
+- Other filters: users by department, company sector and role; purchase requests by text (number, item, notes) and by who created them; My Requests by text.
+- **Menu counts:** Ticket Queue shows the number of open tickets, Approvals the number waiting, My Requests your open requests, and Purchase Requests the ones still open (waiting approval, approved or ordered). Hover a count for details.
 
 ### Help categories
 Request Hardware · Internet & Connectivity · Email & Accounts · New Software / License Purchase *(needs approval)* · New Joiner / Leaver *(needs approval)* · Something Else.

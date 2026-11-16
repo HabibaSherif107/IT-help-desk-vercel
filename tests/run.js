@@ -577,6 +577,17 @@ async function tests() {
   r = await call("karim@dar.test", "receive-pr", { id: prId });
   ok(r.body.prs.find(p => p.id === prId).status === "received", "marked as received");
   ok(r.body.items.find(i => i.id === hdmi.id).quantity === 13 && r.body.items.find(i => i.id === toner.id).quantity === 4 && r.body.items.find(i => i.id === toner.id).status === "in", "receiving adds linked lines to stock (HDMI 3+10, toner 0+4)");
+  const stand = r.body.items.find(i => i.name === "Laptop stand");
+  ok(stand && stand.quantity === 1 && stand.category === "others" && stand.notes.includes("Added from purchase request " + prId) && stand.notes.includes("أُضيف من طلب الشراء " + prId), "a line not linked to stock becomes a new stock item, noted in English and Arabic");
+  ok((await call("karim@dar.test", "list-prs")).body.find(p => p.id === prId).lines[2].stock === stand.id, "…and the request line now points to that stock item");
+  // a later request for an item with the same name adds to it (no duplicate)
+  r = await call("karim@dar.test", "save-pr", { pr: { lines: [{ name: "laptop stand", qty: 2, price: 100 }] } });
+  const pr3 = r.body.id;
+  await call("karim@dar.test", "submit-pr", { id: pr3 }); await call("omar@dar.test", "decide-pr", { id: pr3, approve: true });
+  r = await call("karim@dar.test", "receive-pr", { id: pr3 });
+  ok(r.body.items.filter(i => i.name.toLowerCase() === "laptop stand").length === 1 && r.body.items.find(i => i.id === stand.id).quantity === 3, "an unlinked line with the same name as a stock item adds to it (1 + 2 = 3)");
+  r = await call("karim@dar.test", "stock-history", { id: stand.id });
+  ok(r.body.length === 2 && r.body.every(m => m.pr) && r.body[0].pr === pr3, "each receipt is in the item's history with its request number");
   r = await call("karim@dar.test", "stock-history", { id: hdmi.id });
   ok(r.body[0].change === 10 && r.body[0].reason === "Received from " + prId && r.body[0].pr === prId, "the stock history says which request it came from");
   ok((await call("karim@dar.test", "receive-pr", { id: prId })).status === 400, "can't receive twice");

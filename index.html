@@ -220,6 +220,15 @@ const S = {
   restock:["🧾 Restock low items","🧾 إعادة طلب الناقص"], restock_d:["Opens a purchase request with the {n} low / out-of-stock items","يفتح طلب شراء بالأصناف المنخفضة / النافدة ({n})"],
   restock_none:["Nothing is low or out of stock","لا توجد أصناف منخفضة أو نافدة"], restock_note:["Restock: low / out-of-stock items","إعادة تزويد: أصناف منخفضة / نافدة من المخزون"],
   serial_opt:["Serial number (optional)","الرقم التسلسلي (اختياري)"],
+  df_field:["Which date","أي تاريخ"], df_mode:["Date filter","تصفية بالتاريخ"], df_any:["Any date","أي تاريخ"], df_on:["On a day","في يوم محدد"], df_range:["Between dates","بين تاريخين"],
+  df_from:["From","من"], df_to:["To","إلى"], df_clear:["Clear date filter","مسح تصفية التاريخ"],
+  df_opened:["Opened","تاريخ الفتح"], df_resolved:["Resolved","تاريخ الحل"], df_added:["Added","تاريخ الإضافة"], df_changed:["Last quantity change","آخر تغيير للكمية"],
+  df_created:["Created","تاريخ الإنشاء"], df_submitted:["Submitted","تاريخ الإرسال"], df_decided:["Approved / rejected","تاريخ الموافقة / الرفض"], df_received_pr:["Received","تاريخ الاستلام"],
+  df_user_added:["Added to the system","تاريخ الإضافة للنظام"], df_last_login:["Last sign-in","آخر تسجيل دخول"],
+  all_roles:["All roles","كل الأدوار"], pr_search:["Search number, item or notes…","ابحث بالرقم أو الصنف أو الملاحظات…"], pr_anyone:["Created by anyone","أنشأه أي شخص"], mr_search:["Search number or title…","ابحث بالرقم أو العنوان…"],
+  mv_received:["Received from purchase request {id}","تم الاستلام من طلب الشراء {id}"], mv_opening:["Opening stock","رصيد افتتاحي"],
+  cnt_queue:["{n} open tickets ({u} unassigned)","{n} تذكرة مفتوحة ({u} غير مُسندة)"], cnt_appr:["{n} waiting for approval","{n} بانتظار الموافقة"],
+  cnt_mine:["{n} of your requests are still open","{n} من طلباتك ما زالت مفتوحة"], cnt_pr:["{n} purchase requests still open ({w} waiting for your approval)","{n} طلبات شراء مفتوحة ({w} بانتظار موافقتك)"],
   manager_short:["Manager","المدير"],
   search_people:["Search name, email or department…","ابحث بالاسم أو البريد أو الإدارة…"], u_signin:["Sign-in","تسجيل الدخول"],
   u_signed_in:["Signed in","سجّل الدخول"], u_never:["Not signed in yet","لم يسجّل الدخول بعد"], u_last:["last {d}","آخر مرة {d}"],
@@ -244,12 +253,12 @@ const S = {
   pr_all:["All","الكل"], h_ref:["Request","الطلب"], h_items:["Items","الأصناف"], h_total:["Total (EGP)","الإجمالي (جنيه)"], h_created_by:["Created by","أنشأه"], h_date:["Date","التاريخ"],
   pr_sheet_title:["IT Purchase Request","طلب شراء - تقنية المعلومات"], l_item:["Item Name","اسم الصنف"], l_link:["Product Link","رابط المنتج"], l_qty:["Quantity","الكمية"],
   l_unit:["Unit Price (EGP)","سعر الوحدة (جنيه)"], l_total:["Total Price (EGP)","السعر الإجمالي (جنيه)"], grand_total:["Grand Total (EGP)","الإجمالي الكلي (جنيه)"],
-  l_stock:["Adds to stock item","يُضاف إلى صنف المخزون"], l_stock_none:["— Not linked —","— غير مرتبط —"], add_line:["+ Add line","+ إضافة سطر"], remove_line:["Remove line","حذف السطر"],
+  l_stock:["Adds to stock item","يُضاف إلى صنف المخزون"], l_stock_none:["— New item (or same name) —","— صنف جديد (أو بنفس الاسم) —"], add_line:["+ Add line","+ إضافة سطر"], remove_line:["Remove line","حذف السطر"],
   pr_notes:["Notes / reason for the purchase","ملاحظات / سبب الشراء"], submitted_by:["Submitted by","مقدم الطلب"], approved_by:["Approved by","اعتمده"], rejected_by:["Rejected by","رفضه"],
   received_by:["Received by","استلمه"], ordered_on:["Ordered on","تاريخ الطلب من المورد"], not_yet:["—","—"], open_link:["Open ↗","فتح ↗"],
   pr_save_draft:["Save draft","حفظ كمسودة"], pr_save_submit:["Save & submit for approval","حفظ وإرسال للموافقة"], pr_submit:["Submit for approval","إرسال للموافقة"],
   pr_approve:["✓ Approve","✓ موافقة"], pr_reject:["✕ Reject","✕ رفض"], pr_reject_reason:["Reason for rejecting (sent to the requester)","سبب الرفض (يُرسل لمقدم الطلب)"],
-  pr_ordered:["Mark as ordered","تم الطلب من المورد"], pr_receive:["📦 Mark as received","📦 تم الاستلام"], pr_receive_hint:["Lines linked to a stock item will be added to stock automatically.","الأسطر المرتبطة بصنف مخزون ستُضاف للمخزون تلقائيًا."],
+  pr_ordered:["Mark as ordered","تم الطلب من المورد"], pr_receive:["📦 Mark as received","📦 تم الاستلام"], pr_receive_hint:["When received, every item is added to stock as listed: a linked line adds to that stock item; any other line adds to the stock item with the same name, or becomes a new stock item.","عند الاستلام يُضاف كل صنف للمخزون كما هو: السطر المرتبط يُضاف لصنفه، وأي سطر آخر يُضاف للصنف الذي يحمل نفس الاسم أو يُنشأ كصنف جديد."],
   pr_self_note:["Another IT manager or an admin must approve a request you submitted.","يجب أن يعتمد الطلب مدير تقنية آخر أو مسؤول النظام لأنك من قدّمه."],
   pr_wait_note:["Waiting for the IT manager's approval. They were emailed.","بانتظار موافقة مدير التقنية، وتم إرسال بريد له."],
   print:["🖨 Print","🖨 طباعة"], signature:["Signature","التوقيع"], decision_note:["Note","ملاحظة"],
@@ -350,6 +359,24 @@ function Bi({label,val,set,rows,ph}){ return e("div",{style:{marginBottom:12}},l
 function Confirm({text,onYes,onClose,busy}){ return e(Modal,{title:text,onClose,w:420},e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:onClose,style:BS},t("cancel")),e("button",{disabled:busy,onClick:onYes,style:BP},t("confirm_yes")))); }
 
 /* ═════════ Employee: Help Center ═════════ */
+/* ═════════ Date filter (shared by every list that has dates) ═════════
+   fields: [[key, labelKey, item => date (ms or "YYYY-MM-DD")], …]. Modes: any date / on a day / between two dates. */
+const dayOf = v => { if(v==null||v==="") return ""; if(typeof v==="string") return v.slice(0,10); const d=new Date(v); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+function useDateFilter(fields){ return useState({mode:"any",field:fields[0][0],on:"",from:"",to:""}); }
+const dateOk = (df, item, fields) => { if(df.mode==="any") return true; const f=fields.find(x=>x[0]===df.field)||fields[0]; const d=dayOf(f[2](item));
+  if(df.mode==="on") return !df.on||d===df.on; if(!df.from&&!df.to) return true; return !!d&&(!df.from||d>=df.from)&&(!df.to||d<=df.to); };
+function DateFilter({df,set,fields,id}){ const up=p=>set(x=>({...x,...p})); const sm={...IS,width:"auto",padding:"8px 10px"}; const di={...IS,width:150,padding:"7px 10px",minHeight:38};
+  return e("div",{className:"date-filter",style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}},
+    fields.length>1&&e("select",{id:id&&id+"-field","aria-label":t("df_field"),value:df.field,onChange:ev=>up({field:ev.target.value}),style:sm},fields.map(f=>e("option",{key:f[0],value:f[0]},"📅 "+t(f[1])))),
+    e("select",{id:id&&id+"-mode","aria-label":t("df_mode"),value:df.mode,onChange:ev=>up({mode:ev.target.value}),style:sm},
+      e("option",{value:"any"},(fields.length>1?"":"📅 ")+t("df_any")),e("option",{value:"on"},t("df_on")),e("option",{value:"range"},t("df_range"))),
+    df.mode==="on"&&e("input",{id:id&&id+"-on",type:"date","aria-label":t("df_on"),value:df.on,onChange:ev=>up({on:ev.target.value}),style:di}),
+    df.mode==="range"&&e("input",{id:id&&id+"-from",type:"date","aria-label":t("df_from"),value:df.from,onChange:ev=>up({from:ev.target.value}),style:di}),
+    df.mode==="range"&&e("span",{style:{color:"#8A8583"}},"→"),
+    df.mode==="range"&&e("input",{id:id&&id+"-to",type:"date","aria-label":t("df_to"),value:df.to,onChange:ev=>up({to:ev.target.value}),style:di}),
+    df.mode!=="any"&&e("button",{"aria-label":t("df_clear"),title:t("df_clear"),onClick:()=>up({mode:"any",on:"",from:"",to:""}),style:{...BSm,padding:"6px 9px"}},"✕")); }
+const DF = { ticket:[["created","df_opened",x=>x.created],["resolved","df_resolved",x=>x.resolved]] };
+
 function HelpHome({me,tickets,onNew,onOpen,onKB,go}){
   const [q,setQ]=useState("");
   const mine=tickets.filter(x=>x.req===me), open=mine.filter(x=>isOpen(x)||x.status==="Resolved");
@@ -414,8 +441,13 @@ function NewTicket({me,initialCat,initialText,onCreated,onClose,onKB}){
 function MyRequests({me,tickets,onOpen}){
   const [tab,setTab]=useState("open");
   const act=x=>isOpen(x)||x.status==="Resolved";
-  const mine=tickets.filter(x=>x.req===me).filter(x=>tab==="open"?act(x):!act(x));
-  return e("div",null,e(Tabs,{tabs:[["open",t("tab_active")],["closed",t("tab_closed")]],val:tab,set:setTab}),
+  const [df,setDf]=useDateFilter(DF.ticket), [q,setQ]=useState("");
+  const all=tickets.filter(x=>x.req===me);
+  const mine=all.filter(x=>tab==="open"?act(x):!act(x)).filter(x=>dateOk(df,x,DF.ticket)&&(!q||(x.id+" "+x.title).toLowerCase().includes(q.toLowerCase())));
+  return e("div",null,e(Tabs,{tabs:[["open",t("tab_active"),all.filter(act).length],["closed",t("tab_closed"),all.filter(x=>!act(x)).length]],val:tab,set:setTab}),
+    e("div",{style:{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center"}},
+      e("input",{id:"mr-search","aria-label":t("q_search"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("mr_search"),style:{...IS,flex:"1 1 200px",maxWidth:300}}),
+      e(DateFilter,{df,set:setDf,fields:DF.ticket,id:"mr-date"})),
     mine.length?e("div",{style:{display:"grid",gap:10}},mine.map(x=>e("button",{key:x.id,className:"hov",onClick:()=>onOpen(x),style:{...card,padding:16,textAlign:"start",color:"inherit",width:"100%"}},
       e("div",{style:{display:"flex",justifyContent:"space-between",gap:10,marginBottom:4,flexWrap:"wrap"}},e("div",null,e("span",{style:{fontFamily:"monospace",fontSize:"0.72rem",color:"#8A8583",marginInlineEnd:8}},x.id),e("b",null,x.title)),e("div",{style:{display:"flex",gap:6}},e(PrioB,{p:x.priority}),e(StatB,{s:x.status}))),
       e("div",{style:{fontSize:"0.75rem",color:"#8A8583",marginBottom:6}},cat(x.cat).icon+" "+L(cat(x.cat).n)+" · "+t("opened",{x:ago(x.created)})+" · "+(x.assignee?t("handled_by",{name:pname(x.assignee)}):t("waiting_pickup"))),
@@ -425,18 +457,19 @@ function MyRequests({me,tickets,onOpen}){
 /* ═════════ IT: Queue ═════════ */
 function Queue({me,role,tickets,onOpen,selId}){
   const [tab,setTab]=useState(role==="agent"?"mine":"all");
-  const [q,setQ]=useState(""), [fc,setFc]=useState(""), [fp,setFp]=useState("");
+  const [q,setQ]=useState(""), [fc,setFc]=useState(""), [fp,setFp]=useState(""), [df,setDf]=useDateFilter(DF.ticket);
   const sets={mine:tickets.filter(x=>x.assignee===me&&isOpen(x)),unassigned:tickets.filter(x=>!x.assignee&&isOpen(x)),all:tickets.filter(isOpen),
     urgent:tickets.filter(x=>isOpen(x)&&urgentPrios().includes(x.priority)),escalated:tickets.filter(x=>isOpen(x)&&x.escalated),waiting:tickets.filter(x=>x.status==="Waiting on User"||x.status==="Pending Approval"),done:tickets.filter(x=>!isOpen(x))};
   const rank=new Proxy({}, {get:(_,p)=>prioRank(p)});
-  const rows=sets[tab].filter(x=>(!fc||x.cat===fc)&&(!fp||x.priority===fp)&&(!q||(x.id+" "+x.title+" "+pname(x.req)).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>tab==="done"?b.created-a.created:(rank[a.priority]-rank[b.priority]||a.created-b.created));
+  const rows=sets[tab].filter(x=>dateOk(df,x,DF.ticket)&&(!fc||x.cat===fc)&&(!fp||x.priority===fp)&&(!q||(x.id+" "+x.title+" "+pname(x.req)).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>tab==="done"?b.created-a.created:(rank[a.priority]-rank[b.priority]||a.created-b.created));
   const cols="86px minmax(0,1fr) 150px 130px 150px 90px 40px";
   return e("div",null,
     e(Tabs,{val:tab,set:setTab,tabs:[["mine",t("q_mine"),sets.mine.length],["unassigned",t("q_unassigned"),sets.unassigned.length],["all",t("q_all"),sets.all.length],["urgent",t("q_urgent",{p:urgentPrios().join("–")}),sets.urgent.length],["escalated",t("q_escalated"),sets.escalated.length],["waiting",t("q_waiting"),sets.waiting.length],["done",t("q_done")]]}),
     e("div",{style:{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}},
       e("input",{id:"q-search","aria-label":t("q_search"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("q_search"),style:{...IS,flex:"1 1 220px",maxWidth:340}}),
       e("select",{"aria-label":t("all_cats"),value:fc,onChange:ev=>setFc(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_cats")),CFG.cats.map(c=>e("option",{key:c.id,value:c.id},c.icon+" "+L(c.n)))),
-      e("select",{"aria-label":t("all_prios"),value:fp,onChange:ev=>setFp(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_prios")),Object.keys(CFG.prio).map(p=>e("option",{key:p,value:p},prioLabel(p))))),
+      e("select",{"aria-label":t("all_prios"),value:fp,onChange:ev=>setFp(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_prios")),Object.keys(CFG.prio).map(p=>e("option",{key:p,value:p},prioLabel(p)))),
+      e(DateFilter,{df,set:setDf,fields:DF.ticket,id:"q-date"})),
     e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:850}},
       e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:12,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_id"),t("h_subject"),t("h_req"),t("h_prio"),t("status"),t("h_opened"),""].map((h,i)=>e("span",{key:i},h))),
       rows.map((x,i)=>e("button",{key:x.id,className:"hov",onClick:()=>onOpen(x),style:{display:"grid",width:"100%",textAlign:"start",color:"inherit",border:"none",gridTemplateColumns:cols,gap:12,padding:"12px 14px",alignItems:"center",background:selId===x.id?"#3A1512":i%2?"#181514":"#1A1717",borderInlineStart:"3px solid "+(selId===x.id?"#E11A22":x.priority==="P1"&&isOpen(x)?"#EF4444":"transparent")}},
@@ -533,10 +566,12 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
 function Approvals({me,role,tickets,onOpen,onChanged,toast}){
   const [busy,setBusy]=useState(""), [rej,setRej]=useState(null), [reason,setReason]=useState("");
   const mineToDecide=x=>x.approval&&(x.approval.by===me||isLeadRole(role));
-  const pend=tickets.filter(x=>mineToDecide(x)&&x.approval.state==="pending"), hist=tickets.filter(x=>mineToDecide(x)&&x.approval.state!=="pending");
+  const [df,setDf]=useDateFilter(DF.ticket.slice(0,1));
+  const pend=tickets.filter(x=>mineToDecide(x)&&x.approval.state==="pending"&&dateOk(df,x,DF.ticket)), hist=tickets.filter(x=>mineToDecide(x)&&x.approval.state!=="pending"&&dateOk(df,x,DF.ticket));
   const decide=async(x,action,data)=>{ setBusy(x.id); try{ const r=await api(action,{id:x.id,...(data||{})}); onChanged(r.ticket); toast(action==="approve"?t("toast_approved"):t("toast_rejected")); return true; }catch(err){ toast(err.message,"error"); return false; } finally{ setBusy(""); } };
   return e("div",null,
-    e("p",{style:{color:"#8A8583",fontSize:"0.88rem",marginBottom:14,maxWidth:"70ch"}},t("appr_intro")),
+    e("p",{style:{color:"#8A8583",fontSize:"0.88rem",marginBottom:10,maxWidth:"70ch"}},t("appr_intro")),
+    e("div",{style:{marginBottom:14}},e(DateFilter,{df,set:setDf,fields:DF.ticket.slice(0,1),id:"ap-date"})),
     pend.length?pend.map(x=>{const c=cat(x.cat);return e("div",{key:x.id,style:{...card,padding:16,marginBottom:10,display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}},e("div",{style:{fontSize:"1.6rem"}},c.icon),
       e("div",{style:{flex:1,minWidth:220}},e("button",{onClick:()=>onOpen(x),style:{fontWeight:700,background:"none",border:"none",color:"inherit",padding:0,textAlign:"start",fontSize:"0.95rem"}},x.title),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",margin:"3px 0"}},x.id+" · "+t("requested_by",{name:pname(x.req),dept:deptName(x.dept)})+" · "+ago(x.created)),e("div",{style:{fontSize:"0.8rem",color:"#C9C6C4"}},c.fields.map(fd=>fieldVal(fd,(x.fields||{})[fd.k])).filter(Boolean).join(" · "))),
       x.req===me&&!isLeadRole(role)?null:e("div",{style:{display:"flex",gap:8}},e("button",{disabled:busy===x.id,onClick:()=>decide(x,"approve"),style:{...BP,background:"#059669"}},t("approve")),e("button",{disabled:busy===x.id,onClick:()=>setRej(x),style:BS},t("reject"))));}):e(Empty,{text:t("no_approvals")}),
@@ -554,9 +589,11 @@ const warrantyText = a => !a.hasWarranty ? t("no_warranty") : (a.warranty||"—"
 const warrantyColor = a => !a.hasWarranty||!a.warranty ? "#6B6563" : a.warranty<todayStr() ? "#EF4444" : a.warranty<soonStr() ? "#F59E0B" : "#C9C6C4";
 function Assets({assets,tickets,onOpenAsset,onAdd}){
   const [q,setQ]=useState(""), [ft,setFt]=useState(""), [fs,setFs]=useState(""), [fl,setFl]=useState(""), [fd,setFd]=useState(""), [fsec,setFsec]=useState(""), [fp,setFp]=useState("");
+  const AF=[["purchased","a_purchased",a=>a.purchased],["received","a_received",a=>a.received],["warranty","a_warranty",a=>a.hasWarranty?a.warranty:""]];
+  const [df,setDf]=useDateFilter(AF);
   const today=todayStr(), soon=soonStr(), live=assets.filter(a=>a.status!=="retired");
   const ql=q.toLowerCase();
-  const rows=assets.filter(a=>(!ft||a.type===ft)&&(!fs||a.status===fs)&&(!fl||a.location===fl)&&(!fp||a.empPriority===fp)&&(!fsec||(fsec==="__none"?!(a.owner&&(person(a.owner)||{}).sector):a.owner&&(person(a.owner)||{}).sector===fsec))&&(!fd||(fd==="__none"?!(a.owner&&(person(a.owner)||{}).dept):a.owner&&(person(a.owner)||{}).dept===fd))&&(!q||[a.model,a.serial,L(CFG.assetTypes[a.type]),a.owner?pname(a.owner):"",...(a.specs?[a.specs.cpu,a.specs.ram,a.specs.storage]:[])].join(" ").toLowerCase().includes(ql)));
+  const rows=assets.filter(a=>dateOk(df,a,AF)&&(!ft||a.type===ft)&&(!fs||a.status===fs)&&(!fl||a.location===fl)&&(!fp||a.empPriority===fp)&&(!fsec||(fsec==="__none"?!(a.owner&&(person(a.owner)||{}).sector):a.owner&&(person(a.owner)||{}).sector===fsec))&&(!fd||(fd==="__none"?!(a.owner&&(person(a.owner)||{}).dept):a.owner&&(person(a.owner)||{}).dept===fd))&&(!q||[a.model,a.serial,L(CFG.assetTypes[a.type]),a.owner?pname(a.owner):"",...(a.specs?[a.specs.cpu,a.specs.ram,a.specs.storage]:[])].join(" ").toLowerCase().includes(ql)));
   const tile=(l,v,tone)=>e("div",{key:l,style:{...card,padding:14}},e("div",{style:{fontSize:"1.6rem",fontWeight:800,fontVariantNumeric:"tabular-nums",color:tone||"#EDEBEA"}},v),e("div",{style:{fontSize:"0.75rem",color:"#8A8583",lineHeight:1.35}},l));
   /* Every column can shrink and wrap, so long values never run into the next column. */
   const cols="minmax(180px,2fr) minmax(130px,1.3fr) minmax(110px,1fr) minmax(110px,1fr) minmax(70px,.6fr)";
@@ -574,6 +611,7 @@ function Assets({assets,tickets,onOpenAsset,onAdd}){
       e("select",{id:"as-sector","aria-label":t("all_sectors"),value:fsec,onChange:ev=>setFsec(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_sectors")),Object.keys(CFG.sectors||{}).map(k=>e("option",{key:k,value:k},L(CFG.sectors[k]))),e("option",{value:"__none"},t("no_sector_holder"))),
       e("select",{id:"as-prio","aria-label":t("all_emp_prio"),value:fp,onChange:ev=>setFp(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_emp_prio")),Object.keys(CFG.empPriorities||{}).map(k=>e("option",{key:k,value:k},L(CFG.empPriorities[k])))),
       e("select",{id:"as-loc","aria-label":t("all_locations"),value:fl,onChange:ev=>setFl(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_locations")),Object.keys(CFG.assetLocations||{}).map(k=>e("option",{key:k,value:k},L(CFG.assetLocations[k])))),
+      e(DateFilter,{df,set:setDf,fields:AF,id:"as-date"}),
       e("button",{id:"add-device",onClick:onAdd,style:{...BP,marginInlineStart:"auto"}},t("add_device"))),
     !assets.length?e(Empty,{text:t("no_assets")}):
     e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:640}},
@@ -855,7 +893,9 @@ function ListsEditor({busy,save}){
 function Admin({setCfg,toast,onKB}){
   const [tab,setTab]=useState("cats");
   const [ed,setEd]=useState(null), [del,setDel]=useState(null), [busy,setBusy]=useState(false), [err,setErr]=useState("");
-  const [uf,setUf]=useState("all"), [uq,setUq]=useState("");
+  const [uf,setUf]=useState("all"), [uq,setUq]=useState(""), [ud,setUd]=useState(""), [us,setUs]=useState(""), [ur,setUr]=useState("");
+  const UF=[["added","df_user_added",p=>p.added],["login","df_last_login",p=>p.lastLogin]];
+  const [udf,setUdf]=useDateFilter(UF);
   const [draft,setDraft]=useState(()=>clone({prio:CFG.prio,impacts:CFG.impacts,urgencies:CFG.urgencies,matrix:CFG.matrix,statuses:CFG.statuses,
     autoAssign:CFG.autoAssign,approvalMode:CFG.approvalMode,approverId:CFG.approver,escalateTo:CFG.escalateTo,employeeEscalateTo:CFG.employeeEscalateTo,kbSuggest:CFG.kbSuggest,supportCcUpdates:CFG.supportCcUpdates,greeting:CFG.greeting,heroSub:CFG.heroSub}));
   const dset=(k,v)=>setDraft(d=>({...d,[k]:v}));
@@ -881,12 +921,19 @@ function Admin({setCfg,toast,onKB}){
       e("p",{style:{color:"#8A8583",fontSize:"0.84rem",marginBottom:12,maxWidth:"70ch"}},t("users_note")),
       (()=>{ /* Compact list: name + email together, and whether each person has signed in yet. */
         const signed=CFG.people.filter(p=>p.lastLogin), never=CFG.people.filter(p=>!p.lastLogin), ql=uq.trim().toLowerCase();
-        const list=(uf==="in"?signed:uf==="never"?never:CFG.people).filter(p=>!ql||[p.name,p.email,deptName(p.dept)].join(" ").toLowerCase().includes(ql));
+        const list=(uf==="in"?signed:uf==="never"?never:CFG.people).filter(p=>(!ql||[p.name,p.email,deptName(p.dept)].join(" ").toLowerCase().includes(ql))
+          &&(!ud||(ud==="__none"?!p.dept:p.dept===ud))&&(!us||(us==="__none"?!p.sector:p.sector===us))&&(!ur||p.role===ur)&&dateOk(udf,p,UF));
+        const fsel={...IS,width:"auto",padding:"8px 10px"};
         const cell={padding:"8px 8px",borderBottom:"1px solid #231F1E",verticalAlign:"middle"}, th={...HEAD,textAlign:"start",padding:"8px 8px",borderBottom:"1px solid #332C2B",whiteSpace:"nowrap"};
         return e("div",null,
           e("div",{style:{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:10}},
             e("input",{id:"u-search","aria-label":t("search_people"),value:uq,onChange:ev=>setUq(ev.target.value),placeholder:"🔍 "+t("search_people"),style:{...IS,flex:"1 1 200px",maxWidth:300,padding:"8px 12px"}}),
             e(Tabs,{val:uf,set:setUf,wrap:true,tabs:[["all",t("pr_all"),CFG.people.length],["in",t("u_signed_in"),signed.length],["never",t("u_never"),never.length]]})),
+          e("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:10}},
+            e("select",{id:"u-dept","aria-label":t("all_depts"),value:ud,onChange:ev=>setUd(ev.target.value),style:fsel},e("option",{value:""},t("all_depts")),Object.keys(CFG.depts).map(k=>e("option",{key:k,value:k},deptName(k))),e("option",{value:"__none"},t("no_dept_holder"))),
+            e("select",{id:"u-sector","aria-label":t("all_sectors"),value:us,onChange:ev=>setUs(ev.target.value),style:fsel},e("option",{value:""},t("all_sectors")),Object.keys(CFG.sectors||{}).map(k=>e("option",{key:k,value:k},L(CFG.sectors[k]))),e("option",{value:"__none"},t("no_sector_holder"))),
+            e("select",{id:"u-role","aria-label":t("all_roles"),value:ur,onChange:ev=>setUr(ev.target.value),style:fsel},e("option",{value:""},t("all_roles")),ROLES.map(r=>e("option",{key:r,value:r},t("role_"+r)))),
+            e(DateFilter,{df:udf,set:setUdf,fields:UF,id:"u-date"})),
           e("div",{style:{overflowX:"auto"}},e("table",{id:"users-table",style:{width:"100%",borderCollapse:"collapse",fontSize:"0.85rem",minWidth:720}},
             e("thead",null,e("tr",null,[t("name"),t("department"),t("sector"),t("manager_short"),t("u_signin"),t("it_role"),""].map((h,i)=>e("th",{key:i,style:th,title:i===3?t("manager"):undefined},h)))),
             e("tbody",null,list.map(p=>e("tr",{key:p.id,style:{opacity:p.active===false?.5:1}},
@@ -987,10 +1034,11 @@ function StockStatus({s}){ const x=(CFG.stockStatuses||{})[s]||{n:{en:s},c:"#647
 const stockCat = k => L((CFG.stockCategories||{})[k]) || k;
 function KTile({label,value,tone}){ return e("div",{style:{...card,padding:14}},e("div",{style:{fontSize:"1.6rem",fontWeight:800,fontVariantNumeric:"tabular-nums",color:tone||"#EDEBEA"}},value),e("div",{style:{fontSize:"0.75rem",color:"#8A8583",lineHeight:1.35}},label)); }
 
+const SF=[["created","df_added",i=>i.created],["updated","df_changed",i=>i.updated]];
 function StockView({items,onOpen,onAdd,onRestock}){
-  const [q,setQ]=useState(""), [fc,setFc]=useState(""), [fs,setFs]=useState("");
+  const [q,setQ]=useState(""), [fc,setFc]=useState(""), [fs,setFs]=useState(""), [df,setDf]=useDateFilter(SF);
   const ql=q.toLowerCase();
-  const rows=items.filter(i=>(!fc||i.category===fc)&&(!fs||i.status===fs)&&(!q||[i.name,i.model,i.serial,i.notes,stockCat(i.category)].join(" ").toLowerCase().includes(ql)));
+  const rows=items.filter(i=>dateOk(df,i,SF)&&(!fc||i.category===fc)&&(!fs||i.status===fs)&&(!q||[i.name,i.model,i.serial,i.notes,stockCat(i.category)].join(" ").toLowerCase().includes(ql)));
   const low=items.filter(i=>i.status==="low").length, out=items.filter(i=>i.status==="out").length;
   const cols="minmax(190px,2.2fr) minmax(120px,1.2fr) minmax(80px,.7fr) minmax(80px,.7fr) minmax(110px,1fr)";
   const cell={minWidth:0,overflowWrap:"anywhere"};
@@ -1002,6 +1050,7 @@ function StockView({items,onOpen,onAdd,onRestock}){
       e("input",{id:"st-search","aria-label":t("search_stock"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("search_stock"),style:{...IS,flex:"1 1 220px",maxWidth:340}}),
       e("select",{"aria-label":t("all_categories"),value:fc,onChange:ev=>setFc(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_categories")),Object.keys(CFG.stockCategories||{}).map(k=>e("option",{key:k,value:k},stockCat(k)))),
       e("select",{"aria-label":t("all_statuses"),value:fs,onChange:ev=>setFs(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("all_statuses")),Object.keys(CFG.stockStatuses||{}).map(k=>e("option",{key:k,value:k},L(CFG.stockStatuses[k].n)))),
+      e(DateFilter,{df,set:setDf,fields:SF,id:"st-date"}),
       e("button",{id:"restock",disabled:!(low+out),title:low+out?t("restock_d",{n:low+out}):t("restock_none"),onClick:()=>onRestock(items.filter(i=>i.status!=="in")),style:{...BS,marginInlineStart:"auto"}},t("restock")+(low+out?" ("+(low+out)+")":"")),
       e("button",{id:"add-stock",onClick:onAdd,style:BP},t("add_item"))),
     !items.length?e(Empty,{text:t("no_stock")}):
@@ -1037,7 +1086,7 @@ function StockModal({it,role,onClose,onEdit,onDelete,onAdjust,onRequest}){
     hist==null?e("div",{style:{color:"#8A8583",fontSize:"0.85rem"}},"…"):!hist.length?e(Empty,{text:t("no_movements")}):
       e("div",{style:{maxHeight:220,overflowY:"auto"}},hist.map((m,i)=>e("div",{key:i,style:{display:"flex",gap:10,alignItems:"baseline",padding:"7px 4px",borderBottom:"1px solid #231F1E",fontSize:"0.83rem",flexWrap:"wrap"}},
         e("b",{style:{color:m.change>0?"#34D399":"#FCA5A5",fontVariantNumeric:"tabular-nums",minWidth:44}},(m.change>0?"+":"")+m.change),
-        e("span",{style:{flex:"1 1 180px",minWidth:0,overflowWrap:"anywhere"}},m.reason),
+        e("span",{style:{flex:"1 1 180px",minWidth:0,overflowWrap:"anywhere"}},m.pr?t("mv_received",{id:m.pr}):m.reason==="Opening stock"?t("mv_opening"):m.reason),
         e("span",{style:{color:"#8A8583",fontSize:"0.75rem"}},(m.by?pname(m.by)+" · ":"")+fmtDate(m.ts)+" · "+t("qty_now",{n:m.after}))))),
     e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18,flexWrap:"wrap"}},
       isLeadRole(role)&&e("button",{onClick:onDelete,style:{...BS,color:"#FCA5A5"}},"🗑 "+t("delete")),
@@ -1066,10 +1115,12 @@ function StockEditor({i0,isNew,onSave,onClose,busy,err}){
 function PRStatus({s}){ const x=(CFG.prStatuses||{})[s]||{n:{en:s},c:"#64748B"}; return e(Pill,{c:x.c},L(x.n)); }
 const prCanEdit = (p,me,role) => ["draft","rejected"].includes(p.status) && (p.createdBy===me || isLeadRole(role));
 
+const PF=[["created","df_created",p=>p.created],["submitted","df_submitted",p=>p.submitted],["decided","df_decided",p=>p.decided],["received","df_received_pr",p=>p.received]];
 function PRView({prs,me,role,onOpen,onNew}){
-  const [tab,setTab]=useState("all");
+  const [tab,setTab]=useState("all"), [q,setQ]=useState(""), [fb,setFb]=useState(""), [df,setDf]=useDateFilter(PF);
   const keys=Object.keys(CFG.prStatuses||{});
-  const rows=prs.filter(p=>tab==="all"||p.status===tab);
+  const ql=q.trim().toLowerCase();
+  const rows=prs.filter(p=>(tab==="all"||p.status===tab)&&dateOk(df,p,PF)&&(!fb||p.createdBy===fb)&&(!ql||[p.id,p.notes,pname(p.createdBy),...p.lines.map(l=>l.name)].join(" ").toLowerCase().includes(ql)));
   const cols="minmax(110px,1fr) minmax(150px,1.6fr) minmax(70px,.6fr) minmax(120px,1fr) minmax(130px,1.1fr) minmax(100px,.9fr)";
   const cell={minWidth:0,overflowWrap:"anywhere"};
   const waiting=prs.filter(p=>p.status==="submitted"), open=prs.filter(p=>["approved","ordered"].includes(p.status));
@@ -1081,6 +1132,10 @@ function PRView({prs,me,role,onOpen,onNew}){
     e("div",{style:{display:"flex",gap:10,alignItems:"flex-start",flexWrap:"wrap"}},
       e("div",{style:{flex:"1 1 400px",minWidth:0}},e(Tabs,{val:tab,set:setTab,tabs:[["all",t("pr_all"),prs.length],...keys.map(k=>[k,L(CFG.prStatuses[k].n),prs.filter(p=>p.status===k).length])]})),
       e("button",{id:"new-pr",onClick:onNew,style:BP},t("new_pr"))),
+    e("div",{style:{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center"}},
+      e("input",{id:"pr-search","aria-label":t("pr_search"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("pr_search"),style:{...IS,flex:"1 1 200px",maxWidth:300}}),
+      e("select",{id:"pr-by","aria-label":t("h_created_by"),value:fb,onChange:ev=>setFb(ev.target.value),style:{...IS,width:"auto"}},e("option",{value:""},t("pr_anyone")),[...new Set(prs.map(p=>p.createdBy))].map(id=>e("option",{key:id,value:id},pname(id)))),
+      e(DateFilter,{df,set:setDf,fields:PF,id:"pr-date"})),
     !prs.length?e(Empty,{text:t("no_prs")}):
     e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:680}},
       e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:14,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_ref"),t("h_created_by"),t("h_items"),t("h_total"),t("status"),t("h_date")].map((h,i)=>e("span",{key:i,style:cell},h))),
@@ -1254,6 +1309,15 @@ function App(){
   const unassigned=isITRole(role)?tickets.filter(x=>!x.assignee&&isOpen(x)).length:0;
   const selT=sel&&tickets.find(x=>x.id===sel);
   const prWaiting=isLeadRole(role)?prs.filter(p=>p.status==="submitted"&&(p.submittedBy!==me||role==="admin")).length:0;
+  /* Menu counts: how many are still open / unresolved in each list. */
+  const openTk=isITRole(role)?tickets.filter(isOpen).length:0, myOpen=tickets.filter(x=>x.req===me&&isOpen(x)).length;
+  const prOpen=prs.filter(p=>["submitted","approved","ordered"].includes(p.status)).length;
+  const badges={
+    queue:{n:openTk,c:"#E11A22",title:t("cnt_queue",{n:openTk,u:unassigned})},
+    approvals:{n:pending,c:"#A78BFA",title:t("cnt_appr",{n:pending})},
+    mine:{n:myOpen,c:"#2563EB",title:t("cnt_mine",{n:myOpen})},
+    purchases:{n:prOpen,c:"#A78BFA",title:t("cnt_pr",{n:prOpen,w:prWaiting})},
+  };
   const selStock=stockSel&&stock.find(i=>i.id===stockSel), selPR=prSel&&prs.find(p=>p.id===prSel);
   const prAct=async(action,data,msg)=>{ const r=await api(action,data); if(Array.isArray(r)) setPrs(r); else { if(r.prs) setPrs(r.prs); if(r.items) setStock(r.items); } if(msg) toast(t(msg)); return r; };
   const savePR=async(p,submit)=>{ setABusy(true); setAErr("");
@@ -1266,7 +1330,7 @@ function App(){
     e("div",{style:{padding:"12px 10px",flex:1,overflowY:"auto"}},
       e("button",{id:"new-ticket",onClick:()=>setNewT({cat:null}),style:{...BP,width:"100%",marginBottom:14}},t("new_ticket_btn")),
       navItems.map(([k,ic,l])=>e("button",{key:k,id:"nav-"+k,onClick:()=>go(k),"aria-current":cur===k?"page":undefined,style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 12px",borderRadius:8,border:"none",background:cur===k?"#E11A2222":"transparent",color:cur===k?"#F16A6F":"#C9C6C4",fontWeight:cur===k?700:500,marginBottom:2,textAlign:"start"}},e("span",null,ic),e("span",{style:{flex:1}},t(l)),
-        k==="approvals"&&pending>0&&e("span",{style:{fontSize:"0.7rem",background:"#A78BFA",color:"#fff",borderRadius:10,padding:"1px 7px"}},pending),k==="purchases"&&prWaiting>0&&e("span",{style:{fontSize:"0.7rem",background:"#A78BFA",color:"#fff",borderRadius:10,padding:"1px 7px"}},prWaiting),k==="queue"&&unassigned>0&&e("span",{style:{fontSize:"0.7rem",background:"#E11A22",color:"#fff",borderRadius:10,padding:"1px 7px"}},unassigned))),
+        (()=>{ const b=badges[k]; return b&&b.n>0?e("span",{className:"nav-count",title:b.title,"aria-label":b.title,style:{fontSize:"0.7rem",background:b.c,color:"#fff",borderRadius:10,padding:"1px 7px",fontVariantNumeric:"tabular-nums"}},b.n):null; })())),
       null),
     e("div",{style:{padding:"10px 14px",borderTop:"1px solid #332C2B"}},
       e("div",{style:{fontSize:"0.68rem",color:"#8A8583",textTransform:"uppercase",letterSpacing:1,marginBottom:4}},L({en:"Other systems",ar:"أنظمة أخرى"})),
