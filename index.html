@@ -247,6 +247,7 @@ const S = {
   assign_back_ph:["e.g. Approved, go ahead and replace the laptop","مثال: تمت الموافقة، يمكنك استبدال اللابتوب"],
   assign_back_hint:["The ticket moves to them and is no longer marked as escalated. They get an email with your note; the employee isn't notified.","تنتقل التذكرة إليه ولا تعود مُصعّدة. يصله بريد بملاحظتك؛ ولا يتم إبلاغ الموظف."],
   assign_back_btn:["Assign","إسناد"], toast_assigned_back:["Assigned to {name}","أُسندت إلى {name}"],
+  assigned_to:["Assigned to","مُسندة إلى"],
   manager_short:["Manager","المدير"],
   search_people:["Search name, email or department…","ابحث بالاسم أو البريد أو الإدارة…"], u_signin:["Sign-in","تسجيل الدخول"],
   u_signed_in:["Signed in","سجّل الدخول"], u_never:["Not signed in yet","لم يسجّل الدخول بعد"], u_last:["last {d}","آخر مرة {d}"],
@@ -504,7 +505,7 @@ function Queue({me,role,tickets,onOpen,selId}){
     urgent:tickets.filter(x=>isOpen(x)&&urgentPrios().includes(x.priority)),escalated:tickets.filter(x=>isOpen(x)&&x.escalated),waiting:tickets.filter(x=>x.status==="Waiting on User"||x.status==="Pending Approval"),done:tickets.filter(x=>!isOpen(x))};
   const rank=new Proxy({}, {get:(_,p)=>prioRank(p)});
   const rows=sets[tab].filter(x=>dateOk(df,x,DF.ticket)&&(!fa||(fa==="__none"?!x.assignee:x.assignee===fa))&&(!fc||x.cat===fc)&&(!fp||x.priority===fp)&&(!q||(x.id+" "+x.title+" "+pname(x.req)).toLowerCase().includes(q.toLowerCase()))).sort(newestFirst);
-  const cols="86px minmax(0,1fr) 150px 130px 150px 90px 40px";
+  const cols="76px minmax(150px,1fr) 120px 110px 125px 70px 125px";
   return e("div",null,
     e(Tabs,{val:tab,set:setTab,tabs:[["mine",t("q_mine"),sets.mine.length],...(role==="manager"||team.length?[["team",t("q_team"),sets.team.length]]:[]),["unassigned",t("q_unassigned"),sets.unassigned.length],["all",t("q_all"),sets.all.length],["urgent",t("q_urgent",{p:urgentPrios().join("–")}),sets.urgent.length],["escalated",t("q_escalated"),sets.escalated.length],["waiting",t("q_waiting"),sets.waiting.length],["done",t("q_done")]]}),
     e("div",{style:{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap"}},
@@ -515,13 +516,15 @@ function Queue({me,role,tickets,onOpen,selId}){
         CFG.people.filter(p=>isITRole(p.role)&&(p.active!==false||tickets.some(x=>x.assignee===p.id))).map(p=>e("option",{key:p.id,value:p.id},(team.includes(p.id)?"👥 ":"")+p.name+(p.id===me?" ("+t("me")+")":""))),e("option",{value:"__none"},t("unassigned"))),
       e(DateFilter,{df,set:setDf,fields:DF.ticket,id:"q-date"})),
     tab==="team"&&!team.length&&e("div",{style:{fontSize:"0.82rem",color:"#8A8583",marginBottom:10}},t("team_empty")),
-    e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:850}},
-      e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:12,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_id"),t("h_subject"),t("h_req"),t("h_prio"),t("status"),t("h_opened"),""].map((h,i)=>e("span",{key:i},h))),
+    e("div",{style:{overflowX:"auto"}},e("div",{style:{minWidth:840}},
+      e("div",{style:{display:"grid",gridTemplateColumns:cols,gap:12,padding:"9px 14px",...HEAD,background:"#1A1717",borderRadius:"8px 8px 0 0"}},[t("h_id"),t("h_subject"),t("h_req"),t("h_prio"),t("status"),t("h_opened"),t("assigned_to")].map((h,i)=>e("span",{key:i},h))),
       rows.map((x,i)=>e("button",{key:x.id,className:"hov",onClick:()=>onOpen(x),style:{display:"grid",width:"100%",textAlign:"start",color:"inherit",border:"none",gridTemplateColumns:cols,gap:12,padding:"12px 14px",alignItems:"center",background:selId===x.id?"#3A1512":i%2?"#181514":"#1A1717",borderInlineStart:"3px solid "+(selId===x.id?"#E11A22":x.priority==="P1"&&isOpen(x)?"#EF4444":"transparent")}},
         e("span",{style:{fontFamily:"monospace",fontSize:"0.75rem",color:"#8A8583"}},x.id),
         e("div",{style:{minWidth:0}},e("div",{style:{fontSize:"0.9rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(x.escalated&&isOpen(x)?"⬆ ":"")+x.title),e("div",{style:{fontSize:"0.72rem",color:"#8A8583"}},cat(x.cat).icon+" "+L(cat(x.cat).n))),
         e("div",{style:{fontSize:"0.8rem"}},pname(x.req),e("div",{style:{fontSize:"0.7rem",color:"#8A8583"}},deptName(x.dept))),
-        e(PrioB,{p:x.priority}),e(StatB,{s:x.status}),e("span",{style:{fontSize:"0.78rem",color:"#8A8583"}},ago(x.created)),e(Av,{id:x.assignee,size:26}))),
+        e(PrioB,{p:x.priority}),e(StatB,{s:x.status}),e("span",{style:{fontSize:"0.78rem",color:"#8A8583"}},ago(x.created)),
+          e("div",{className:"q-assignee",style:{display:"flex",gap:7,alignItems:"center",minWidth:0}},e(Av,{id:x.assignee,size:24}),
+            e("span",{style:{fontSize:"0.82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:x.assignee?"#EDEBEA":"#8A8583"}},x.assignee?pname(x.assignee):t("unassigned"))))),
       rows.length===0&&e("div",{style:{padding:34,textAlign:"center",color:"#6B6563"}},tab==="unassigned"?t("nothing_unassigned")+" 👏":t("no_match")))));
 }
 
