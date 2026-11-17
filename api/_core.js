@@ -248,6 +248,8 @@ async function loadConfig(viewer, roleOverride) {
   for (const d of deptRows || []) depts[d.id] = { n: d.name || B(d.id, d.id), icon: d.icon || "🏢", sort: d.sort || 0 };
   return {
     me: { id: viewer.id, role, name: viewer.name, realRole, viewAs: role !== realRole ? role : null },
+    // Direct team of an IT manager / admin: active people whose Manager (Users & roles) is this person.
+    myTeam: isLead(role) ? users.filter(u => u.manager_id === viewer.id && u.active !== false).map(u => u.id) : [],
     supportEmail: isLead(role) ? SUPPORT_EMAIL() : undefined,
     supportEnabled: !!SUPPORT_EMAIL(),
     autoAssign: settings.autoAssign, approvalMode: settings.approvalMode, approver: settings.approverId,

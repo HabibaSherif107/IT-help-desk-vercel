@@ -744,6 +744,14 @@ async function tests() {
   await signIn("karim@dar.test");
   ok((await call("karim@dar.test", "save-stock-item", { isNew: false, item: { ...st, min: "5" } })).status === 200, "…and after signing in again saving works");
 
+  // ── IT manager's direct team ─────────────────────────────────
+  let pk = (await call("hany@dar.test", "bootstrap")).body.people.find(p => p.email === "karim@dar.test");
+  await call("hany@dar.test", "admin-save-user", { user: { ...pk, manager: PP["omar@dar.test"].id } });
+  ok((await call("omar@dar.test", "bootstrap")).body.myTeam.includes(PP["karim@dar.test"].id), "an IT manager's direct team = people whose Manager is them (Karim → Omar)");
+  ok((await call("karim@dar.test", "bootstrap")).body.myTeam.length === 0, "agents don't get a team list");
+  const omarSees = (await call("omar@dar.test", "list-tickets")).body;
+  ok(omarSees.some(x => x.assignee === PP["karim@dar.test"].id) && omarSees.some(x => x.assignee === PP["hany@dar.test"].id), "managers and admins see tickets assigned to every technician");
+
   // ── New Joiner / Leaver form ─────────────────────────────────
   const ob = (fields) => call("sara@dar.test", "create-ticket", { ticket: { category_id: "onboard", title: "People change", description: "x", fields } });
   ok((await ob({})).status === 400, "joiner / leaver must be chosen");
