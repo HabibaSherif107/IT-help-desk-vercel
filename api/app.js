@@ -396,7 +396,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Actions on one ticket ─────────────────────────────────
-    const TICKET_ACTIONS = ["reply", "update-ticket", "resolve", "confirm", "reopen", "approve", "reject", "escalate"];
+    const TICKET_ACTIONS = ["reply", "update-ticket", "resolve", "confirm", "reopen", "approve", "reject", "escalate", "assign-back"];
     if (TICKET_ACTIONS.includes(action)) {
       const t = await getTicketRow(body.id);
       if (!t) return fail(res, 404, "Ticket not found.");
@@ -440,6 +440,9 @@ module.exports = async function handler(req, res) {
           if (v && !members.some(m => m.id === v && m.active !== false && isIT(itRoleOf(m)))) return fail(res, 400, "Tickets can only be assigned to active IT team members.");
           patch.assignee_id = v;
           if (t.status === "New" && v) patch.status = "Assigned";
+          // An escalated ticket handed to a technician (not a manager / admin) is no longer escalated.
+          const vu = members.find(m => m.id === v);
+          if (t.escalated_at && v && v !== t.assignee_id && vu && !isLead(itRoleOf(vu))) Object.assign(patch, { escalated_at: null, escalated_by: null, escalated_from: null, escalation_reason: null });
           if (v !== t.assignee_id) events.push(["assigned", !v ? ev("Unassigned", "أُلغي الإسناد")
             : v === viewer.id ? ev(`${me.name} took the ticket`, `استلم ${me.name} التذكرة`)
             : ev(`Assigned to ${nameOf(members, v)} by ${me.name}`, `أسندها ${me.name} إلى ${nameOf(members, v)}`)]);
@@ -479,6 +482,26 @@ module.exports = async function handler(req, res) {
       }
 
       // A technician hands the ticket to the IT manager: reassign + private note + email.
+      // The manager / admin a ticket was escalated to sends it (back) to a technician, with an optional note.
+      if (action === "assign-back") {
+        if (!isIT(role)) return fail(res, 403, "Only IT can assign tickets.");
+        if (!t.escalated_at) return fail(res, 400, "This ticket isn't escalated.");
+        if (!(t.assignee_id === viewer.id || isLead(role))) return fail(res, 403, "Only the person it was escalated to, or an IT manager / admin, can assign it back.");
+        if (!(IT.isOpenStatus(await IT.loadSettings(), t.status) || t.status === "Resolved")) return fail(res, 400, "This ticket is closed.");
+        const members = await IT.loadUsers();
+        const to = members.find(m => m.id === body.to && m.active !== false && isIT(itRoleOf(m)));
+        if (!to) return fail(res, 400, "Choose an active IT team member.");
+        if (to.id === t.assignee_id) return fail(res, 400, "The ticket is already with " + to.name + ".");
+        const note = str(body.note, 1000).trim();
+        if (note) await addMessage(t.id, viewer.id, "↩ " + note, true);
+        await patchTicket(t.id, { assignee_id: to.id, escalated_at: null, escalated_by: null, escalated_from: null, escalation_reason: null,
+          status: t.status === "New" ? "Assigned" : t.status === "Resolved" ? "In Progress" : t.status, ...(t.status === "Resolved" ? { resolved_at: null } : {}) });
+        await addEvent(t.id, viewer.id, "assigned", ev(`Assigned back to ${to.name} by ${me.name}` + (note ? ": " + short(note) : ""), `أعادها ${me.name} إلى ${to.name}` + (note ? ": " + short(note) : "")));
+        const fresh = await getTicketRow(t.id), ctx = await emailCtx(fresh);
+        await IT.notify("assigned", fresh, ctx, to.email, { how: ev(`${me.name} assigned this escalated ticket back to you.` + (note ? "\nNote: " + note : ""), `أعاد ${me.name} هذه التذكرة المُصعّدة إليك.` + (note ? "\nملاحظة: " + note : "")) });
+        return res.status(200).json({ ticket: await shapedOne(viewer, role, t.id) });
+      }
+
       if (action === "escalate") {
         if (!isIT(role)) return fail(res, 403, "Only IT can escalate tickets.");
         // Any ticket that isn't finished can be escalated: open, waiting for approval, or resolved (it reopens).

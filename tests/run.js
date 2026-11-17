@@ -752,6 +752,23 @@ async function tests() {
   const omarSees = (await call("omar@dar.test", "list-tickets")).body;
   ok(omarSees.some(x => x.assignee === PP["karim@dar.test"].id) && omarSees.some(x => x.assignee === PP["hany@dar.test"].id), "managers and admins see tickets assigned to every technician");
 
+  // ── Escalated ticket assigned back to a technician ───────────
+  r = await call("sara@dar.test", "create-ticket", { ticket: { category_id: "network", title: "Back test", description: "x", fields: { where: 0 } } });
+  const bk = r.body.ticket.id;
+  await call("karim@dar.test", "update-ticket", { id: bk, assignee: PP["karim@dar.test"].id });
+  await call("karim@dar.test", "escalate", { id: bk, reason: "Need admin rights", to: PP["omar@dar.test"].id });
+  ok((await call("karim@dar.test", "assign-back", { id: bk, to: PP["karim@dar.test"].id })).status === 403, "an agent can't assign back a ticket escalated to someone else");
+  ok((await call("omar@dar.test", "assign-back", { id: bk, to: PP["sara@dar.test"].id })).status === 400, "it can only go to an active IT team member");
+  n0 = mails.length;
+  r = await call("omar@dar.test", "assign-back", { id: bk, to: PP["karim@dar.test"].id, note: "Approved, replace the cable" });
+  ok(r.status === 200 && r.body.ticket.assignee === PP["karim@dar.test"].id && !r.body.ticket.escalated, "the manager it was escalated to assigns it back to the technician; no longer escalated");
+  ok(mails.slice(n0).some(m => m.to === "karim@dar.test" && m.text.includes("assigned this escalated ticket back to you") && m.text.includes("Approved, replace the cable")) && !mails.slice(n0).some(m => m.to === "sara@dar.test"), "the technician is emailed with the note; the employee isn't");
+  ok(r.body.ticket.history.some(h => h.d.en === "Assigned back to karim by omar: Approved, replace the cable") && r.body.ticket.thread.some(m => m.internal && m.text.includes("Approved")), "History records it and the note is kept as an internal note");
+  ok((await call("omar@dar.test", "assign-back", { id: bk, to: PP["karim@dar.test"].id })).status === 400, "a ticket that isn't escalated can't be assigned back");
+  await call("karim@dar.test", "escalate", { id: bk, reason: "Again", to: PP["omar@dar.test"].id });
+  r = await call("omar@dar.test", "update-ticket", { id: bk, assignee: PP["karim@dar.test"].id });
+  ok(r.status === 200 && !r.body.ticket.escalated, "handing an escalated ticket to a technician with the normal Assignee dropdown also clears the escalation");
+
   // ── New Joiner / Leaver form ─────────────────────────────────
   const ob = (fields) => call("sara@dar.test", "create-ticket", { ticket: { category_id: "onboard", title: "People change", description: "x", fields } });
   ok((await ob({})).status === 400, "joiner / leaver must be chosen");

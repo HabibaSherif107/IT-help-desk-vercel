@@ -108,6 +108,8 @@ Admins can rename, reorder, hide, add or remove categories and change their ques
 
 **Escalation:** if a technician can't finish a ticket, they press **⬆ Escalate to manager / admin**, choose which IT manager or admin (the default is the one set under *General → Escalations go to*) and write why. The ticket moves to that person, who gets an email with the reason. The reason stays private to IT, and the employee isn't notified. The manager can solve it or hand it back. Admins choose who receives escalations (**Admin Console → General**).
 
+**Assigning back:** on an escalated ticket, the person it was escalated to (or any IT manager / admin) presses **↩ Assign to a technician**, picks the technician (the one who escalated it is pre-selected) and can add a note. The ticket moves to them, is no longer marked escalated, and they get an email with the note (the employee isn't notified). Handing an escalated ticket to a technician with the normal *Assignee* dropdown also clears the escalation.
+
 ### Emails
 | When | Who gets an email |
 |---|---|

@@ -242,6 +242,11 @@ const S = {
   no_desc:["(No description asked for this category; see the details above.)","(لا يُطلب وصف لهذه الفئة؛ راجع التفاصيل أعلاه.)"],
   q_team:["My team","فريقي"], all_assignees:["Assigned to anyone","مُسندة لأي شخص"], me:["me","أنا"],
   team_empty:["Nobody reports to you yet. In Admin Console → Users & roles, set yourself as the Manager of your technicians.","لا يتبعك أحد بعد. من لوحة الإدارة ← المستخدمون والأدوار، اجعل نفسك «المدير» للفنيين التابعين لك."],
+  assign_back:["↩ Assign to a technician","↩ إسناد لفني"], assign_back_title:["Assign {id} to a technician","إسناد {id} لفني"], assign_back_to:["Assign to","إسناد إلى"],
+  escalated_it:["escalated it","هو من صعّدها"], assign_back_note:["Note for the technician (optional, IT only)","ملاحظة للفني (اختياري، لفريق التقنية فقط)"],
+  assign_back_ph:["e.g. Approved, go ahead and replace the laptop","مثال: تمت الموافقة، يمكنك استبدال اللابتوب"],
+  assign_back_hint:["The ticket moves to them and is no longer marked as escalated. They get an email with your note; the employee isn't notified.","تنتقل التذكرة إليه ولا تعود مُصعّدة. يصله بريد بملاحظتك؛ ولا يتم إبلاغ الموظف."],
+  assign_back_btn:["Assign","إسناد"], toast_assigned_back:["Assigned to {name}","أُسندت إلى {name}"],
   manager_short:["Manager","المدير"],
   search_people:["Search name, email or department…","ابحث بالاسم أو البريد أو الإدارة…"], u_signin:["Sign-in","تسجيل الدخول"],
   u_signed_in:["Signed in","سجّل الدخول"], u_never:["Not signed in yet","لم يسجّل الدخول بعد"], u_last:["last {d}","آخر مرة {d}"],
@@ -527,8 +532,9 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
   const [resolveOpen,setResolveOpen]=useState(false), [resNote,setResNote]=useState(""), [empEsc,setEmpEsc]=useState(false), [empEscText,setEmpEscText]=useState("");
   const [rej,setRej]=useState(false), [reason,setReason]=useState("");
   const [escOpen,setEscOpen]=useState(false), [escReason,setEscReason]=useState(""), [escPick,setEscPick]=useState("");
+  const [backOpen,setBackOpen]=useState(false), [backTo,setBackTo]=useState(""), [backNote,setBackNote]=useState("");
   const escTo=CFG.escalateTarget, leadsToEscalate=CFG.people.filter(p=>p.active!==false&&isLeadRole(p.role)&&p.id!==me&&p.id!==tk.assignee), canEscalate=agent&&(isOpen(tk)||tk.status==="Resolved");
-  useEffect(()=>{setReply("");setInternal(false);setEmpEsc(false);setEmpEscText("");setEscPick("");},[tk.id]);
+  useEffect(()=>{setReply("");setInternal(false);setEmpEsc(false);setEmpEscText("");setEscPick("");setBackOpen(false);},[tk.id]);
   const c=cat(tk.cat), rq=person(tk.req)||{name:"—",dept:tk.dept};
   const run=async(action,data,okMsg)=>{ setBusy(true); try{ const r=await api(action,{id:tk.id,...data}); onChanged(r.ticket); if(okMsg) toast(okMsg); return true; }catch(x){ toast(x.message,"error"); return false; } finally{ setBusy(false); } };
   const send=async()=>{ if(!reply.trim())return; if(await run("reply",{text:reply.trim(),internal:agent&&internal},internal?t("toast_note"):t("toast_reply"))) setReply(""); };
@@ -558,7 +564,9 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
           isOpen(tk)&&tk.status!=="Pending Approval"&&e("button",{disabled:busy,onClick:()=>setResolveOpen(true),style:{...BP,background:"#059669",padding:"8px 14px"}},t("resolve")),
           canEscalate&&e("button",{id:"escalate-btn",disabled:busy,onClick:()=>setEscOpen(true),style:{...BS,padding:"8px 14px",color:"#FCD34D",borderColor:"#A16207"}},t("escalate")),
           null),
-        agent&&tk.escalated&&e("div",{style:{background:"#42200633",border:"1px solid #A1620766",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:"0.85rem",color:"#FCD34D"}},"⬆ "+t("escalated_by",{by:pname(tk.escalated.by),x:ago(tk.escalated.at),reason:tk.escalated.reason||""})),
+        agent&&tk.escalated&&e("div",{style:{background:"#42200633",border:"1px solid #A1620766",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:"0.85rem",color:"#FCD34D",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}},
+          e("span",{style:{flex:"1 1 240px",minWidth:0}},"⬆ "+t("escalated_by",{by:pname(tk.escalated.by),x:ago(tk.escalated.at),reason:tk.escalated.reason||""})),
+          (tk.assignee===me||isLeadRole(role))&&(isOpen(tk)||tk.status==="Resolved")&&e("button",{id:"assign-back",disabled:busy,onClick:()=>{setBackTo("");setBackNote("");setBackOpen(true);},style:{...BSm,color:"#FDE68A",borderColor:"#A16207"}},t("assign_back"))),
         e(Section,{title:t("details"),style:{marginBottom:14,padding:14}},
           e("div",{style:{fontSize:"0.88rem",lineHeight:1.6,color:"#D6D3D1",marginBottom:10,whiteSpace:"pre-wrap",overflowWrap:"anywhere"}},tk.desc),
           row(t("requester"),e("span",{style:{display:"inline-flex",gap:6,alignItems:"center"}},e(Av,{id:tk.req,size:20}),rq.name+" · "+deptName(tk.dept))),
@@ -588,6 +596,16 @@ function Drawer({tk,me,role,onClose,onChanged,toast}){
         e("div",{style:{display:"flex",gap:8}},e("textarea",{id:"composer","aria-label":t("send"),rows:2,maxLength:5000,value:reply,onChange:ev=>setReply(ev.target.value),placeholder:agent?(internal?t("ph_internal"):t("ph_reply",{name:rq.name.split(" ")[0]})):t("ph_req"),style:{...IS,resize:"none",flex:1,borderColor:internal?"#A16207":"#332C2B"}}),e("button",{id:"send-btn",disabled:busy||!reply.trim(),onClick:send,style:{...BP,alignSelf:"stretch",background:internal?"#A16207":"#E11A22"}},t("send"))))),
     resolveOpen&&e(Modal,{title:t("resolve_title",{id:tk.id}),onClose:()=>setResolveOpen(false),w:480},e("label",{style:LS,htmlFor:"fix-note"},t("fix_q")+" *"),e("textarea",{id:"fix-note",rows:4,value:resNote,onChange:ev=>setResNote(ev.target.value),placeholder:t("fix_ph"),style:{...IS,marginBottom:12}}),e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},t("fix_hint")),
       e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setResolveOpen(false),style:BS},t("cancel")),e("button",{disabled:busy||!resNote.trim(),onClick:async()=>{ if(await run("resolve",{note:resNote.trim()},t("toast_resolved"))){setResolveOpen(false);setResNote("");} },style:{...BP,background:"#059669"}},t("mark_resolved")))),
+    backOpen&&(()=>{ const cands=CFG.people.filter(p=>p.active!==false&&isITRole(p.role)&&p.id!==tk.assignee).sort((a,b)=>(a.role==="agent"?0:1)-(b.role==="agent"?0:1)||a.name.localeCompare(b.name));
+      const def=[tk.escalated&&tk.escalated.by,tk.escalated&&tk.escalated.from].find(id=>id&&cands.some(p=>p.id===id))||(cands[0]||{}).id||"";
+      const to=backTo&&cands.some(p=>p.id===backTo)?backTo:def;
+      return e(Modal,{title:t("assign_back_title",{id:tk.id}),onClose:()=>setBackOpen(false),w:480},
+        e("label",{style:LS,htmlFor:"back-to"},t("assign_back_to")),e("select",{id:"back-to",value:to,onChange:ev=>setBackTo(ev.target.value),style:{...IS,marginBottom:12}},
+          cands.map(p=>e("option",{key:p.id,value:p.id},p.name+" · "+t("role_"+p.role)+(tk.escalated&&p.id===tk.escalated.by?" ("+t("escalated_it")+")":"")))),
+        e("label",{style:LS,htmlFor:"back-note"},t("assign_back_note")),e("textarea",{id:"back-note",rows:3,value:backNote,onChange:ev=>setBackNote(ev.target.value),placeholder:t("assign_back_ph"),style:{...IS,marginBottom:12}}),
+        e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},t("assign_back_hint")),
+        e("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},e("button",{onClick:()=>setBackOpen(false),style:BS},t("cancel")),
+          e("button",{id:"back-go",disabled:busy||!to,onClick:async()=>{ if(await run("assign-back",{to,note:backNote.trim()},t("toast_assigned_back",{name:pname(to)}))) setBackOpen(false); },style:BP},t("assign_back_btn")))); })(),
     empEsc&&e(Modal,{title:t("emp_esc_title",{id:tk.id}),onClose:()=>setEmpEsc(false),w:480},
       e("label",{style:LS,htmlFor:"emp-esc-text"},t("emp_esc_q")+" *"),e("textarea",{id:"emp-esc-text",rows:3,value:empEscText,onChange:ev=>setEmpEscText(ev.target.value),placeholder:t("emp_esc_ph"),style:{...IS,marginBottom:12}}),
       e("div",{style:{fontSize:"0.78rem",color:"#8A8583",marginBottom:16}},CFG.employeeEscalateTarget?t("emp_esc_hint",{name:pname(CFG.employeeEscalateTarget)}):t("emp_esc_hint_any")),
