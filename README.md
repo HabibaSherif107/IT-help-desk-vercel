@@ -77,6 +77,7 @@ Admins can add, rename, reorder and delete the options of these dropdowns, in En
 In **Admin Console → Users & roles** you can search people and filter **Signed in** / **Not signed in yet** (with the last sign-in time). Each person has a **Department** and, next to it, a **Company sector** chosen from a fixed list: *Shell, Chipsy, Jammy*. The sector also shows as a column in the people table.
 
 ### Filters and counts
+- **Order:** every list of tickets, approvals and purchase requests is *newest first* (FILO): the latest is on top and the oldest at the bottom. Use the Urgent tab or the priority filter to focus on priority.
 - **Date filters everywhere there are dates:** Ticket Queue, My Requests, Approvals, Assets, Stock, Purchase Requests and Users & roles each have a 📅 filter: *Any date*, *On a day* or *Between dates*. Where a list has several dates you choose which one (e.g. a device's purchase date, received date or warranty end; a purchase request's created, submitted, approved/rejected or received date; a person's added or last sign-in date).
 - Other filters: users by department, company sector and role; purchase requests by text (number, item, notes) and by who created them; My Requests by text.
 - **Menu counts:** Ticket Queue shows the number of open tickets, Approvals the number waiting, My Requests your open requests, and Purchase Requests the ones still open (waiting approval, approved or ordered). Hover a count for details.

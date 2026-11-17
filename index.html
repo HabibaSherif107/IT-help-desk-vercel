@@ -386,11 +386,14 @@ function DateFilter({df,set,fields,id}){ const up=p=>set(x=>({...x,...p})); cons
     df.mode==="range"&&e("span",{style:{color:"#8A8583"}},"→"),
     df.mode==="range"&&e("input",{id:id&&id+"-to",type:"date","aria-label":t("df_to"),value:df.to,onChange:ev=>up({to:ev.target.value}),style:di}),
     df.mode!=="any"&&e("button",{"aria-label":t("df_clear"),title:t("df_clear"),onClick:()=>up({mode:"any",on:"",from:"",to:""}),style:{...BSm,padding:"6px 9px"}},"✕")); }
+/* Lists are FILO: the newest is on top, the oldest at the bottom (ties: higher number first). */
+const numOf = id => parseInt(String(id||"").replace(/\D+/g,""),10)||0;
+const newestFirst = (a,b) => (b.created||0)-(a.created||0) || numOf(b.id)-numOf(a.id);
 const DF = { ticket:[["created","df_opened",x=>x.created],["resolved","df_resolved",x=>x.resolved]] };
 
 function HelpHome({me,tickets,onNew,onOpen,onKB,go}){
   const [q,setQ]=useState("");
-  const mine=tickets.filter(x=>x.req===me), open=mine.filter(x=>isOpen(x)||x.status==="Resolved");
+  const mine=tickets.filter(x=>x.req===me), open=mine.filter(x=>isOpen(x)||x.status==="Resolved").sort(newestFirst);
   const ql=q.toLowerCase();
   const hits=q.trim().length>1?CFG.kb.filter(a=>[L(a.t),a.t.en,a.t.ar,...(a.body.en||[]),...(a.body.ar||[])].join(" ").toLowerCase().includes(ql)).slice(0,4):[];
   const major=null;   /* major incidents were removed */
@@ -474,7 +477,7 @@ function MyRequests({me,tickets,onOpen}){
   const act=x=>isOpen(x)||x.status==="Resolved";
   const [df,setDf]=useDateFilter(DF.ticket), [q,setQ]=useState("");
   const all=tickets.filter(x=>x.req===me);
-  const mine=all.filter(x=>tab==="open"?act(x):!act(x)).filter(x=>dateOk(df,x,DF.ticket)&&(!q||(x.id+" "+x.title).toLowerCase().includes(q.toLowerCase())));
+  const mine=all.filter(x=>tab==="open"?act(x):!act(x)).filter(x=>dateOk(df,x,DF.ticket)&&(!q||(x.id+" "+x.title).toLowerCase().includes(q.toLowerCase()))).sort(newestFirst);
   return e("div",null,e(Tabs,{tabs:[["open",t("tab_active"),all.filter(act).length],["closed",t("tab_closed"),all.filter(x=>!act(x)).length]],val:tab,set:setTab}),
     e("div",{style:{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center"}},
       e("input",{id:"mr-search","aria-label":t("q_search"),value:q,onChange:ev=>setQ(ev.target.value),placeholder:"🔍 "+t("mr_search"),style:{...IS,flex:"1 1 200px",maxWidth:300}}),
@@ -492,7 +495,7 @@ function Queue({me,role,tickets,onOpen,selId}){
   const sets={mine:tickets.filter(x=>x.assignee===me&&isOpen(x)),unassigned:tickets.filter(x=>!x.assignee&&isOpen(x)),all:tickets.filter(isOpen),
     urgent:tickets.filter(x=>isOpen(x)&&urgentPrios().includes(x.priority)),escalated:tickets.filter(x=>isOpen(x)&&x.escalated),waiting:tickets.filter(x=>x.status==="Waiting on User"||x.status==="Pending Approval"),done:tickets.filter(x=>!isOpen(x))};
   const rank=new Proxy({}, {get:(_,p)=>prioRank(p)});
-  const rows=sets[tab].filter(x=>dateOk(df,x,DF.ticket)&&(!fc||x.cat===fc)&&(!fp||x.priority===fp)&&(!q||(x.id+" "+x.title+" "+pname(x.req)).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>tab==="done"?b.created-a.created:(rank[a.priority]-rank[b.priority]||a.created-b.created));
+  const rows=sets[tab].filter(x=>dateOk(df,x,DF.ticket)&&(!fc||x.cat===fc)&&(!fp||x.priority===fp)&&(!q||(x.id+" "+x.title+" "+pname(x.req)).toLowerCase().includes(q.toLowerCase()))).sort(newestFirst);
   const cols="86px minmax(0,1fr) 150px 130px 150px 90px 40px";
   return e("div",null,
     e(Tabs,{val:tab,set:setTab,tabs:[["mine",t("q_mine"),sets.mine.length],["unassigned",t("q_unassigned"),sets.unassigned.length],["all",t("q_all"),sets.all.length],["urgent",t("q_urgent",{p:urgentPrios().join("–")}),sets.urgent.length],["escalated",t("q_escalated"),sets.escalated.length],["waiting",t("q_waiting"),sets.waiting.length],["done",t("q_done")]]}),
@@ -598,7 +601,7 @@ function Approvals({me,role,tickets,onOpen,onChanged,toast}){
   const [busy,setBusy]=useState(""), [rej,setRej]=useState(null), [reason,setReason]=useState("");
   const mineToDecide=x=>x.approval&&(x.approval.by===me||isLeadRole(role));
   const [df,setDf]=useDateFilter(DF.ticket.slice(0,1));
-  const pend=tickets.filter(x=>mineToDecide(x)&&x.approval.state==="pending"&&dateOk(df,x,DF.ticket)), hist=tickets.filter(x=>mineToDecide(x)&&x.approval.state!=="pending"&&dateOk(df,x,DF.ticket));
+  const pend=tickets.filter(x=>mineToDecide(x)&&x.approval.state==="pending"&&dateOk(df,x,DF.ticket)).sort(newestFirst), hist=tickets.filter(x=>mineToDecide(x)&&x.approval.state!=="pending"&&dateOk(df,x,DF.ticket)).sort(newestFirst);
   const decide=async(x,action,data)=>{ setBusy(x.id); try{ const r=await api(action,{id:x.id,...(data||{})}); onChanged(r.ticket); toast(action==="approve"?t("toast_approved"):t("toast_rejected")); return true; }catch(err){ toast(err.message,"error"); return false; } finally{ setBusy(""); } };
   return e("div",null,
     e("p",{style:{color:"#8A8583",fontSize:"0.88rem",marginBottom:10,maxWidth:"70ch"}},t("appr_intro")),
@@ -1166,7 +1169,7 @@ function PRView({prs,me,role,onOpen,onNew}){
   const [tab,setTab]=useState("all"), [q,setQ]=useState(""), [fb,setFb]=useState(""), [df,setDf]=useDateFilter(PF);
   const keys=Object.keys(CFG.prStatuses||{});
   const ql=q.trim().toLowerCase();
-  const rows=prs.filter(p=>(tab==="all"||p.status===tab)&&dateOk(df,p,PF)&&(!fb||p.createdBy===fb)&&(!ql||[p.id,p.notes,pname(p.createdBy),...p.lines.map(l=>l.name)].join(" ").toLowerCase().includes(ql)));
+  const rows=prs.filter(p=>(tab==="all"||p.status===tab)&&dateOk(df,p,PF)&&(!fb||p.createdBy===fb)&&(!ql||[p.id,p.notes,pname(p.createdBy),...p.lines.map(l=>l.name)].join(" ").toLowerCase().includes(ql))).sort(newestFirst);
   const cols="minmax(110px,1fr) minmax(150px,1.6fr) minmax(70px,.6fr) minmax(120px,1fr) minmax(130px,1.1fr) minmax(100px,.9fr)";
   const cell={minWidth:0,overflowWrap:"anywhere"};
   const waiting=prs.filter(p=>p.status==="submitted"), open=prs.filter(p=>["approved","ordered"].includes(p.status));
